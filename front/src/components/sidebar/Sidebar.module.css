@@ -1,0 +1,74 @@
+.sidebar {
+  display: flex;
+  flex-direction: row;
+  width: 21.09vw;
+  height: 100vh;
+  background: #FFF;
+  box-shadow: 0 10px 10px 0 rgba(0, 0, 0, 0.25);
+  flex-shrink: 0;
+  position: relative;
+  z-index: 10;
+}
+
+.navCol {
+  width: 4.95vw;
+  min-width: 60px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 2.08vh 0;
+  gap: 0;
+  flex-shrink: 0;
+  background: #FFF;
+  border-right: 2px solid #EEE;
+  overflow: hidden;
+}
+
+.logo {
+  display: flex;
+  justify-content: center;
+  margin-left: 0.73vw;
+  margin-bottom: 0.1vh;
+  width: 100%;
+
+  margin-top: -2.5vh;
+}
+
+.profileWrap {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+.profileAvatar {
+  width: clamp(36px, 3.2vw, 75px);
+  height: clamp(36px, 3.2vw, 75px);
+  border-radius: 50%;
+  background: lightgray center / cover no-repeat;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-sub);
+  overflow: hidden;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.profileImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.panelCol {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: #FFF;
+  border-right: 2px solid #EEE;
+}
