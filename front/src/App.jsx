@@ -1,17 +1,44 @@
 import { useState } from 'react'
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
 import Start from './pages/Start'
 import Home from './pages/Home'
 import Login from './pages/Login'
 import Signup from './pages/Signup'
+import Select from './pages/Select'
 import PlaceDetail from './pages/PlaceDetail'
 import Feed from './pages/Feed'
 import PhotoFrame from './pages/PhotoFrame'
 
+function SelectPage({ onSelect }) {
+  const navigate = useNavigate()
+
+  return (
+    <Select
+      onSelect={(idol) => {
+        onSelect(idol)
+        navigate('/home')
+      }}
+    />
+  )
+}
+
+function StartOverlay({ onStart }) {
+  const navigate = useNavigate()
+
+  return (
+    <Start
+      onStart={() => {
+        onStart()
+        navigate('/select')
+      }}
+    />
+  )
+}
+
 function App() {
   const [started, setStarted] = useState(false)
   const [selectedIdol, setSelectedIdol] = useState(null)
-  const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const [, setIsLoggedIn] = useState(false)
 
   return (
     <BrowserRouter>
@@ -19,6 +46,17 @@ function App() {
         <Route path="/" element={<Navigate to="/home" replace />} />
         <Route path="/login" element={<Login onLogin={() => setIsLoggedIn(true)} />} />
         <Route path="/signup" element={<Signup />} />
+        <Route
+          path="/select"
+          element={
+            <SelectPage
+              onSelect={(idol) => {
+                setSelectedIdol(idol)
+                setStarted(true)
+              }}
+            />
+          }
+        />
         <Route
           path="/home"
           element={
@@ -35,7 +73,7 @@ function App() {
         <Route path="*" element={<Navigate to="/home" replace />} />
       </Routes>
 
-      {!started && <Start onStart={() => setStarted(true)} />}
+      {!started && <StartOverlay onStart={() => setStarted(true)} />}
     </BrowserRouter>
   )
 }

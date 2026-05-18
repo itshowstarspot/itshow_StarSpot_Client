@@ -86,7 +86,7 @@
 
 .select-nav {
   position: relative;
-  top: 119px;
+  top: 99px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -307,15 +307,15 @@
 .idol-modal {
   position: absolute;
   z-index: 4;
-  left: 50%;
+  left: calc(405px + (100vw - 405px) / 2);
   top: 50%;
   width: 764px;
-  height: 503px;
+  height: min(704px, calc(100vh - 160px));
   padding: 0;
   box-sizing: border-box;
   border-radius: 6px;
   background: transparent;
-  transform: translate(-37%, -50%);
+  transform: translate(-50%, -50%);
 }
 
 .idol-modal-inner {

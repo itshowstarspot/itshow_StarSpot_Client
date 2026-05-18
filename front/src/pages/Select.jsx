@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import './Select.css'
 
 import searchIcon from '../assets/search.png'
-import locationIcon from '../assets/icon/location.png'
 import locationPinIcon from '../assets/icon/location pin.png'
+import locationIcon from '../assets/icon/location.png'
 import mapIcon from '../assets/icon/map.png'
 import starIcon from '../assets/icon/star.png'
 import yellowStar from '../assets/logo/yellow-star.png'
@@ -15,7 +15,9 @@ import leeYoungji from '../assets/person/leeyoungji.png'
 
 const KAKAO_MAP_SCRIPT_ID = 'kakao-map-sdk'
 const KAKAO_MAP_KEY =
-  import.meta.env.VITE_KAKAO_MAP_APP_KEY || import.meta.env.VITE_KAKAO_MAP_KEY
+  import.meta.env.VITE_KAKAO_MAP_APP_KEY ||
+  import.meta.env.VITE_KAKAO_MAP_KEY ||
+  '886fa58730924d11e9929f7fc028301b'
 
 const idols = [
   {
@@ -53,6 +55,7 @@ const idols = [
 function Select({ onSelect }) {
   const mapRef = useRef(null)
   const [mapReady, setMapReady] = useState(false)
+  const [mapError, setMapError] = useState(false)
 
   useEffect(() => {
     if (!KAKAO_MAP_KEY || !mapRef.current) {
@@ -60,18 +63,24 @@ function Select({ onSelect }) {
     }
 
     const createMap = () => {
-      window.kakao.maps.load(() => {
-        const center = new window.kakao.maps.LatLng(37.555946, 126.972317)
-        const map = new window.kakao.maps.Map(mapRef.current, {
-          center,
-          level: 4,
-        })
+      try {
+        window.kakao.maps.load(() => {
+          const center = new window.kakao.maps.LatLng(37.555946, 126.972317)
+          const map = new window.kakao.maps.Map(mapRef.current, {
+            center,
+            level: 4,
+          })
 
-        map.setDraggable(false)
-        map.setZoomable(false)
-        setMapReady(true)
-      })
+          map.setDraggable(false)
+          map.setZoomable(false)
+          setMapReady(true)
+          setMapError(false)
+        })
+      } catch {
+        setMapError(true)
+      }
     }
+    const handleScriptError = () => setMapError(true)
 
     if (window.kakao?.maps) {
       createMap()
@@ -82,7 +91,11 @@ function Select({ onSelect }) {
 
     if (existingScript) {
       existingScript.addEventListener('load', createMap, { once: true })
-      return () => existingScript.removeEventListener('load', createMap)
+      existingScript.addEventListener('error', handleScriptError, { once: true })
+      return () => {
+        existingScript.removeEventListener('load', createMap)
+        existingScript.removeEventListener('error', handleScriptError)
+      }
     }
 
     const script = document.createElement('script')
@@ -90,9 +103,13 @@ function Select({ onSelect }) {
     script.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${KAKAO_MAP_KEY}&autoload=false`
     script.async = true
     script.addEventListener('load', createMap, { once: true })
+    script.addEventListener('error', handleScriptError, { once: true })
     document.head.appendChild(script)
 
-    return () => script.removeEventListener('load', createMap)
+    return () => {
+      script.removeEventListener('load', createMap)
+      script.removeEventListener('error', handleScriptError)
+    }
   }, [])
 
   return (
@@ -103,13 +120,18 @@ function Select({ onSelect }) {
           Kakao Map API key is missing. Add VITE_KAKAO_MAP_APP_KEY to .env.
         </p>
       )}
-      {KAKAO_MAP_KEY && !mapReady && <div className="select-map-loading" />}
+      {KAKAO_MAP_KEY && !mapReady && !mapError && <div className="select-map-loading" />}
+      {mapError && (
+        <p className="select-map-message">
+          Kakao Map failed to load. Check the JavaScript app key and allowed domain.
+        </p>
+      )}
 
       <aside className="select-sidebar" aria-hidden="true">
         <img className="select-sidebar-logo" src={yellowStar} alt="" />
-        <div className="select-nav active">
+        <div className="select-nav">
           <img className="select-nav-icon" src={locationIcon} alt="" />
-          <strong>강보 검색</strong>
+          <strong>정보 검색</strong>
         </div>
         <div className="select-nav">
           <img className="select-nav-icon" src={locationPinIcon} alt="" />
