@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import styled from 'styled-components'
 import Sidebar from '../components/sidebar/Sidebar'
 import SearchPanel from '../components/sidebar/SearchPanel'
@@ -77,7 +77,7 @@ function ActivePanel({ navId, selectedIdol, onPlaceClick, onCourseOpen }) {
 /**
  * Home 페이지 — NavCol + PanelCol(패널 전환) + Map
  */
-export default function Home({ selectedIdol, onIdolChange, started }) {
+export default function Home({ selectedIdol, onIdolChange, started, skipIdolPrompt }) {
   const [activeNav, setActiveNav] = useState('search')
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [panelOpen, setPanelOpen] = useState(false)
@@ -86,10 +86,7 @@ export default function Home({ selectedIdol, onIdolChange, started }) {
 
   const { filteredPlaces } = usePlaces(selectedIdol?.id)
   const { removeCourse } = useCourse()
-
-  useEffect(() => {
-    if (started && !selectedIdol) setIsModalOpen(true)
-  }, [started])
+  const shouldOpenIdolModal = isModalOpen || (started && !selectedIdol && !skipIdolPrompt)
 
   const handleIdolSelect = (idol) => {
     onIdolChange(idol)
@@ -142,7 +139,7 @@ export default function Home({ selectedIdol, onIdolChange, started }) {
 
       {/* ─── 아이돌 선택 모달 ─── */}
       <IdolSelectModal
-        isOpen={isModalOpen}
+        isOpen={shouldOpenIdolModal}
         idols={idols}
         onSelect={handleIdolSelect}
       />

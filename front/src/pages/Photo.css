@@ -1,0 +1,249 @@
+.photo-page {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background: #20242a;
+  color: #ffffff;
+}
+
+.photo-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 0;
+}
+
+.photo-page::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background:
+    linear-gradient(90deg, rgba(0, 0, 0, 0.2), transparent 36%, rgba(255, 255, 255, 0.05)),
+    linear-gradient(0deg, rgba(0, 0, 0, 0.16), transparent 42%);
+  pointer-events: none;
+}
+
+.photo-video-source {
+  display: none;
+}
+
+.photo-camera {
+  position: absolute;
+  left: 22.4vw;
+  top: 16.7vh;
+  z-index: 2;
+  width: 33.3vw;
+  height: 78.7vh;
+  opacity: 0;
+  mix-blend-mode: normal;
+  object-fit: cover;
+  filter: drop-shadow(0 18px 34px rgba(0, 0, 0, 0.22));
+  pointer-events: none;
+  transform: translateZ(0);
+}
+
+.photo-camera.is-ready {
+  opacity: 0.96;
+}
+
+.photo-idol {
+  position: absolute;
+  left: 58.3vw;
+  top: 12vh;
+  z-index: 3;
+  width: 29.7vw;
+  height: 77.8vh;
+  object-fit: cover;
+  filter: drop-shadow(0 18px 38px rgba(0, 0, 0, 0.28));
+  pointer-events: none;
+}
+
+.photo-sparkle {
+  position: absolute;
+  right: 3.6vw;
+  bottom: 4vh;
+  z-index: 4;
+  width: 80px;
+  height: 80px;
+  opacity: 0.8;
+}
+
+.photo-sparkle::before,
+.photo-sparkle::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.82);
+  clip-path: polygon(50% 0, 62% 36%, 100% 50%, 62% 64%, 50% 100%, 38% 64%, 0 50%, 38% 36%);
+}
+
+.photo-sparkle::after {
+  inset: 18px;
+  opacity: 0.6;
+  transform: translate(-36px, 34px) scale(0.5);
+}
+
+.photo-shot-counter {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  z-index: 5;
+  width: min(592px, calc(100vw - 48px));
+  height: 117px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(20px, 3vw, 42px);
+  border-radius: 0 0 8px 8px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.26);
+  transform: translateX(-50%);
+}
+
+.photo-shot-counter svg {
+  width: clamp(48px, 5.2vw, 67px);
+  height: clamp(48px, 5.2vw, 67px);
+  fill: #d1a17c;
+  filter:
+    drop-shadow(0 2px 2px rgba(112, 61, 17, 0.35))
+    drop-shadow(0 0 7px rgba(224, 163, 67, 0.55));
+  opacity: 0.72;
+}
+
+.photo-shot-counter svg.filled {
+  fill: #f3b22b;
+  opacity: 1;
+}
+
+.photo-controls {
+  position: absolute;
+  left: 50%;
+  bottom: 30px;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  transform: translateX(-50%);
+}
+
+.photo-countdown {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 8;
+  width: 144px;
+  height: 144px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.9);
+  color: #f3b22b;
+  font-size: 78px;
+  font-weight: 700;
+  line-height: 1;
+  box-shadow: 0 12px 38px rgba(0, 0, 0, 0.28);
+  transform: translate(-50%, -50%);
+}
+
+.photo-controls p {
+  margin: 0;
+  padding: 9px 14px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.54);
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.photo-controls button {
+  min-width: 176px;
+  height: 54px;
+  border: 0;
+  border-radius: 999px;
+  background: #f3b22b;
+  color: #ffffff;
+  font-size: 20px;
+  font-weight: 700;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.28);
+  cursor: pointer;
+}
+
+.photo-controls button:disabled {
+  background: rgba(255, 255, 255, 0.72);
+  color: #9d7a2c;
+  cursor: default;
+}
+
+.photo-captures {
+  position: absolute;
+  left: 20px;
+  top: 132px;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.photo-captures img {
+  width: 118px;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border: 2px solid rgba(255, 255, 255, 0.84);
+  border-radius: 8px;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.28);
+}
+
+.photo-captures img:nth-child(n + 6) {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  .photo-shot-counter {
+    height: 86px;
+  }
+
+  .photo-camera {
+    left: 6vw;
+    top: 24vh;
+    width: 48vw;
+    height: 62vh;
+  }
+
+  .photo-idol {
+    left: 51vw;
+    top: 24vh;
+    width: 48vw;
+    height: 62vh;
+  }
+
+  .photo-captures {
+    display: none;
+  }
+}
+
+@media (max-width: 560px) {
+  .photo-camera {
+    left: -4vw;
+    top: 29vh;
+    width: 58vw;
+    height: 57vh;
+  }
+
+  .photo-idol {
+    left: 48vw;
+    top: 29vh;
+    width: 60vw;
+    height: 57vh;
+  }
+
+  .photo-controls button {
+    min-width: 150px;
+    height: 48px;
+    font-size: 17px;
+  }
+}

@@ -305,9 +305,9 @@
 }
 
 .idol-modal {
-  position: absolute;
+  position: fixed;
   z-index: 4;
-  left: calc(405px + (100vw - 405px) / 2);
+  left: 50%;
   top: 50%;
   width: 764px;
   height: min(704px, calc(100vh - 160px));

@@ -1,0 +1,560 @@
+.post-register-page {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  overflow: hidden;
+  background: #d8d8d4;
+  color: #151515;
+}
+
+.post-register-page button,
+.post-register-page input {
+  font: inherit;
+}
+
+.post-register-page svg {
+  display: block;
+}
+
+.post-register-nav {
+  width: 101px;
+  height: 100vh;
+  flex: 0 0 101px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 30px;
+  padding: 22px 16px 14px;
+  background: rgba(255, 255, 255, 0.54);
+  border-right: 1px solid rgba(0, 0, 0, 0.09);
+  z-index: 5;
+}
+
+.post-register-logo {
+  width: 58px;
+  height: 58px;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  filter: drop-shadow(0 5px 5px rgba(108, 78, 15, 0.42));
+  cursor: pointer;
+}
+
+.post-register-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.post-register-nav-list {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 22px;
+}
+
+.post-register-nav-item {
+  width: 69px;
+  min-height: 69px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #b8a42f;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.post-register-nav-item.active {
+  display: grid;
+  place-items: center;
+  gap: 5px;
+  background: #b8a42f;
+  color: #ffffff;
+}
+
+.post-register-pin {
+  width: 29px;
+  height: 29px;
+  border: 4px solid currentColor;
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+}
+
+.post-register-pin::after {
+  content: "";
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: currentColor;
+  transform: translate(6px, 6px);
+}
+
+.post-register-nav-item strong {
+  display: block;
+  font-size: 10px;
+  transform: translateY(-1px);
+}
+
+.post-register-profile {
+  width: 73px;
+  height: 73px;
+  margin-top: auto;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.post-register-search-panel {
+  width: 304px;
+  height: 100vh;
+  flex: 0 0 304px;
+  padding: 36px 20px 28px 17px;
+  background: rgba(255, 255, 255, 0.58);
+  box-shadow: 8px 0 18px rgba(0, 0, 0, 0.12);
+  z-index: 4;
+}
+
+.post-register-search {
+  height: 43px;
+  display: flex;
+  align-items: center;
+  border: 2px solid #bba732;
+}
+
+.post-register-search svg {
+  width: 43px;
+  height: 39px;
+  padding: 10px;
+  background: #bba732;
+  fill: #d8d8d8;
+}
+
+.post-register-search input {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  outline: 0;
+  padding: 0 11px;
+  background: transparent;
+  color: #151515;
+  font-size: 12px;
+}
+
+.post-register-filter-row {
+  display: flex;
+  gap: 7px;
+  margin: 8px 0 27px 5px;
+}
+
+.post-register-filter-row span {
+  width: 49px;
+  height: 24px;
+  border: 1px solid rgba(0, 0, 0, 0.22);
+  border-radius: 999px;
+}
+
+.post-register-filter-row span:first-child {
+  background: rgba(188, 171, 66, 0.62);
+}
+
+.post-register-search-panel h2 {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 0 10px 20px 5px;
+  color: #b8a42f;
+  font-size: 14px;
+}
+
+.post-register-search-panel h2::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: rgba(157, 135, 43, 0.62);
+}
+
+.post-register-result-list {
+  height: calc(100vh - 164px);
+  display: flex;
+  flex-direction: column;
+  gap: 21px;
+  overflow: hidden;
+}
+
+.post-register-place-card {
+  width: 267px;
+  height: 249px;
+  overflow: hidden;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.42);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.post-register-place-card img {
+  width: 100%;
+  height: 151px;
+  display: block;
+  object-fit: cover;
+}
+
+.post-register-place-card p {
+  height: 42px;
+  margin: 0;
+  padding: 13px 17px 0;
+  overflow: hidden;
+  color: #151515;
+  font-size: 13px;
+  line-height: 1.45;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.post-register-place-card strong {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 0 17px;
+  color: #bc8c23;
+  font-size: 20px;
+  line-height: 1;
+}
+
+.post-register-place-card strong span {
+  color: #85ad31;
+  font-size: 11px;
+}
+
+.post-register-map {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.post-register-map-dim {
+  position: fixed;
+  inset: 0;
+  z-index: 900;
+  background: rgba(0, 0, 0, 0.38);
+  pointer-events: none;
+}
+
+.post-register-modal {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  z-index: 1000;
+  width: min(1322px, calc(100vw - 120px));
+  min-width: 900px;
+  height: min(740px, calc(100vh - 80px));
+  transform: translate(-50%, -50%);
+  padding: 36px 52px 42px;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 20px 55px rgba(0, 0, 0, 0.16);
+}
+
+.post-register-close {
+  position: absolute;
+  top: 30px;
+  right: 34px;
+  width: 38px;
+  height: 38px;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  fill: #000000;
+  cursor: pointer;
+}
+
+.post-register-modal-search {
+  width: 294px;
+  height: 42px;
+  margin: 0 0 46px -5px;
+  border: 1px solid #e1e1e1;
+  outline: 0;
+  padding: 0 13px;
+  color: #151515;
+  font-size: 13px;
+  box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+
+.post-register-grid {
+  height: calc(100% - 88px);
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 34px 20px;
+  overflow-y: auto;
+  padding: 10px 0 0 8px;
+}
+
+.post-register-grid::-webkit-scrollbar {
+  width: 16px;
+}
+
+.post-register-grid::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.post-register-grid::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  border: 5px solid #ffffff;
+  background: #d0d0d0;
+}
+
+.post-register-post-card {
+  min-width: 0;
+  height: 269px;
+  padding: 11px 11px 17px;
+  border: 1px solid #dfdfdf;
+  border-radius: 9px;
+  background: #ffffff;
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.14);
+  text-align: left;
+  cursor: pointer;
+}
+
+.post-register-post-card:hover {
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.18);
+}
+
+.post-register-post-card img,
+.post-register-placeholder {
+  width: 100%;
+  height: 195px;
+  display: block;
+  object-fit: cover;
+  background: #d9d9d9;
+}
+
+.post-register-post-card time {
+  display: block;
+  margin-top: 6px;
+  color: #151515;
+  font-size: 13px;
+  line-height: 1.2;
+}
+
+.post-register-post-card strong {
+  display: block;
+  margin-top: 4px;
+  overflow: hidden;
+  color: #000000;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.2;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.post-register-detail {
+  position: relative;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  padding: 50px 0 36px;
+}
+
+.post-register-back {
+  position: absolute;
+  top: -3px;
+  left: -14px;
+  width: 38px;
+  height: 38px;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: #25272c;
+  fill: currentColor;
+  cursor: pointer;
+}
+
+.post-register-back svg {
+  width: 100%;
+  height: 100%;
+}
+
+.post-register-detail-card {
+  width: min(1000px, calc(100% - 180px));
+  min-height: 590px;
+  padding: 29px 39px 42px;
+  border: 1px solid #e1e1e1;
+  border-radius: 9px;
+  background: #ffffff;
+  box-shadow: 0 0 6px rgba(0, 0, 0, 0.16);
+}
+
+.post-register-detail-card img,
+.post-register-detail-placeholder {
+  width: 100%;
+  height: min(465px, 52vh);
+  display: block;
+  object-fit: cover;
+  background: #d9d9d9;
+}
+
+.post-register-detail-card time {
+  display: block;
+  margin-top: 9px;
+  color: #050505;
+  font-size: 27px;
+  line-height: 1.2;
+}
+
+.post-register-detail-card strong {
+  display: block;
+  margin-top: 13px;
+  color: #000000;
+  font-size: 25px;
+  font-weight: 800;
+  line-height: 1.3;
+}
+
+.post-register-add {
+  position: absolute;
+  right: 45px;
+  bottom: 46px;
+  width: 100px;
+  height: 100px;
+  border: 0;
+  border-radius: 14px;
+  background: #efdd5b;
+  color: #ffffff;
+  font-size: 58px;
+  font-weight: 700;
+  line-height: 1;
+  box-shadow: 0 4px 5px rgba(0, 0, 0, 0.28);
+  cursor: pointer;
+}
+
+.post-register-add::before {
+  content: "";
+  position: absolute;
+  inset: 26px;
+  border: 6px solid #ffffff;
+  border-radius: 2px;
+}
+
+.post-register-add {
+  display: grid;
+  place-items: center;
+}
+
+.post-register-map-actions {
+  position: absolute;
+  top: 70px;
+  right: 83px;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.post-register-map-actions button {
+  width: 61px;
+  height: 61px;
+  border: 2px solid #b8a42f;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.28);
+  color: #b8a42f;
+  font-size: 34px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+
+@media (max-width: 1300px) {
+  .post-register-modal {
+    width: calc(100vw - 120px);
+    min-width: 720px;
+    padding-left: 36px;
+    padding-right: 36px;
+  }
+
+  .post-register-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .post-register-detail-card {
+    width: min(900px, calc(100% - 90px));
+  }
+}
+
+@media (max-width: 900px) {
+  .post-register-nav,
+  .post-register-search-panel,
+  .post-register-map-actions {
+    display: none;
+  }
+
+  .post-register-map {
+    flex: 1 0 100vw;
+  }
+
+  .post-register-modal {
+    left: 50%;
+    top: 50%;
+    width: calc(100vw - 28px);
+    min-width: 0;
+    height: calc(100vh - 28px);
+    transform: translate(-50%, -50%);
+    padding: 64px 18px 90px;
+  }
+
+  .post-register-modal-search {
+    width: 100%;
+    margin: 0 0 22px;
+  }
+
+  .post-register-grid {
+    height: calc(100% - 64px);
+    grid-template-columns: 1fr;
+    gap: 18px;
+    padding-left: 0;
+  }
+
+  .post-register-add {
+    right: 18px;
+    bottom: 18px;
+    width: 72px;
+    height: 72px;
+    font-size: 40px;
+  }
+
+  .post-register-add::before {
+    inset: 19px;
+    border-width: 5px;
+  }
+
+  .post-register-detail {
+    padding: 28px 0 0;
+    place-items: start center;
+  }
+
+  .post-register-back {
+    top: -48px;
+    left: 0;
+  }
+
+  .post-register-detail-card {
+    width: 100%;
+    min-height: 0;
+    padding: 18px;
+  }
+
+  .post-register-detail-card img,
+  .post-register-detail-placeholder {
+    height: auto;
+    aspect-ratio: 16 / 9;
+  }
+
+  .post-register-detail-card time {
+    font-size: 20px;
+  }
+
+  .post-register-detail-card strong {
+    font-size: 19px;
+  }
+}
