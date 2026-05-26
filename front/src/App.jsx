@@ -32,7 +32,7 @@ function StartOverlay({ onStart }) {
     <Start
       onStart={() => {
         onStart()
-        navigate('/select')
+        navigate('/home')
       }}
     />
   )
