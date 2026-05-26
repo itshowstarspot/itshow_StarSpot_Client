@@ -86,7 +86,7 @@ export default function Home({ selectedIdol, onIdolChange, started, skipIdolProm
 
   const { filteredPlaces } = usePlaces(selectedIdol?.id)
   const { removeCourse } = useCourse()
-  const shouldOpenIdolModal = isModalOpen || (started && !selectedIdol && !skipIdolPrompt)
+  const shouldOpenIdolModal = isModalOpen
 
   const handleIdolSelect = (idol) => {
     onIdolChange(idol)
