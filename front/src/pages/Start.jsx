@@ -1,4 +1,5 @@
 import styled, { keyframes } from 'styled-components'
+import { useNavigate } from 'react-router-dom'
 import mainLogo from '../assets/logo/main-logo.png'
 import yellowStar from '../assets/logo/yellow-star.png'
 
@@ -24,7 +25,7 @@ const Overlay = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.22);
+  background: linear-gradient(145deg, #1a1c22 0%, #2d2f36 60%, #1e2028 100%);
 `
 
 const Card = styled.section`
@@ -117,6 +118,30 @@ const Logo = styled.img`
   display: block;
 `
 
+const FeatureRow = styled.div`
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  flex-wrap: wrap;
+
+  @media (max-width: 700px) { gap: 10px; }
+`
+
+const FeatureCard = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 14px 18px;
+  border-radius: 14px;
+  background: rgba(232, 214, 100, 0.08);
+  border: 1px solid rgba(232, 214, 100, 0.2);
+  min-width: 80px;
+
+  span:first-child { font-size: 22px; }
+  span:last-child  { font-size: 11px; font-weight: 600; color: rgba(45,47,54,0.6); }
+`
+
 const StartBtn = styled.button`
   width: min(440px, 60%);
   padding: 35px 0;
@@ -147,7 +172,8 @@ const StartBtn = styled.button`
   }
 `
 
-export default function Start({ onStart }) {
+export default function Start() {
+  const navigate = useNavigate()
   return (
     <Overlay>
       <Card>
@@ -157,7 +183,21 @@ export default function Start({ onStart }) {
         <LogoFrame>
           <Logo src={mainLogo} alt="Star Spot" />
         </LogoFrame>
-        <StartBtn type="button" onClick={onStart}>
+        <FeatureRow>
+          {[
+            { icon: '🗺️', label: '장소 탐색' },
+            { icon: '📸', label: '프레임 촬영' },
+            { icon: '⭐', label: '즐겨찾기' },
+            { icon: '🗒️', label: '코스 관리' },
+          ].map(({ icon, label }) => (
+            <FeatureCard key={label}>
+              <span>{icon}</span>
+              <span>{label}</span>
+            </FeatureCard>
+          ))}
+        </FeatureRow>
+
+        <StartBtn type="button" onClick={() => navigate('/login')}>
           시작하기
         </StartBtn>
       </Card>

@@ -31,60 +31,31 @@
   display: none;
 }
 
+/* 카메라 전체화면 */
 .photo-camera {
   position: absolute;
-  left: 22.4vw;
-  top: 16.7vh;
-  z-index: 2;
-  width: 33.3vw;
-  height: 78.7vh;
-  opacity: 0;
-  mix-blend-mode: normal;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
   object-fit: cover;
-  filter: drop-shadow(0 18px 34px rgba(0, 0, 0, 0.22));
+  opacity: 0;
   pointer-events: none;
-  transform: translateZ(0);
 }
 
 .photo-camera.is-ready {
-  opacity: 0.96;
+  opacity: 1;
 }
 
-.photo-idol {
-  position: absolute;
-  left: 58.3vw;
-  top: 12vh;
-  z-index: 3;
-  width: 29.7vw;
-  height: 77.8vh;
-  object-fit: cover;
-  filter: drop-shadow(0 18px 38px rgba(0, 0, 0, 0.28));
-  pointer-events: none;
-}
-
-.photo-sparkle {
-  position: absolute;
-  right: 3.6vw;
-  bottom: 4vh;
-  z-index: 4;
-  width: 80px;
-  height: 80px;
-  opacity: 0.8;
-}
-
-.photo-sparkle::before,
-.photo-sparkle::after {
-  content: "";
+/* 프레임 오버레이 */
+.photo-frame-overlay {
   position: absolute;
   inset: 0;
-  background: rgba(255, 255, 255, 0.82);
-  clip-path: polygon(50% 0, 62% 36%, 100% 50%, 62% 64%, 50% 100%, 38% 64%, 0 50%, 38% 36%);
-}
-
-.photo-sparkle::after {
-  inset: 18px;
-  opacity: 0.6;
-  transform: translate(-36px, 34px) scale(0.5);
+  z-index: 2;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  pointer-events: none;
 }
 
 .photo-shot-counter {

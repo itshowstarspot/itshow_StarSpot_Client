@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import styled from 'styled-components'
 import { useNavigate } from 'react-router-dom'
 import FeedCard from '../components/feed/FeedCard'
@@ -83,20 +83,59 @@ const Textarea = styled.textarea`
   &::placeholder { color: rgba(45,47,54,0.35); }
 `
 
-const ImageInput = styled.input`
+const ImageUploadArea = styled.div`
   width: 100%;
-  background: #f5f5f8;
-  border: 1px solid rgba(45,47,54,0.15);
-  border-radius: 8px;
-  padding: 10px 12px;
-  color: #2d2f36;
-  font-size: 13px;
-  outline: none;
+  aspect-ratio: 16 / 9;
+  border: 2px dashed rgba(45,47,54,0.2);
+  border-radius: 10px;
   margin-bottom: 12px;
-  box-sizing: border-box;
+  overflow: hidden;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f5f5f8;
+  transition: border-color 0.15s;
+  position: relative;
 
-  &:focus { border-color: #e8d664; }
-  &::placeholder { color: rgba(45,47,54,0.35); }
+  &:hover { border-color: #e8d664; }
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+`
+
+const ImagePlaceholder = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  color: rgba(45,47,54,0.35);
+  font-size: 13px;
+  pointer-events: none;
+`
+
+const HiddenFileInput = styled.input`
+  display: none;
+`
+
+const RemoveImageBtn = styled.button`
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0,0,0,0.5);
+  color: #fff;
+  font-size: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 `
 
 const ErrorMsg = styled.p`
@@ -115,22 +154,48 @@ export default function Feed() {
   const [isPosting, setIsPosting] = useState(false)
   const [showModal, setShowModal] = useState(false)
   const [content, setContent] = useState('')
-  const [imageUrl, setImageUrl] = useState('')
+  const [imageFile, setImageFile] = useState(null)
+  const [imagePreview, setImagePreview] = useState(null)
   const [postError, setPostError] = useState(null)
+  const fileInputRef = useRef(null)
 
-  const loadFeeds = async () => {
+  const handleImageChange = (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setImageFile(file)
+    const reader = new FileReader()
+    reader.onload = () => setImagePreview(reader.result)
+    reader.readAsDataURL(file)
+  }
+
+  const handleRemoveImage = (e) => {
+    e.stopPropagation()
+    setImageFile(null)
+    setImagePreview(null)
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
+  const handleCloseModal = () => {
+    setShowModal(false)
+    setContent('')
+    setImageFile(null)
+    setImagePreview(null)
+    setPostError(null)
+  }
+
+  const loadFeeds = useCallback(async () => {
     setIsLoading(true)
     try {
       const data = await fetchFeeds({ sort })
       setFeeds(data)
-    } catch {
-      /* 에러 무시 */
+    } catch (err) {
+      console.error('[Feed] 피드 로딩 실패:', err)
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [sort])
 
-  useEffect(() => { loadFeeds() }, [sort])
+  useEffect(() => { loadFeeds() }, [loadFeeds])
 
   const handlePost = async () => {
     if (!content.trim()) {
@@ -140,11 +205,10 @@ export default function Feed() {
     setIsPosting(true)
     setPostError(null)
     try {
-      const newFeed = await createFeed({ placeId: '', image: imageUrl, content })
+      // 백엔드 연동 전: data URL로 전달, 연동 후 FormData로 교체
+      const newFeed = await createFeed({ placeId: '', image: imagePreview ?? '', content })
       setFeeds((prev) => [newFeed, ...prev])
-      setContent('')
-      setImageUrl('')
-      setShowModal(false)
+      handleCloseModal()
     } catch (err) {
       setPostError(err.message)
     } finally {
@@ -192,21 +256,40 @@ export default function Feed() {
         </FeedGrid>
       </Content>
 
-      <Modal isOpen={showModal} onClose={() => setShowModal(false)}>
-        <h2 style={{ color: '#2d2f36', marginBottom: 16 }}>방문 후기 작성</h2>
-        <ImageInput
-          placeholder="사진 URL (선택)"
-          value={imageUrl}
-          onChange={(e) => setImageUrl(e.target.value)}
+      <Modal isOpen={showModal} onClose={handleCloseModal}>
+        {/* HiddenFileInput을 Modal 안으로 이동 — 트리거와 동일 컨텍스트 */}
+        <HiddenFileInput
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          onChange={handleImageChange}
         />
+        <h2 style={{ color: '#2d2f36', marginBottom: 16 }}>방문 후기 작성</h2>
+
+        <ImageUploadArea onClick={() => fileInputRef.current?.click()}>
+          {imagePreview ? (
+            <>
+              <img src={imagePreview} alt="첨부 사진" />
+              <RemoveImageBtn onClick={handleRemoveImage}>✕</RemoveImageBtn>
+            </>
+          ) : (
+            <ImagePlaceholder>
+              <span style={{ fontSize: 28 }}>📷</span>
+              <span>탭하여 사진 촬영</span>
+            </ImagePlaceholder>
+          )}
+        </ImageUploadArea>
+
         <Textarea
           placeholder="방문 후기를 작성해주세요..."
           value={content}
           onChange={(e) => setContent(e.target.value)}
+          maxLength={500}
         />
         {postError && <ErrorMsg>{postError}</ErrorMsg>}
         <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
-          <Button variant="secondary" fullWidth onClick={() => setShowModal(false)}>취소</Button>
+          <Button variant="secondary" fullWidth onClick={handleCloseModal}>취소</Button>
           <Button
             fullWidth
             onClick={handlePost}

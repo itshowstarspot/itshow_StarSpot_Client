@@ -3,12 +3,29 @@ import Button from '../common/Button'
 
 const Card = styled.div`
   background: #ffffff;
-  border: 1px solid rgba(45,47,54,0.08);
+  border: 1.5px solid ${({ $recommended }) => $recommended ? 'rgba(232,214,100,0.5)' : 'rgba(45,47,54,0.08)'};
   border-radius: 14px;
   padding: 16px;
   display: flex;
   flex-direction: column;
   gap: 10px;
+  ${({ $recommended }) => $recommended && 'background: linear-gradient(135deg, #fffef5 0%, #fff 100%);'}
+`
+
+const RecommendedBadge = styled.span`
+  font-size: 11px;
+  font-weight: 700;
+  color: #b8962a;
+  background: rgba(232,214,100,0.2);
+  border-radius: 999px;
+  padding: 2px 8px;
+`
+
+const Description = styled.p`
+  font-size: 12px;
+  color: rgba(45,47,54,0.5);
+  margin: -4px 0 0;
+  line-height: 1.5;
 `
 
 const Header = styled.div`
@@ -39,7 +56,7 @@ const PlaceList = styled.ul`
 
 const PlaceItem = styled.li`
   font-size: 13px;
-  color: rgba(45,47,54,0.65);
+  color: ${({ $muted }) => $muted ? 'rgba(45,47,54,0.3)' : 'rgba(45,47,54,0.65)'};
   display: flex;
   align-items: center;
   gap: 6px;
@@ -63,24 +80,26 @@ const Actions = styled.div`
 
 /**
  * 코스 카드 컴포넌트
- * @param {{ title: string, places: Place[], onShare?: () => void, onDelete?: () => void }} props
  */
-export default function CourseCard({ title, places = [], onShare, onDelete }) {
+export default function CourseCard({ title, description, places = [], isRecommended, onShare, onDelete }) {
   return (
-    <Card>
+    <Card $recommended={isRecommended}>
       <Header>
-        <Title>{title}</Title>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          {isRecommended && <RecommendedBadge>⭐ 추천 코스</RecommendedBadge>}
+          <Title>{title}</Title>
+        </div>
         <PlaceCount>{places.length}개 장소</PlaceCount>
       </Header>
 
+      {description && <Description>{description}</Description>}
+
       <PlaceList>
-        {places.slice(0, 3).map((place, idx) => (
-          <PlaceItem key={place.id || idx}>{place.name}</PlaceItem>
+        {places.slice(0, 3).map((place) => (
+          <PlaceItem key={place.id}>{place.name}</PlaceItem>
         ))}
         {places.length > 3 && (
-          <PlaceItem style={{ color: 'rgba(45,47,54,0.3)' }}>
-            외 {places.length - 3}개
-          </PlaceItem>
+          <PlaceItem $muted>외 {places.length - 3}개</PlaceItem>
         )}
       </PlaceList>
 
