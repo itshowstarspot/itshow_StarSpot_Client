@@ -62,11 +62,21 @@ const Meta = styled.div`
  * @param {{ image: string, placeName: string, content: string, viewCount: number, createdAt: string }} props
  */
 export default function FeedCard({ image, placeName, content, viewCount, createdAt }) {
-  const date = new Date(createdAt).toLocaleDateString('ko-KR')
+  const parsedDate = new Date(createdAt)
+  const date = isNaN(parsedDate.getTime())
+    ? ''
+    : parsedDate.toLocaleDateString('ko-KR')
+
   return (
     <Card>
       <Thumbnail>
-        {image && <img src={image} alt={placeName} />}
+        {image && (
+          <img
+            src={image}
+            alt={placeName ? `${placeName} 방문 사진` : '방문 사진'}
+            onError={(e) => { e.currentTarget.style.display = 'none' }}
+          />
+        )}
       </Thumbnail>
       <Body>
         <PlaceName>{placeName}</PlaceName>

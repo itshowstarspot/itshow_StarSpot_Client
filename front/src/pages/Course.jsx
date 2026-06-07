@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import styled from 'styled-components'
 import { useNavigate } from 'react-router-dom'
 import Button from '../components/common/Button'
@@ -10,6 +10,7 @@ import Modal from '../components/common/Modal'
 import { useCourse } from '../hooks/useCourse'
 import { usePlaces } from '../hooks/usePlaces'
 import { COURSE_MIN_PLACES } from '../domain/course/course'
+import { fetchRecommendedCourses } from '../services/courseService'
 
 const Page = styled.main`
   min-height: 100vh;
@@ -141,13 +142,31 @@ export default function Course({ selectedIdol }) {
   const [isCreating, setIsCreating] = useState(false)
   const [courseTitle, setCourseTitle] = useState('')
   const [showToast, setShowToast] = useState(false)
+  const [recommendedCourses, setRecommendedCourses] = useState([])
+  const [recLoading, setRecLoading] = useState(false)
+  const toastTimerRef = useRef(null)
 
   useEffect(() => { loadCourses() }, [loadCourses])
 
+  useEffect(() => {
+    setRecLoading(true)
+    fetchRecommendedCourses(selectedIdol?.id)
+      .then(setRecommendedCourses)
+      .catch((err) => {
+        console.warn('[Course] 추천 코스 조회 실패:', err)
+        setRecommendedCourses([])
+      })
+      .finally(() => setRecLoading(false))
+  }, [selectedIdol?.id])
+
+  // 언마운트 시 toast 타이머 정리
+  useEffect(() => () => clearTimeout(toastTimerRef.current), [])
+
   const handleShare = (courseId) => {
     shareCourse(courseId)
+    clearTimeout(toastTimerRef.current)
     setShowToast(true)
-    setTimeout(() => setShowToast(false), 2500)
+    toastTimerRef.current = setTimeout(() => setShowToast(false), 2500)
   }
 
   const handleSubmit = async () => {
@@ -170,10 +189,24 @@ export default function Course({ selectedIdol }) {
       </TopBar>
 
       <Content>
-        {/* 추천 코스 안내 */}
+        {/* 추천 코스 */}
         <div>
           <SectionTitle>⭐ 추천 코스</SectionTitle>
-          <EmptyState icon="🗺️" message="추천 코스는 곧 업데이트될 예정이에요!" />
+          {recLoading && <LoadingSpinner />}
+          {!recLoading && recommendedCourses.length === 0 && (
+            <EmptyState icon="🗺️" message="아이돌을 선택하면 추천 코스가 표시돼요!" />
+          )}
+          <CourseList>
+            {recommendedCourses.map((course) => (
+              <CourseCard
+                key={course.id}
+                title={course.title}
+                description={course.description}
+                places={course.places}
+                isRecommended
+              />
+            ))}
+          </CourseList>
         </div>
 
         {/* 내 코스 목록 */}
@@ -205,6 +238,7 @@ export default function Course({ selectedIdol }) {
           placeholder="코스 이름 입력"
           value={courseTitle}
           onChange={(e) => setCourseTitle(e.target.value)}
+          maxLength={50}
         />
 
         <p style={{ fontSize: 14, fontWeight: 700, color: '#2d2f36', marginBottom: 10 }}>

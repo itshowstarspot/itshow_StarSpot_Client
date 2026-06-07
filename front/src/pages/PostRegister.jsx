@@ -3,75 +3,19 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import './PostRegister.css'
 import MapView from '../components/layout/MapView'
 import Sidebar from '../components/sidebar/Sidebar'
-import SearchPanel from '../components/sidebar/SearchPanel'
-import RoutePanel from '../components/sidebar/RoutePanel'
-import CoursePanel from '../components/sidebar/CoursePanel'
-import FavoritesPanel from '../components/sidebar/FavoritesPanel'
+import ActivePanel from '../components/sidebar/ActivePanel'
 import PlaceDetailModal from '../components/place/PlaceDetailModal'
+import { CloseIcon, BackIcon } from '../components/common/icons'
 import { usePlaces } from '../hooks/usePlaces'
-
-const LATEST_POST_KEY = 'starspot.latestPost'
-
-const dummyPosts = [
-  {
-    id: 'dummy-1',
-    date: '2026-04-28',
-    title: '버블에서만 보던 곳! 직접 와보니 좋았어!',
-  },
-  {
-    id: 'dummy-2',
-    date: '2026-04-28',
-    title: '최애랑 빵계로 빵이 너무 맛있어서 단골될듯',
-  },
-  {
-    id: 'dummy-3',
-    date: '2026-04-28',
-    title: 'OOI 때문에 돼지가 될 것 같아 ㅋㅋㅋ',
-  },
-  {
-    id: 'dummy-4',
-    date: '2026-04-28',
-    title: '멀어서 힘들었지만 꽤나 만족!',
-  },
-  {
-    id: 'dummy-5',
-    date: '2026-04-28',
-    title: '별다섯개 드리고 저는 다른 곳을 찾아 총총..',
-  },
-]
+import { STORAGE_KEY_LATEST_POST } from '../constants/storageKeys'
 
 const readLatestPost = () => {
   try {
-    const savedPost = JSON.parse(sessionStorage.getItem(LATEST_POST_KEY) || 'null')
+    const savedPost = JSON.parse(sessionStorage.getItem(STORAGE_KEY_LATEST_POST) || 'null')
     if (!savedPost?.title || !savedPost?.image) return null
     return savedPost
   } catch {
     return null
-  }
-}
-
-function CloseIcon() {
-  return (
-    <svg viewBox="0 0 40 40" aria-hidden="true">
-      <path d="m8.6 7.2 12 12 11.9-12 1.4 1.4-12 12 12 11.9-1.4 1.4-11.9-12-12 12-1.4-1.4 12-11.9-12-12 1.4-1.4Z" />
-    </svg>
-  )
-}
-
-function BackIcon() {
-  return (
-    <svg viewBox="0 0 40 40" aria-hidden="true">
-      <path d="M17.3 9.1 6.4 20l10.9 10.9 1.4-1.4-8.5-8.5h23.4v-2H10.2l8.5-8.5-1.4-1.4Z" />
-    </svg>
-  )
-}
-
-function ActivePanel({ navId, selectedIdol, onPlaceClick }) {
-  switch (navId) {
-    case 'route': return <RoutePanel />
-    case 'favorite': return <FavoritesPanel idolId={selectedIdol?.id} onPlaceClick={onPlaceClick} />
-    case 'course': return <CoursePanel idolId={selectedIdol?.id} />
-    default: return <SearchPanel idolId={selectedIdol?.id} onPlaceClick={onPlaceClick} />
   }
 }
 
@@ -95,7 +39,8 @@ export default function PostRegister({ selectedIdol, onReturnHome }) {
         }
       : null
 
-    return primaryPost ? [primaryPost, ...dummyPosts] : dummyPosts
+    // 실제 등록한 게시물만 표시 (더미 제거)
+    return primaryPost ? [primaryPost] : []
   }, [latestPost])
 
   const filteredPosts = useMemo(() => {
@@ -188,8 +133,8 @@ export default function PostRegister({ selectedIdol, onReturnHome }) {
         </section>
 
         <div className="post-register-map-actions">
-          <button type="button">+</button>
-          <button type="button">☆</button>
+          <button type="button" onClick={() => navigate('/photo')} title="사진 찍기">📷</button>
+          <button type="button" onClick={() => navigate('/visit')} title="방문 기록">📍</button>
         </div>
       </section>
     </main>

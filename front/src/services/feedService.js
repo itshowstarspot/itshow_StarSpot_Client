@@ -1,12 +1,14 @@
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
 
+// 피드 이미지는 /public/feeds/ 폴더에 이미지 파일을 넣고 파일명을 여기에 작성하세요.
+// 예: feed1.jpg → '/feeds/feed1.jpg'
 const mockFeeds = [
   {
     id: '1',
     placeId: '1',
     placeName: '성수동 카페',
     userId: 'user1',
-    image: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=400&q=80',
+    image: '/feeds/feed1.jpg',
     content: '정국이 왔다는 카페 다녀왔어요!',
     viewCount: 124,
     createdAt: '2026-05-10T10:00:00.000Z',
@@ -16,7 +18,7 @@ const mockFeeds = [
     placeId: '2',
     placeName: '한남동 식당',
     userId: 'user2',
-    image: 'https://images.unsplash.com/photo-1555507036-ab1f4038808a?w=400&q=80',
+    image: '/feeds/feed2.jpg',
     content: '카리나 추천 맛집! 진짜 맛있어요.',
     viewCount: 89,
     createdAt: '2026-05-12T14:00:00.000Z',
