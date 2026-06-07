@@ -1,67 +1,24 @@
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import './PhotoSelect.css'
 import MapView from '../components/layout/MapView'
 import PlaceDetailModal from '../components/place/PlaceDetailModal'
 import Sidebar from '../components/sidebar/Sidebar'
-import SearchPanel from '../components/sidebar/SearchPanel'
-import RoutePanel from '../components/sidebar/RoutePanel'
-import CoursePanel from '../components/sidebar/CoursePanel'
-import FavoritesPanel from '../components/sidebar/FavoritesPanel'
+import ActivePanel from '../components/sidebar/ActivePanel'
+import { CloseIcon } from '../components/common/icons'
 import { usePlaces } from '../hooks/usePlaces'
 import { createFeed } from '../services/feedService'
+import { setPendingReview } from '../stores/reviewStore'
+import { readCapturedPhotos, clearCapturedPhotos } from '../utils/photoStorage'
+import { SESSION_KEY_REVIEW_PLACE } from '../constants/storageKeys'
 
-const PHOTO_CAPTURE_STORAGE_KEY = 'starspot.photoCaptures'
-const LATEST_POST_KEY = 'starspot.latestPost'
-
-const thumbnailPhotos = [
-  {
-    id: 1,
-    src: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=1200&q=90',
-  },
-  {
-    id: 2,
-    src: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=1200&q=90',
-  },
-  {
-    id: 3,
-    src: 'https://images.unsplash.com/photo-1502823403499-6ccfcf4fb453?auto=format&fit=crop&w=1200&q=90',
-  },
-  {
-    id: 4,
-    src: 'https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?auto=format&fit=crop&w=1200&q=90',
-  },
-  {
-    id: 5,
-    src: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=1200&q=90',
-  },
-]
-
-const feedPlaceholder = '여기에 하고 싶은 말을 입력해주세요..'
-
-const readCapturedPhotos = () => {
-  try {
-    const savedCaptures = JSON.parse(sessionStorage.getItem(PHOTO_CAPTURE_STORAGE_KEY) || '[]')
-
-    if (!Array.isArray(savedCaptures)) return []
-
-    return savedCaptures
-      .filter((src) => typeof src === 'string' && src.startsWith('data:image/'))
-      .map((src, index) => ({
-        id: `capture-${index + 1}`,
-        src,
-      }))
-  } catch {
-    return []
-  }
-}
+const FEED_PLACEHOLDER = '여기에 하고 싶은 말을 입력해주세요..'
 
 const formatToday = () => {
   const today = new Date()
   const year = today.getFullYear()
   const month = String(today.getMonth() + 1).padStart(2, '0')
   const date = String(today.getDate()).padStart(2, '0')
-
   return `${year}-${month}-${date}`
 }
 
@@ -73,39 +30,46 @@ function StarIcon() {
   )
 }
 
-function CloseIcon() {
-  return (
-    <svg viewBox="0 0 40 40" aria-hidden="true">
-      <path d="m8.6 7.2 12 12 11.9-12 1.4 1.4-12 12 12 11.9-1.4 1.4-11.9-12-12 12-1.4-1.4 12-11.9-12-12 1.4-1.4Z" />
-    </svg>
-  )
-}
-
-function ActivePanel({ navId, selectedIdol, onPlaceClick }) {
-  switch (navId) {
-    case 'route': return <RoutePanel />
-    case 'favorite': return <FavoritesPanel idolId={selectedIdol?.id} onPlaceClick={onPlaceClick} />
-    case 'course': return <CoursePanel idolId={selectedIdol?.id} />
-    default: return <SearchPanel idolId={selectedIdol?.id} onPlaceClick={onPlaceClick} />
-  }
-}
-
-export default function PhtoSelect({ selectedIdol }) {
+export default function PhotoSelect({ selectedIdol }) {
   const navigate = useNavigate()
   const [activeNav, setActiveNav] = useState('search')
   const [capturedPhotos] = useState(readCapturedPhotos)
   const [selectedId, setSelectedId] = useState(null)
   const [today] = useState(formatToday)
   const [isModalOpen, setIsModalOpen] = useState(true)
+
+  // ── reviewFlow: 리뷰용 사진 선택 모드 ──────────────────────────
+  // reviewPlaceId  : 리뷰 대상 장소 ID (PlaceDetailModal과 무관)
+  // selectedPlaceId: 지도 핀 클릭 시 PlaceDetailModal을 열 장소 ID
+  // 두 역할을 같은 state에 두면 PlaceDetailModal이 자동으로 열려버림
+  const [reviewFlow] = useState(() => !!sessionStorage.getItem(SESSION_KEY_REVIEW_PLACE))
+  const [reviewPlaceId] = useState(() => {
+    const saved = sessionStorage.getItem(SESSION_KEY_REVIEW_PLACE)
+    if (saved) sessionStorage.removeItem(SESSION_KEY_REVIEW_PLACE)
+    return saved || null
+  })
+  // reviewFlow일 때는 null로 시작 — PlaceDetailModal이 자동으로 뜨지 않게
   const [selectedPlaceId, setSelectedPlaceId] = useState(null)
+  // ────────────────────────────────────────────────────────────────
+
   const [content, setContent] = useState('')
   const [submitError, setSubmitError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [newReview, setNewReview] = useState(null)
   const { filteredPlaces } = usePlaces(selectedIdol?.id)
-  const photos = capturedPhotos.length > 0 ? capturedPhotos : thumbnailPhotos
-  const selectedPhoto = photos.find((item) => item.id === selectedId) ?? photos[0]
+  const selectedPhoto = capturedPhotos.find((item) => item.id === selectedId) ?? capturedPhotos[0]
+
+  const handlePlaceClick = useCallback((id) => setSelectedPlaceId(id), [])
 
   const handleSubmit = async () => {
+    // reviewFlow: 사진만 고르고 돌아가기 — 텍스트는 ReviewSheet에서 입력
+    if (reviewFlow) {
+      setPendingReview(reviewPlaceId, selectedPhoto.src)
+      clearCapturedPhotos()
+      navigate('/home')
+      return
+    }
+
     if (!content.trim()) {
       setSubmitError('글 내용을 입력해주세요.')
       return
@@ -115,25 +79,39 @@ export default function PhtoSelect({ selectedIdol }) {
     setSubmitError('')
 
     try {
-      const post = {
-        image: selectedPhoto.src,
-        title: content.trim(),
-        date: today,
-      }
-
-      await createFeed({
+      const result = await createFeed({
         placeId: selectedPlaceId || '',
-        image: post.image,
-        content: post.title,
+        image: selectedPhoto.src,
+        content: content.trim(),
       })
-      sessionStorage.setItem(LATEST_POST_KEY, JSON.stringify(post))
-      sessionStorage.removeItem(PHOTO_CAPTURE_STORAGE_KEY)
-      navigate('/postregister', { state: { post } })
+      clearCapturedPhotos()
+
+      if (selectedPlaceId) {
+        setNewReview(result)
+        setIsModalOpen(false)
+      } else {
+        navigate('/home')
+      }
     } catch (error) {
       setSubmitError(error.message || '등록에 실패했어요.')
     } finally {
       setIsSubmitting(false)
     }
+  }
+
+  if (capturedPhotos.length === 0) {
+    return (
+      <main className="photo-select-page" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 16 }}>
+        <p style={{ color: '#fff', fontSize: 16, fontWeight: 600 }}>촬영된 사진이 없어요.</p>
+        <button
+          type="button"
+          onClick={() => navigate('/photo')}
+          style={{ padding: '12px 28px', borderRadius: 12, border: 'none', background: '#e8d664', fontWeight: 700, cursor: 'pointer' }}
+        >
+          다시 촬영하기
+        </button>
+      </main>
+    )
   }
 
   return (
@@ -147,17 +125,19 @@ export default function PhtoSelect({ selectedIdol }) {
         <ActivePanel
           navId={activeNav}
           selectedIdol={selectedIdol}
-          onPlaceClick={(id) => setSelectedPlaceId(id)}
+          onPlaceClick={handlePlaceClick}
         />
       </Sidebar>
 
       <section className="photo-map-area" aria-label="지도">
-        <MapView places={filteredPlaces} onPlaceClick={(id) => setSelectedPlaceId(id)} />
+        <MapView places={filteredPlaces} onPlaceClick={handlePlaceClick} />
 
-        {selectedPlaceId && (
+        {/* reviewFlow에서는 PlaceDetailModal을 열지 않음 */}
+        {!reviewFlow && selectedPlaceId && (
           <PlaceDetailModal
             placeId={selectedPlaceId}
             onClose={() => setSelectedPlaceId(null)}
+            initialReview={newReview}
           />
         )}
 
@@ -167,7 +147,7 @@ export default function PhtoSelect({ selectedIdol }) {
           </button>
 
           <div className="photo-thumb-column">
-            {photos.map((item) => (
+            {capturedPhotos.map((item) => (
               <button
                 className={`photo-thumb ${selectedPhoto.id === item.id ? 'selected' : ''}`}
                 type="button"
@@ -183,13 +163,24 @@ export default function PhtoSelect({ selectedIdol }) {
           <div className="photo-editor-card">
             <img src={selectedPhoto.src} alt="선택된 사진" />
             <p>{today}</p>
-            <textarea
-              aria-label="피드 내용"
-              placeholder={feedPlaceholder}
-              value={content}
-              onChange={(event) => setContent(event.target.value)}
-            />
-            {submitError && <strong className="photo-submit-error">{submitError}</strong>}
+
+            {/* reviewFlow: 텍스트 입력 숨김 — 리뷰 내용은 ReviewSheet에서 작성 */}
+            {reviewFlow ? (
+              <p style={{ fontSize: 12, color: 'rgba(45,47,54,0.45)', margin: '4px 0 0', textAlign: 'center' }}>
+                사진을 고른 후 버튼을 눌러주세요
+              </p>
+            ) : (
+              <>
+                <textarea
+                  aria-label="피드 내용"
+                  placeholder={FEED_PLACEHOLDER}
+                  value={content}
+                  onChange={(event) => setContent(event.target.value)}
+                  maxLength={500}
+                />
+                {submitError && <strong className="photo-submit-error">{submitError}</strong>}
+              </>
+            )}
           </div>
 
           <button
@@ -198,7 +189,7 @@ export default function PhtoSelect({ selectedIdol }) {
             onClick={handleSubmit}
             disabled={isSubmitting}
           >
-            {isSubmitting ? '등록 중' : '등록'}
+            {isSubmitting ? '처리 중' : reviewFlow ? '이 사진으로 리뷰 쓰기' : '등록'}
           </button>
         </section>
       </section>

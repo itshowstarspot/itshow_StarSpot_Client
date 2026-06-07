@@ -1,4 +1,5 @@
 import styled from 'styled-components'
+import { useNavigate } from 'react-router-dom'
 import NavIcons from './NavIcons'
 import mainLogo from '../../assets/logo.svg'
 
@@ -49,7 +50,7 @@ const ProfileWrap = styled.div`
   padding-top: 8px;
 `
 
-const ProfileAvatar = styled.div`
+const ProfileAvatar = styled.button`
   width: 75px;
   height: 75px;
   border-radius: 50%;
@@ -60,6 +61,14 @@ const ProfileAvatar = styled.div`
   justify-content: center;
   color: rgba(45, 47, 54, 0.4);
   border: 2.5px solid rgba(232, 214, 100, 0.55);
+  cursor: pointer;
+  padding: 0;
+  transition: border-color 0.15s, transform 0.15s;
+
+  &:hover {
+    border-color: #e8d664;
+    transform: scale(1.05);
+  }
 
   img {
     width: 100%;
@@ -99,6 +108,7 @@ const PanelCol = styled.div`
 `
 
 export default function Sidebar({ activeNav, onNavSelect, idolImage, panelOpen, children }) {
+  const navigate = useNavigate()
   return (
     <SidebarWrapper>
       <NavCol>
@@ -109,7 +119,11 @@ export default function Sidebar({ activeNav, onNavSelect, idolImage, panelOpen, 
         <NavIcons active={activeNav} onSelect={onNavSelect} />
 
         <ProfileWrap>
-          <ProfileAvatar>
+          <ProfileAvatar
+            type="button"
+            onClick={() => navigate('/mypage')}
+            title="마이페이지"
+          >
             {idolImage ? (
               <img src={idolImage} alt="선택한 아이돌" />
             ) : (

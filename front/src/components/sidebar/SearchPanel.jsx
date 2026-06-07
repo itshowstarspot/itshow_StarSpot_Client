@@ -1,9 +1,11 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import styled from 'styled-components'
 import PlaceCard from '../common/PlaceCard'
 import EmptyState from '../common/EmptyState'
 import LoadingSpinner from '../common/LoadingSpinner'
 import { usePlaces } from '../../hooks/usePlaces'
+import { useCurrentLocation } from '../../hooks/useCurrentLocation'
+import { SORT_RELEVANCE, SORT_DISTANCE } from '../../constants/sortOptions'
 
 const Panel = styled.div`
   display: flex;
@@ -104,7 +106,7 @@ const CardList = styled.div`
 `
 
 export default function SearchPanel({ idolId, onPlaceClick }) {
-  const [sort, setSort] = useState('관련도순')
+  const [sort, setSort] = useState(SORT_RELEVANCE)
   const [inputValue, setInputValue] = useState('')
 
   const { filteredPlaces, isLoading, error, setQuery, search } = usePlaces(idolId)
@@ -121,7 +123,18 @@ export default function SearchPanel({ idolId, onPlaceClick }) {
     if (!e.target.value) setQuery('')
   }
 
-  const sectionLabel = sort === '거리순' ? '최단 거리' : '검색 관련 결과'
+  const { location: currentLocation } = useCurrentLocation()
+
+  const sortedPlaces = useMemo(() => {
+    if (sort !== SORT_DISTANCE || !currentLocation) return filteredPlaces
+    return [...filteredPlaces].sort((a, b) => {
+      const distA = Math.hypot(a.lat - currentLocation.lat, a.lng - currentLocation.lng)
+      const distB = Math.hypot(b.lat - currentLocation.lat, b.lng - currentLocation.lng)
+      return distA - distB
+    })
+  }, [filteredPlaces, sort, currentLocation])
+
+  const sectionLabel = sort === SORT_DISTANCE ? '최단 거리순' : '검색 관련 결과'
 
   return (
     <Panel>
@@ -145,8 +158,8 @@ export default function SearchPanel({ idolId, onPlaceClick }) {
         </SearchBarWrap>
 
         <SortRow>
-          <SortChip $active={sort === '관련도순'} onClick={() => setSort('관련도순')}>관련도순</SortChip>
-          <SortChip $active={sort === '거리순'} onClick={() => setSort('거리순')}>거리순</SortChip>
+          <SortChip $active={sort === SORT_RELEVANCE} onClick={() => setSort(SORT_RELEVANCE)}>관련도순</SortChip>
+          <SortChip $active={sort === SORT_DISTANCE}  onClick={() => setSort(SORT_DISTANCE)}>거리순</SortChip>
         </SortRow>
 
         <SectionLabel>{sectionLabel}</SectionLabel>
@@ -156,17 +169,17 @@ export default function SearchPanel({ idolId, onPlaceClick }) {
       <CardList>
         {isLoading && <LoadingSpinner />}
         {error && <EmptyState icon="⚠️" message={error} />}
-        {!isLoading && !error && filteredPlaces.length === 0 && (
+        {!isLoading && !error && sortedPlaces.length === 0 && (
           <EmptyState icon="📍" message="아이돌을 선택하면 관련 장소가 표시돼요." />
         )}
-        {!isLoading && filteredPlaces.map((place) => (
+        {!isLoading && sortedPlaces.map((place, idx) => (
           <PlaceCard
             key={place.id}
             image={place.image}
             name={place.name}
             description={place.description || place.address}
             onClick={() => onPlaceClick?.(place.id)}
-            badge={sort === '거리순' ? '최단 거리' : undefined}
+            badge={sort === SORT_DISTANCE ? `${idx + 1}번째 가까운 장소` : undefined}
           />
         ))}
       </CardList>

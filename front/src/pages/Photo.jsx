@@ -1,30 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import '@mediapipe/selfie_segmentation'
 import './Photo.css'
+import { saveCapturedPhotos } from '../utils/photoStorage'
 
 const MAX_SHOTS = 5
 const COUNTDOWN_SECONDS = 5
-const PHOTO_CAPTURE_STORAGE_KEY = 'starspot.photoCaptures'
-const SEGMENT_INTERVAL_MS = 120
-const CAPTURE_WIDTH = 1280
-const CAPTURE_HEIGHT = 720
-const PERSON_BOX = {
-  x: 0.224,
-  y: 0.167,
-  width: 0.333,
-  height: 0.787,
-}
-const IDOL_BOX = {
-  x: 0.583,
-  y: 0.12,
-  width: 0.297,
-  height: 0.778,
-}
-const backgroundImage =
-  'https://images.unsplash.com/photo-1506521781263-d8422e82f27a?auto=format&fit=crop&w=2400&q=90'
-const idolImage =
-  'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=1200&q=90'
+const FRAME_SRC = '/frames/frame1_1.svg'
 
 function StarIcon({ filled }) {
   return (
@@ -34,104 +15,44 @@ function StarIcon({ filled }) {
   )
 }
 
-function drawCover(ctx, image, x, y, width, height) {
-  const sourceWidth = image.videoWidth || image.naturalWidth || image.width
-  const sourceHeight = image.videoHeight || image.naturalHeight || image.height
-  const sourceRatio = sourceWidth / sourceHeight
-  const targetRatio = width / height
-  let drawWidth
-  let drawHeight
-  let drawX = x
-  let drawY = y
-
-  if (sourceRatio > targetRatio) {
-    drawHeight = height
-    drawWidth = height * sourceRatio
-    drawX = x - (drawWidth - width) / 2
-  } else {
-    drawWidth = width
-    drawHeight = width / sourceRatio
-    drawY = y - (drawHeight - height) / 2
-  }
-
-  ctx.drawImage(image, drawX, drawY, drawWidth, drawHeight)
-}
-
-function drawMirroredCover(ctx, image, x, y, width, height) {
-  ctx.save()
-  ctx.translate(x + width, y)
-  ctx.scale(-1, 1)
-  drawCover(ctx, image, 0, 0, width, height)
-  ctx.restore()
-}
-
 function loadImage(src) {
   return new Promise((resolve, reject) => {
-    const image = new Image()
-    image.crossOrigin = 'anonymous'
-    image.onload = () => resolve(image)
-    image.onerror = reject
-    image.src = src
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+    img.onload  = () => resolve(img)
+    img.onerror = reject
+    img.src = src
   })
 }
 
 export default function Photo() {
   const navigate = useNavigate()
-  const videoRef = useRef(null)
-  const cutoutCanvasRef = useRef(null)
-  const segmentationRef = useRef(null)
-  const animationRef = useRef(null)
-  const isSegmentingRef = useRef(false)
-  const lastSegmentAtRef = useRef(0)
-  const imageCacheRef = useRef(null)
+  const videoRef       = useRef(null)
+  const streamRef      = useRef(null)
+  const previewCanvasRef = useRef(null)  // 화면에 보이는 캔버스 (카메라 미리보기)
+  const animationRef   = useRef(null)
+  const frameImgRef    = useRef(null)
+  const capturesRef    = useRef([])
+  const isCapturingRef = useRef(false)
 
-  const [shotCount, setShotCount] = useState(0)
-  const [cameraError, setCameraError] = useState('')
-  const [cameraReady, setCameraReady] = useState(false)
-  const [captures, setCaptures] = useState([])
-  const [isCapturing, setIsCapturing] = useState(false)
-  const [countdown, setCountdown] = useState(null)
+  const [cameraReady, setCameraReady]   = useState(false)
+  const [cameraError, setCameraError]   = useState('')
+  const [shotCount, setShotCount]       = useState(0)
+  const [captures, setCaptures]         = useState([])
+  const [countdown, setCountdown]       = useState(null)
 
+  // 프레임 미리 로드
   useEffect(() => {
-    const segmentation = new window.SelfieSegmentation({
-      locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/${file}`,
-    })
-
-    segmentation.setOptions({
-      modelSelection: 0,
-      selfieMode: true,
-    })
-
-    segmentation.onResults((results) => {
-      const canvas = cutoutCanvasRef.current
-      const ctx = canvas?.getContext('2d')
-      if (!canvas || !ctx) return
-
-      if (canvas.width !== results.image.width || canvas.height !== results.image.height) {
-        canvas.width = results.image.width
-        canvas.height = results.image.height
-      }
-
-      ctx.clearRect(0, 0, canvas.width, canvas.height)
-      ctx.drawImage(results.segmentationMask, 0, 0, canvas.width, canvas.height)
-      ctx.globalCompositeOperation = 'source-in'
-      ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height)
-      ctx.globalCompositeOperation = 'source-over'
-    })
-
-    segmentationRef.current = segmentation
-
-    return () => {
-      segmentation.close()
-    }
+    loadImage(FRAME_SRC)
+      .then((img) => { frameImgRef.current = img })
+      .catch(() => { frameImgRef.current = null })
   }, [])
 
+  // 카메라 시작
   useEffect(() => {
-    let stream
-
     async function startCamera() {
       try {
-        stream = await navigator.mediaDevices.getUserMedia({
+        const stream = await navigator.mediaDevices.getUserMedia({
           video: {
             facingMode: 'user',
             width: { ideal: 960 },
@@ -140,10 +61,8 @@ export default function Photo() {
           },
           audio: false,
         })
-
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream
-        }
+        streamRef.current = stream
+        if (videoRef.current) videoRef.current.srcObject = stream
       } catch {
         setCameraError('카메라 권한을 허용하면 함께 사진을 찍을 수 있어요.')
       }
@@ -153,156 +72,145 @@ export default function Photo() {
 
     return () => {
       cancelAnimationFrame(animationRef.current)
-      stream?.getTracks().forEach((track) => track.stop())
+      streamRef.current?.getTracks().forEach((t) => t.stop())
+      streamRef.current = null
     }
   }, [])
 
+  // 카메라 영상 → 캔버스 미러 렌더링 루프 (배경제거 없이 그대로)
   useEffect(() => {
     if (!cameraReady) return
 
-    async function segmentFrame() {
-      const video = videoRef.current
-      const segmentation = segmentationRef.current
-      const now = performance.now()
-
-      if (
-        video &&
-        segmentation &&
-        video.readyState >= 2 &&
-        !isSegmentingRef.current &&
-        now - lastSegmentAtRef.current >= SEGMENT_INTERVAL_MS
-      ) {
-        lastSegmentAtRef.current = now
-        isSegmentingRef.current = true
-        try {
-          await segmentation.send({ image: video })
-        } finally {
-          isSegmentingRef.current = false
-        }
+    function renderFrame() {
+      const video  = videoRef.current
+      const canvas = previewCanvasRef.current
+      if (!canvas || !video || video.readyState < 2) {
+        animationRef.current = requestAnimationFrame(renderFrame)
+        return
       }
 
-      animationRef.current = requestAnimationFrame(segmentFrame)
+      const ctx = canvas.getContext('2d')
+      if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
+        canvas.width  = video.videoWidth  || 960
+        canvas.height = video.videoHeight || 540
+      }
+
+      // 좌우 반전 (셀카 모드)
+      ctx.save()
+      ctx.translate(canvas.width, 0)
+      ctx.scale(-1, 1)
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+      ctx.restore()
+
+      animationRef.current = requestAnimationFrame(renderFrame)
     }
 
-    segmentFrame()
-
+    renderFrame()
     return () => cancelAnimationFrame(animationRef.current)
   }, [cameraReady])
 
-  const capturePhoto = useCallback(async () => {
-    if (isCapturing || shotCount >= MAX_SHOTS) return
-
-    setIsCapturing(true)
+  // 사진 촬영 — 카메라 영상 + 프레임만
+  const capturePhoto = useCallback(() => {
+    if (isCapturingRef.current || capturesRef.current.length >= MAX_SHOTS) return
+    isCapturingRef.current = true
 
     try {
+      const video = videoRef.current
+      if (!video || video.readyState < 2) return
+
+      const w = video.videoWidth || 1080
+      const h = video.videoHeight || 1920
       const canvas = document.createElement('canvas')
+      canvas.width = w
+      canvas.height = h
       const ctx = canvas.getContext('2d')
-      canvas.width = CAPTURE_WIDTH
-      canvas.height = CAPTURE_HEIGHT
 
-      if (!imageCacheRef.current) {
-        imageCacheRef.current = Promise.all([loadImage(backgroundImage), loadImage(idolImage)])
+      // 카메라 (미러 반전 해제)
+      ctx.save()
+      ctx.translate(w, 0)
+      ctx.scale(-1, 1)
+      ctx.drawImage(video, 0, 0, w, h)
+      ctx.restore()
+
+      // 프레임 오버레이
+      if (frameImgRef.current) {
+        ctx.drawImage(frameImgRef.current, 0, 0, w, h)
       }
 
-      const [background, idol] = await imageCacheRef.current
+      const imageData = canvas.toDataURL('image/jpeg', 0.88)
+      const nextCaptures = [imageData, ...capturesRef.current].slice(0, MAX_SHOTS)
 
-      drawCover(ctx, background, 0, 0, canvas.width, canvas.height)
+      capturesRef.current = nextCaptures
+      setCaptures(nextCaptures)
+      setShotCount(nextCaptures.length)
 
-      const cutoutCanvas = cutoutCanvasRef.current
-      if (cutoutCanvas?.width && cutoutCanvas?.height) {
-        drawMirroredCover(
-          ctx,
-          cutoutCanvas,
-          PERSON_BOX.x * canvas.width,
-          PERSON_BOX.y * canvas.height,
-          PERSON_BOX.width * canvas.width,
-          PERSON_BOX.height * canvas.height,
-        )
+      if (nextCaptures.length >= MAX_SHOTS) {
+        saveCapturedPhotos(nextCaptures)
+        setTimeout(() => navigate('/photoselect'), 300)
       }
-
-      drawCover(
-        ctx,
-        idol,
-        IDOL_BOX.x * canvas.width,
-        IDOL_BOX.y * canvas.height,
-        IDOL_BOX.width * canvas.width,
-        IDOL_BOX.height * canvas.height,
-      )
-
-      const imageData = canvas.toDataURL('image/jpeg', 0.86)
-
-      setShotCount((count) => Math.min(count + 1, MAX_SHOTS))
-      setCaptures((prev) => {
-        const nextCaptures = [imageData, ...prev].slice(0, MAX_SHOTS)
-
-        if (nextCaptures.length >= MAX_SHOTS) {
-          sessionStorage.setItem(PHOTO_CAPTURE_STORAGE_KEY, JSON.stringify(nextCaptures))
-          setTimeout(() => navigate('/photoselect'), 300)
-        }
-
-        return nextCaptures
-      })
     } finally {
-      setIsCapturing(false)
+      isCapturingRef.current = false
     }
-  }, [isCapturing, navigate, shotCount])
+  }, [navigate])
 
+  // 카운트다운 시작
   useEffect(() => {
-    if (!cameraReady || cameraError || isCapturing || countdown !== null || shotCount >= MAX_SHOTS) return
-
-    const timer = setTimeout(() => setCountdown(COUNTDOWN_SECONDS), 0)
+    if (!cameraReady || cameraError || countdown !== null || shotCount >= MAX_SHOTS) return
+    const timer = setTimeout(() => setCountdown(COUNTDOWN_SECONDS), 800)
     return () => clearTimeout(timer)
-  }, [cameraReady, cameraError, isCapturing, countdown, shotCount])
+  }, [cameraReady, cameraError, countdown, shotCount])
 
+  // 카운트다운 tick
   useEffect(() => {
     if (countdown === null) return
-
     const timer = setTimeout(() => {
       if (countdown <= 1) {
         setCountdown(null)
         capturePhoto()
-        return
+      } else {
+        setCountdown((v) => v - 1)
       }
-
-      setCountdown((value) => value - 1)
-    }, 1000)
-
+    }, 1)
     return () => clearTimeout(timer)
   }, [countdown, capturePhoto])
 
   return (
     <main className="photo-page">
-      <img className="photo-bg" src={backgroundImage} alt="" />
+      {/* 숨겨진 video (스트림 소스) */}
       <video
         ref={videoRef}
         className="photo-video-source"
-        autoPlay
-        playsInline
-        muted
+        autoPlay playsInline muted
         onCanPlay={() => setCameraReady(true)}
       />
-      <canvas ref={cutoutCanvasRef} className={`photo-camera ${cameraReady ? 'is-ready' : ''}`} />
-      <img className="photo-idol" src={idolImage} alt="함께 촬영할 인물" />
-      <span className="photo-sparkle" aria-hidden="true" />
+
+      {/* 카메라 미리보기 캔버스 — 전체화면 */}
+      <canvas
+        ref={previewCanvasRef}
+        className={`photo-camera ${cameraReady ? 'is-ready' : ''}`}
+      />
+
+      {/* 프레임 오버레이 */}
+      <img className="photo-frame-overlay" src={FRAME_SRC} alt="" />
 
       <section className="photo-shot-counter" aria-label={`촬영 횟수 ${shotCount}/${MAX_SHOTS}`}>
-        {Array.from({ length: MAX_SHOTS }, (_, index) => (
-          <StarIcon key={index} filled={index < shotCount} />
+        {Array.from({ length: MAX_SHOTS }, (_, i) => (
+          <StarIcon key={i} filled={i < shotCount} />
         ))}
       </section>
 
-      {countdown !== null && <div className="photo-countdown" aria-live="assertive">{countdown}</div>}
+      {countdown !== null && (
+        <div className="photo-countdown" aria-live="assertive">{countdown}</div>
+      )}
 
       {cameraError && (
-        <div className="photo-controls">
-          <p>{cameraError}</p>
-        </div>
+        <div className="photo-controls"><p>{cameraError}</p></div>
       )}
 
       {captures.length > 0 && (
         <aside className="photo-captures" aria-label="촬영한 사진">
-          {captures.slice(0, MAX_SHOTS).map((src, index) => (
-            <img src={src} alt={`촬영 결과 ${captures.length - index}`} key={src} />
+          {captures.slice(0, MAX_SHOTS).map((src, i) => (
+            <img src={src} alt={`촬영 결과 ${captures.length - i}`} key={src} />
           ))}
         </aside>
       )}
