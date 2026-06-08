@@ -5,7 +5,7 @@ const Tag = styled.button`
   border-radius: 20px;
   border: 1.5px solid ${({ $active }) => ($active ? '#e8d664' : 'rgba(45,47,54,0.18)')};
   background: ${({ $active }) => ($active ? '#e8d664' : 'transparent')};
-  color: ${({ $active }) => ($active ? '#ffffff' : 'rgba(45,47,54,0.65)')};
+  color: ${({ $active }) => ($active ? '#1a1a1a' : 'rgba(45,47,54,0.65)')};
   font-size: 13px;
   font-weight: ${({ $active }) => ($active ? 700 : 400)};
   cursor: pointer;
@@ -14,7 +14,7 @@ const Tag = styled.button`
 
   &:hover {
     border-color: #e8d664;
-    color: ${({ $active }) => ($active ? '#ffffff' : '#b8962a')};
+    color: ${({ $active }) => ($active ? '#1a1a1a' : '#b8962a')};
   }
 `
 

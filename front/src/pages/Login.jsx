@@ -153,7 +153,7 @@ const SubmitBtn = styled.button`
   border-radius: 14px;
   border: none;
   background: ${({ disabled }) => disabled ? 'rgba(232,214,100,0.35)' : '#e8d664'};
-  color: ${({ disabled }) => disabled ? 'rgba(45,47,54,0.35)' : '#ffffff'};
+  color: ${({ disabled }) => disabled ? 'rgba(45,47,54,0.35)' : '#1a1a1a'};
   font-size: 15px;
   font-weight: 700;
   cursor: ${({ disabled }) => disabled ? 'default' : 'pointer'};

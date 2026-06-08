@@ -38,7 +38,7 @@ const NewBtn = styled.button`
   border-radius: 14px;
   border: 1.5px solid #e8d664;
   background: #e8d664;
-  color: #ffffff;
+  color: #1a1a1a;
   font-size: 11px;
   font-weight: 700;
   cursor: pointer;
@@ -271,7 +271,7 @@ const OrderBadge = styled.div`
   height: 20px;
   border-radius: 50%;
   background: #e8d664;
-  color: #ffffff;
+  color: #1a1a1a;
   font-size: 10px;
   font-weight: 700;
   display: flex;
@@ -330,7 +330,7 @@ const SaveBtn = styled.button`
   border-radius: 10px;
   border: none;
   background: #e8d664;
-  color: #ffffff;
+  color: #1a1a1a;
   font-size: 14px;
   font-weight: 700;
   cursor: pointer;

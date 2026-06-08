@@ -86,7 +86,7 @@ const SignupBtn = styled.button`
   border-radius: 12px;
   border: none;
   background: #e8d664;
-  color: #ffffff;
+  color: #1a1a1a;
   font-size: 15px;
   font-weight: 700;
   cursor: pointer;

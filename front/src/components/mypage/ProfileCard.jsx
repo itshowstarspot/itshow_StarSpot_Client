@@ -114,7 +114,7 @@ const SmallBtn = styled.button`
 
 const SaveBtn = styled(SmallBtn)`
   background: #e8d664;
-  color: #ffffff;
+  color: #1a1a1a;
   &:hover { background: #d4c250; }
 `
 

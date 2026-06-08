@@ -122,7 +122,7 @@ const ShareToast = styled.div`
   left: 50%;
   transform: translateX(-50%);
   background: #e8d664;
-  color: #ffffff;
+  color: #1a1a1a;
   padding: 12px 24px;
   border-radius: 20px;
   font-size: 14px;

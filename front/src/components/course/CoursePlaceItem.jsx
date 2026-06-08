@@ -19,7 +19,7 @@ const Order = styled.span`
   height: 24px;
   border-radius: 50%;
   background: #e8d664;
-  color: #ffffff;
+  color: #1a1a1a;
   font-size: 12px;
   font-weight: 700;
   display: flex;
