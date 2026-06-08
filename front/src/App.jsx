@@ -16,7 +16,13 @@ import VisitHistory from './pages/VisitHistory'
 import MyPage from './pages/MyPage'
 import PostRegister from './pages/PostRegister'
 import { useLocalStorage } from './hooks/useLocalStorage'
-import { STORAGE_KEY_IDOL, STORAGE_KEY_LOGGED_IN } from './constants/storageKeys'
+import {
+  STORAGE_KEY_IDOL,
+  STORAGE_KEY_LOGGED_IN,
+  STORAGE_KEY_COURSES,
+  STORAGE_KEY_FAVORITES,
+  STORAGE_KEY_LATEST_POST,
+} from './constants/storageKeys'
 
 /** 로그인 안 된 상태에서 보호된 페이지 접근 시 /login으로 리다이렉트 */
 function PrivateRoute({ isLoggedIn, children }) {
@@ -41,9 +47,24 @@ function App() {
   const [skipHomeIdolPrompt, setSkipHomeIdolPrompt] = useState(false)
 
   const handleLogin = () => { setIsLoggedIn(true) }
+
   const handleLogout = () => {
     setIsLoggedIn(false)
     localStorage.removeItem(STORAGE_KEY_LOGGED_IN)
+  }
+
+  const handleDeleteAccount = () => {
+    // 모든 앱 데이터 삭제
+    ;[
+      STORAGE_KEY_IDOL,
+      STORAGE_KEY_LOGGED_IN,
+      STORAGE_KEY_COURSES,
+      STORAGE_KEY_FAVORITES,
+      STORAGE_KEY_LATEST_POST,
+    ].forEach((key) => localStorage.removeItem(key))
+    sessionStorage.clear()
+    setSelectedIdol(null)
+    setIsLoggedIn(false)
   }
 
   return (
@@ -118,7 +139,12 @@ function App() {
           path="/mypage"
           element={
             <PrivateRoute isLoggedIn={isLoggedIn}>
-              <MyPage selectedIdol={selectedIdol} onIdolChange={setSelectedIdol} />
+              <MyPage
+            selectedIdol={selectedIdol}
+            onIdolChange={setSelectedIdol}
+            onLogout={handleLogout}
+            onDeleteAccount={handleDeleteAccount}
+          />
             </PrivateRoute>
           }
         />

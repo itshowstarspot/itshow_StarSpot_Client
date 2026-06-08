@@ -170,7 +170,7 @@ export default function Photo() {
       } else {
         setCountdown((v) => v - 1)
       }
-    }, 1)
+    }, 1000)
     return () => clearTimeout(timer)
   }, [countdown, capturePhoto])
 
