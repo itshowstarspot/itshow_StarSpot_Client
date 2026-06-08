@@ -171,10 +171,14 @@ export default function Course({ selectedIdol }) {
 
   const handleSubmit = async () => {
     if (!courseTitle.trim()) return
-    const result = await submitCourse({ title: courseTitle, idolId: selectedIdol?.id })
-    if (result) {
-      setCourseTitle('')
-      setIsCreating(false)
+    try {
+      const result = await submitCourse({ title: courseTitle, idolId: selectedIdol?.id })
+      if (result) {
+        setCourseTitle('')
+        setIsCreating(false)
+      }
+    } catch (err) {
+      console.error('[Course] 코스 생성 실패:', err)
     }
   }
 

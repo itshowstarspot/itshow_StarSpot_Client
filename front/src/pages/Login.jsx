@@ -147,11 +147,6 @@ const ErrorMsg = styled.p`
   margin: -6px 0 0;
 `
 
-const Hint = styled.p`
-  font-size: 11px;
-  color: rgba(45,47,54,0.38);
-  margin: -8px 0 0;
-`
 
 const SubmitBtn = styled.button`
   height: 52px;
@@ -347,10 +342,7 @@ function SignupForm({ onSignupDone }) {
             <EyeIcon show={showPw} />
           </EyeBtn>
         </InputWrap>
-        {errors.password
-          ? <ErrorMsg>{errors.password}</ErrorMsg>
-          : <Hint>영문·숫자 포함 8자 이상</Hint>
-        }
+        {errors.password && <ErrorMsg>{errors.password}</ErrorMsg>}
       </Field>
 
       <Field>

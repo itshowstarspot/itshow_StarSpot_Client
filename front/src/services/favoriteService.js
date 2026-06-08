@@ -1,4 +1,4 @@
-const STORAGE_KEY = 'starspot_favorites'
+import { STORAGE_KEY_FAVORITES as STORAGE_KEY } from '../constants/storageKeys'
 
 /**
  * 저장된 즐겨찾기 목록 반환
