@@ -186,14 +186,14 @@ function AutoInput({ value, onChange, onSelect, placeholder, rightSlot }) {
       try {
         const results = await searchPlacesByKakao(v)
         // placeService가 내부 Place 형태로 반환하므로 드롭다운에 맞게 변환
-        setSuggestions(results.map((p) => ({
+        setSuggestions(Array.isArray(results) ? results.map((p) => ({
           id: p.id,
           place_name: p.name,
           road_address_name: p.address,
           address_name: p.address,
           y: p.lat,
           x: p.lng,
-        })))
+        })) : [])
       } catch {
         setSuggestions([])
       }

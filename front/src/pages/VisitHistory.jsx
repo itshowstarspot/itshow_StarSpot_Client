@@ -191,6 +191,8 @@ export default function VisitHistory({ selectedIdol, onIdolChange }) {
     try {
       const data = await fetchVisits()
       setVisits(data)
+    } catch (err) {
+      console.error('[VisitHistory] 방문 기록 로딩 실패:', err)
     } finally {
       setIsLoading(false)
     }
@@ -244,9 +246,14 @@ export default function VisitHistory({ selectedIdol, onIdolChange }) {
   }
 
   const handleDelete = async (visitId) => {
-    await deleteVisit(visitId)
-    setVisits((prev) => prev.filter((v) => v.id !== visitId))
-    setShowDeleteConfirm(null)
+    try {
+      await deleteVisit(visitId)
+      setVisits((prev) => prev.filter((v) => v.id !== visitId))
+      setShowDeleteConfirm(null)
+    } catch (err) {
+      console.error('[VisitHistory] 방문 기록 삭제 실패:', err)
+      setFormError('삭제에 실패했어요. 다시 시도해주세요.')
+    }
   }
 
   return (
