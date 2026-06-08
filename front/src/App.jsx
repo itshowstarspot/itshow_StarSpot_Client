@@ -3,7 +3,6 @@ import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-route
 import Start from './pages/Start'
 import Home from './pages/Home'
 import Login from './pages/Login'
-import Signup from './pages/Signup'
 import Select from './pages/Select'
 import PlaceDetail from './pages/PlaceDetail'
 import Feed from './pages/Feed'
@@ -119,7 +118,7 @@ function App() {
         />
         <Route path="/place/:id" element={<PrivateRoute isLoggedIn={isLoggedIn}><PlaceDetail /></PrivateRoute>} />
         <Route path="/feed" element={<PrivateRoute isLoggedIn={isLoggedIn}><Feed /></PrivateRoute>} />
-        <Route path="/photo" element={<PrivateRoute isLoggedIn={isLoggedIn}><Photo /></PrivateRoute>} />
+        <Route path="/photo" element={<PrivateRoute isLoggedIn={isLoggedIn}><Photo selectedIdol={selectedIdol} /></PrivateRoute>} />
         <Route path="/photoframe" element={<PrivateRoute isLoggedIn={isLoggedIn}><PhotoFrame /></PrivateRoute>} />
         <Route path="/photoselect" element={<PrivateRoute isLoggedIn={isLoggedIn}><PhotoSelect selectedIdol={selectedIdol} /></PrivateRoute>} />
         <Route path="/route" element={<PrivateRoute isLoggedIn={isLoggedIn}><RoutePage /></PrivateRoute>} />

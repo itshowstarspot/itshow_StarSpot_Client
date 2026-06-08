@@ -31,6 +31,16 @@
   display: none;
 }
 
+.photo-stage {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 1;
+  width: min(100vw, 177.7778vh);
+  aspect-ratio: 16 / 9;
+  transform: translate(-50%, -50%);
+}
+
 /* 카메라 전체화면 */
 .photo-camera {
   position: absolute;
@@ -50,12 +60,51 @@
 /* 프레임 오버레이 */
 .photo-frame-overlay {
   position: absolute;
-  inset: 0;
+  bottom: 0;
+  right: -4.6875%;
   z-index: 2;
-  width: 100%;
+  width: 53.75%;
   height: 100%;
-  object-fit: fill;
+  object-fit: contain;
+  object-position: right bottom;
   pointer-events: none;
+}
+
+.photo-frame-overlay.is-jeemin {
+  right: -1.0417%;
+  width: 48.375%;
+  height: 90%;
+}
+
+.photo-frame-overlay.is-jeemin-small {
+  width: 43%;
+  height: 80%;
+}
+
+.photo-frame-overlay.is-jeemin-one {
+  right: 0.5208%;
+}
+
+.photo-frame-overlay.is-youngji-shift {
+  right: -2.0833%;
+}
+
+.photo-frame-overlay.is-jungkook-shift {
+  right: 0.5208%;
+}
+
+.photo-frame-overlay.is-youngk-shift {
+  right: -2.0833%;
+}
+
+.photo-frame-overlay.is-karina-one {
+  right: -3.125%;
+}
+
+.photo-frame-overlay.is-karina-wide {
+  right: -4.6875%;
+  width: auto;
+  height: 100%;
 }
 
 .photo-shot-counter {
@@ -178,40 +227,12 @@
     height: 86px;
   }
 
-  .photo-camera {
-    left: 6vw;
-    top: 24vh;
-    width: 48vw;
-    height: 62vh;
-  }
-
-  .photo-idol {
-    left: 51vw;
-    top: 24vh;
-    width: 48vw;
-    height: 62vh;
-  }
-
   .photo-captures {
     display: none;
   }
 }
 
 @media (max-width: 560px) {
-  .photo-camera {
-    left: -4vw;
-    top: 29vh;
-    width: 58vw;
-    height: 57vh;
-  }
-
-  .photo-idol {
-    left: 48vw;
-    top: 29vh;
-    width: 60vw;
-    height: 57vh;
-  }
-
   .photo-controls button {
     min-width: 150px;
     height: 48px;

@@ -1,11 +1,27 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import './Photo.css'
 import { saveCapturedPhotos } from '../utils/photoStorage'
+import { getPhotoFrameSrc } from '../utils/photoFrames'
+import { SESSION_KEY_REVIEW_PLACE } from '../constants/storageKeys'
 
 const MAX_SHOTS = 5
 const COUNTDOWN_SECONDS = 5
-const FRAME_SRC = '/frames/frame1_1.svg'
+const OUTPUT_WIDTH = 1920
+const OUTPUT_HEIGHT = 1080
+const FRAME_BOX_WIDTH = 1032
+const FRAME_BOX_HEIGHT = 1080
+const FRAME_RIGHT_OFFSET = 90
+const KARINA_ONE_FRAME_LEFT_OFFSET = 30
+const KARINA_WIDE_FRAME_SCALE = 1
+const JEEMIN_FRAME_SCALE = 0.9
+const JEEMIN_SMALL_FRAME_SCALE = 0.8
+const JEEMIN_FRAME_LEFT_OFFSET = 70
+const JEEMIN_ONE_EXTRA_LEFT_OFFSET = 30
+const YOUNGJI_FRAME_LEFT_OFFSET = 50
+const JUNGKOOK_FRAME_LEFT_OFFSET = 100
+const YOUNGK_FRAME_LEFT_OFFSET = 50
+const YOUNGK_FRAME_SCALE = 1
 
 function StarIcon({ filled }) {
   return (
@@ -18,14 +34,96 @@ function StarIcon({ filled }) {
 function loadImage(src) {
   return new Promise((resolve, reject) => {
     const img = new Image()
-    img.crossOrigin = 'anonymous'
     img.onload  = () => resolve(img)
     img.onerror = reject
     img.src = src
   })
 }
 
-export default function Photo() {
+function getFrameAdjustment(frameSrc) {
+  if (frameSrc?.includes('frame_karina_1')) {
+    return {
+      scale: 1,
+      xOffset: -KARINA_ONE_FRAME_LEFT_OFFSET,
+    }
+  }
+
+  if (frameSrc?.includes('frame_youngk_')) {
+    return {
+      scale: YOUNGK_FRAME_SCALE,
+      xOffset: -YOUNGK_FRAME_LEFT_OFFSET,
+    }
+  }
+
+  if (frameSrc?.includes('frame_jungkook_')) {
+    return {
+      scale: 1,
+      xOffset: -JUNGKOOK_FRAME_LEFT_OFFSET,
+    }
+  }
+
+  if (frameSrc?.includes('frame_youngji_1') || frameSrc?.includes('frame_youngji_2')) {
+    return {
+      scale: 1,
+      xOffset: -YOUNGJI_FRAME_LEFT_OFFSET,
+    }
+  }
+
+  if (frameSrc?.includes('frame_jeemin_1') || frameSrc?.includes('frame_jeemin_3')) {
+    return {
+      scale: JEEMIN_SMALL_FRAME_SCALE,
+      xOffset: -(JEEMIN_FRAME_LEFT_OFFSET + (frameSrc.includes('frame_jeemin_1') ? JEEMIN_ONE_EXTRA_LEFT_OFFSET : 0)),
+    }
+  }
+
+  if (frameSrc?.includes('frame_jeemin_')) {
+    return {
+      scale: JEEMIN_FRAME_SCALE,
+      xOffset: -JEEMIN_FRAME_LEFT_OFFSET,
+    }
+  }
+
+  return { scale: 1, xOffset: 0 }
+}
+
+function drawFrameOverlay(ctx, frameImg, frameSrc) {
+  if (frameSrc?.includes('frame_karina_2') || frameSrc?.includes('frame_karina_3')) {
+    const height = OUTPUT_HEIGHT * KARINA_WIDE_FRAME_SCALE
+    const width = height * (frameImg.naturalWidth / frameImg.naturalHeight)
+    const x = OUTPUT_WIDTH - width + FRAME_RIGHT_OFFSET
+    const y = OUTPUT_HEIGHT - height
+
+    ctx.drawImage(frameImg, x, y, width, height)
+    return
+  }
+
+  const sourceWidth = frameImg.naturalWidth
+  const sourceHeight = frameImg.naturalHeight
+  const sourceRatio = sourceWidth / sourceHeight
+  const targetRatio = FRAME_BOX_WIDTH / FRAME_BOX_HEIGHT
+  const { scale, xOffset } = getFrameAdjustment(frameSrc)
+
+  let drawWidth = FRAME_BOX_WIDTH
+  let drawHeight = FRAME_BOX_HEIGHT
+
+  if (sourceRatio > targetRatio) {
+    drawHeight = FRAME_BOX_WIDTH / sourceRatio
+  } else {
+    drawWidth = FRAME_BOX_HEIGHT * sourceRatio
+  }
+
+  drawWidth *= scale
+  drawHeight *= scale
+
+  const boxX = OUTPUT_WIDTH - FRAME_BOX_WIDTH + FRAME_RIGHT_OFFSET + xOffset
+  const boxY = OUTPUT_HEIGHT - FRAME_BOX_HEIGHT
+  const drawX = boxX + FRAME_BOX_WIDTH - drawWidth
+  const drawY = boxY + FRAME_BOX_HEIGHT - drawHeight
+
+  ctx.drawImage(frameImg, drawX, drawY, drawWidth, drawHeight)
+}
+
+export default function Photo({ selectedIdol }) {
   const navigate = useNavigate()
   const videoRef       = useRef(null)
   const streamRef      = useRef(null)
@@ -40,13 +138,29 @@ export default function Photo() {
   const [shotCount, setShotCount]       = useState(0)
   const [captures, setCaptures]         = useState([])
   const [countdown, setCountdown]       = useState(null)
+  const [loadedFrameSrc, setLoadedFrameSrc] = useState(null)
+  const [reviewPlaceId] = useState(() => sessionStorage.getItem(SESSION_KEY_REVIEW_PLACE))
+  const frameSrc = useMemo(
+    () => getPhotoFrameSrc({ idolId: selectedIdol?.id, placeId: reviewPlaceId }),
+    [selectedIdol?.id, reviewPlaceId],
+  )
+  const isFrameReady = !frameSrc || loadedFrameSrc === frameSrc
 
   // 프레임 미리 로드
   useEffect(() => {
-    loadImage(FRAME_SRC)
-      .then((img) => { frameImgRef.current = img })
-      .catch(() => { frameImgRef.current = null })
-  }, [])
+    frameImgRef.current = null
+    if (!frameSrc) return
+
+    loadImage(frameSrc)
+      .then((img) => {
+        frameImgRef.current = img
+        setLoadedFrameSrc(frameSrc)
+      })
+      .catch(() => {
+        frameImgRef.current = null
+        setLoadedFrameSrc(frameSrc)
+      })
+  }, [frameSrc])
 
   // 카메라 시작
   useEffect(() => {
@@ -118,23 +232,21 @@ export default function Photo() {
       const video = videoRef.current
       if (!video || video.readyState < 2) return
 
-      const w = video.videoWidth || 1080
-      const h = video.videoHeight || 1920
       const canvas = document.createElement('canvas')
-      canvas.width = w
-      canvas.height = h
+      canvas.width = OUTPUT_WIDTH
+      canvas.height = OUTPUT_HEIGHT
       const ctx = canvas.getContext('2d')
 
       // 카메라 (미러 반전 해제)
       ctx.save()
-      ctx.translate(w, 0)
+      ctx.translate(OUTPUT_WIDTH, 0)
       ctx.scale(-1, 1)
-      ctx.drawImage(video, 0, 0, w, h)
+      ctx.drawImage(video, 0, 0, OUTPUT_WIDTH, OUTPUT_HEIGHT)
       ctx.restore()
 
       // 프레임 오버레이
       if (frameImgRef.current) {
-        ctx.drawImage(frameImgRef.current, 0, 0, w, h)
+        drawFrameOverlay(ctx, frameImgRef.current, frameSrc)
       }
 
       const imageData = canvas.toDataURL('image/jpeg', 0.88)
@@ -151,14 +263,14 @@ export default function Photo() {
     } finally {
       isCapturingRef.current = false
     }
-  }, [navigate])
+  }, [frameSrc, navigate])
 
   // 카운트다운 시작
   useEffect(() => {
-    if (!cameraReady || cameraError || countdown !== null || shotCount >= MAX_SHOTS) return
+    if (!cameraReady || !isFrameReady || cameraError || countdown !== null || shotCount >= MAX_SHOTS) return
     const timer = setTimeout(() => setCountdown(COUNTDOWN_SECONDS), 800)
     return () => clearTimeout(timer)
-  }, [cameraReady, cameraError, countdown, shotCount])
+  }, [cameraReady, isFrameReady, cameraError, countdown, shotCount])
 
   // 카운트다운 tick
   useEffect(() => {
@@ -185,13 +297,31 @@ export default function Photo() {
       />
 
       {/* 카메라 미리보기 캔버스 — 전체화면 */}
+      <div className="photo-stage">
       <canvas
         ref={previewCanvasRef}
         className={`photo-camera ${cameraReady ? 'is-ready' : ''}`}
       />
 
       {/* 프레임 오버레이 */}
-      <img className="photo-frame-overlay" src={FRAME_SRC} alt="" />
+        {frameSrc && (
+          <img
+            className={[
+              'photo-frame-overlay',
+              frameSrc.includes('frame_jeemin_') ? 'is-jeemin' : '',
+              frameSrc.includes('frame_jeemin_1') || frameSrc.includes('frame_jeemin_3') ? 'is-jeemin-small' : '',
+              frameSrc.includes('frame_jeemin_1') ? 'is-jeemin-one' : '',
+              frameSrc.includes('frame_youngji_1') || frameSrc.includes('frame_youngji_2') ? 'is-youngji-shift' : '',
+              frameSrc.includes('frame_jungkook_') ? 'is-jungkook-shift' : '',
+              frameSrc.includes('frame_youngk_') ? 'is-youngk-shift' : '',
+              frameSrc.includes('frame_karina_1') ? 'is-karina-one' : '',
+              frameSrc.includes('frame_karina_2') || frameSrc.includes('frame_karina_3') ? 'is-karina-wide' : '',
+            ].filter(Boolean).join(' ')}
+            src={frameSrc}
+            alt=""
+          />
+        )}
+      </div>
 
       <section className="photo-shot-counter" aria-label={`촬영 횟수 ${shotCount}/${MAX_SHOTS}`}>
         {Array.from({ length: MAX_SHOTS }, (_, i) => (
