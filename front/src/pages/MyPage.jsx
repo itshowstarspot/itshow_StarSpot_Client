@@ -6,6 +6,7 @@ import ProfileCard from '../components/mypage/ProfileCard'
 import FavoritesSection from '../components/mypage/FavoritesSection'
 import MyCoursesSection from '../components/mypage/MyCoursesSection'
 import QuickNavSection from '../components/mypage/QuickNavSection'
+import AccountSection from '../components/mypage/AccountSection'
 import { idols } from '../domain/idol/idol'
 
 const Page = styled.main`
@@ -51,7 +52,7 @@ const Content = styled.div`
   gap: 28px;
 `
 
-export default function MyPage({ selectedIdol, onIdolChange }) {
+export default function MyPage({ selectedIdol, onIdolChange, onLogout, onDeleteAccount }) {
   const navigate = useNavigate()
   const [showIdolModal, setShowIdolModal] = useState(false)
 
@@ -80,6 +81,9 @@ export default function MyPage({ selectedIdol, onIdolChange }) {
 
         {/* 방문기록 / 피드 링크 — 항목 추가 시 QuickNavSection.jsx의 ITEMS 배열에 추가 */}
         <QuickNavSection onNavigate={(key) => navigate(`/${key}`)} />
+
+        {/* 로그아웃 / 계정 탈퇴 */}
+        <AccountSection onLogout={onLogout} onDeleteAccount={onDeleteAccount} />
       </Content>
 
       <IdolSelectModal
