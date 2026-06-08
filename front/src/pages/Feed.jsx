@@ -292,6 +292,7 @@ export default function Feed() {
           <Button variant="secondary" fullWidth onClick={handleCloseModal}>취소</Button>
           <Button
             fullWidth
+            style={{ color: '#ffffff' }}
             onClick={handlePost}
             disabled={!content.trim() || isPosting}
           >

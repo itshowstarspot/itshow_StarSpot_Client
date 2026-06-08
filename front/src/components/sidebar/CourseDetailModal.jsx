@@ -172,7 +172,7 @@ const DeleteBtn = styled.button`
   border-radius: 10px;
   border: none;
   background: #e8d664;
-  color: #1a1a1a;
+  color: #ffffff;
   font-size: 14px;
   font-weight: 700;
   cursor: pointer;
