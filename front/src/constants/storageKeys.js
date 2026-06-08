@@ -4,10 +4,12 @@
  */
 
 // ── localStorage ──────────────────────────────────────────────
-export const STORAGE_KEY_IDOL     = 'starspot.selectedIdol'
+export const STORAGE_KEY_IDOL      = 'starspot.selectedIdol'
 export const STORAGE_KEY_LOGGED_IN = 'starspot.loggedIn'
+export const STORAGE_KEY_NICKNAME  = 'starspot.nickname'
 export const STORAGE_KEY_COURSES  = 'starspot_courses'
-export const STORAGE_KEY_FAVORITES = 'starspot.favorites'
+export const STORAGE_KEY_FAVORITES = 'starspot_favorites'
+export const STORAGE_KEY_VISITS    = 'starspot_visits'
 export const STORAGE_KEY_LATEST_POST = 'starspot.latestPost'
 
 // ── sessionStorage ─────────────────────────────────────────────

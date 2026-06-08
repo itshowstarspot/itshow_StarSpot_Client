@@ -52,7 +52,7 @@ const Content = styled.div`
   gap: 28px;
 `
 
-export default function MyPage({ selectedIdol, onIdolChange, onLogout, onDeleteAccount }) {
+export default function MyPage({ selectedIdol, onIdolChange, nickname, onNicknameChange, onLogout, onDeleteAccount }) {
   const navigate = useNavigate()
   const [showIdolModal, setShowIdolModal] = useState(false)
 
@@ -67,6 +67,8 @@ export default function MyPage({ selectedIdol, onIdolChange, onLogout, onDeleteA
         {/* 프로필 — 아이돌 변경 필요 시 ProfileCard.jsx 수정 */}
         <ProfileCard
           idol={selectedIdol}
+          nickname={nickname}
+          onNicknameChange={onNicknameChange}
           onChangeClick={() => setShowIdolModal(true)}
         />
 
