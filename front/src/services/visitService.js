@@ -1,4 +1,4 @@
-const STORAGE_KEY = 'starspot_visits'
+import { STORAGE_KEY_VISITS as STORAGE_KEY } from '../constants/storageKeys'
 
 const getLocalVisits = () => {
   try {

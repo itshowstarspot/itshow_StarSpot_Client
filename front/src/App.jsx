@@ -19,8 +19,10 @@ import { useLocalStorage } from './hooks/useLocalStorage'
 import {
   STORAGE_KEY_IDOL,
   STORAGE_KEY_LOGGED_IN,
+  STORAGE_KEY_NICKNAME,
   STORAGE_KEY_COURSES,
   STORAGE_KEY_FAVORITES,
+  STORAGE_KEY_VISITS,
   STORAGE_KEY_LATEST_POST,
 } from './constants/storageKeys'
 
@@ -44,6 +46,7 @@ function SelectPage({ onSelect }) {
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useLocalStorage(STORAGE_KEY_LOGGED_IN, false)
   const [selectedIdol, setSelectedIdol] = useLocalStorage(STORAGE_KEY_IDOL, null)
+  const [nickname, setNickname] = useLocalStorage(STORAGE_KEY_NICKNAME, '')
   const [skipHomeIdolPrompt, setSkipHomeIdolPrompt] = useState(false)
 
   const handleLogin = () => { setIsLoggedIn(true) }
@@ -58,12 +61,15 @@ function App() {
     ;[
       STORAGE_KEY_IDOL,
       STORAGE_KEY_LOGGED_IN,
+      STORAGE_KEY_NICKNAME,
       STORAGE_KEY_COURSES,
       STORAGE_KEY_FAVORITES,
+      STORAGE_KEY_VISITS,
       STORAGE_KEY_LATEST_POST,
     ].forEach((key) => localStorage.removeItem(key))
     sessionStorage.clear()
     setSelectedIdol(null)
+    setNickname('')
     setIsLoggedIn(false)
   }
 
@@ -140,11 +146,13 @@ function App() {
           element={
             <PrivateRoute isLoggedIn={isLoggedIn}>
               <MyPage
-            selectedIdol={selectedIdol}
-            onIdolChange={setSelectedIdol}
-            onLogout={handleLogout}
-            onDeleteAccount={handleDeleteAccount}
-          />
+              selectedIdol={selectedIdol}
+              onIdolChange={setSelectedIdol}
+              nickname={nickname}
+              onNicknameChange={setNickname}
+              onLogout={handleLogout}
+              onDeleteAccount={handleDeleteAccount}
+            />
             </PrivateRoute>
           }
         />
