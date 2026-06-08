@@ -42,11 +42,15 @@ export default function PhotoSelect({ selectedIdol }) {
   // reviewPlaceId  : 리뷰 대상 장소 ID (PlaceDetailModal과 무관)
   // selectedPlaceId: 지도 핀 클릭 시 PlaceDetailModal을 열 장소 ID
   // 두 역할을 같은 state에 두면 PlaceDetailModal이 자동으로 열려버림
-  const [reviewFlow] = useState(() => !!sessionStorage.getItem(SESSION_KEY_REVIEW_PLACE))
+  const [reviewFlow] = useState(() => {
+    try { return !!sessionStorage.getItem(SESSION_KEY_REVIEW_PLACE) } catch { return false }
+  })
   const [reviewPlaceId] = useState(() => {
-    const saved = sessionStorage.getItem(SESSION_KEY_REVIEW_PLACE)
-    if (saved) sessionStorage.removeItem(SESSION_KEY_REVIEW_PLACE)
-    return saved || null
+    try {
+      const saved = sessionStorage.getItem(SESSION_KEY_REVIEW_PLACE)
+      if (saved) sessionStorage.removeItem(SESSION_KEY_REVIEW_PLACE)
+      return saved || null
+    } catch { return null }
   })
   // reviewFlow일 때는 null로 시작 — PlaceDetailModal이 자동으로 뜨지 않게
   const [selectedPlaceId, setSelectedPlaceId] = useState(null)
@@ -64,6 +68,7 @@ export default function PhotoSelect({ selectedIdol }) {
   const handleSubmit = async () => {
     // reviewFlow: 사진만 고르고 돌아가기 — 텍스트는 ReviewSheet에서 입력
     if (reviewFlow) {
+      if (!selectedPhoto) return
       setPendingReview(reviewPlaceId, selectedPhoto.src)
       clearCapturedPhotos()
       navigate('/home')

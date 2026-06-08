@@ -483,7 +483,11 @@ export default function PlaceDetailModal({ placeId, onClose, initialReview }) {
   const isFavorite = favorites.includes(placeId)
 
   const handleFrameCapture = () => {
-    sessionStorage.setItem(SESSION_KEY_REVIEW_PLACE, placeId)
+    try {
+      sessionStorage.setItem(SESSION_KEY_REVIEW_PLACE, placeId)
+    } catch (err) {
+      console.error('[PlaceDetailModal] sessionStorage 저장 실패:', err)
+    }
     navigate('/photo')
   }
 
@@ -494,14 +498,19 @@ export default function PlaceDetailModal({ placeId, onClose, initialReview }) {
   }
 
   const handleReviewSubmit = async ({ reviewText, photoSrc }) => {
-    const newReview = await createFeed({
-      placeId,
-      placeName: place?.name ?? '',
-      image: photoSrc ?? '',
-      content: reviewText.trim(),
-    })
-    setReviews((prev) => [newReview, ...prev])
-    showToastMessage('리뷰가 등록됐어요!')
+    try {
+      const newReview = await createFeed({
+        placeId,
+        placeName: place?.name ?? '',
+        image: photoSrc ?? '',
+        content: reviewText.trim(),
+      })
+      setReviews((prev) => [newReview, ...prev])
+      showToastMessage('리뷰가 등록됐어요!')
+    } catch (err) {
+      console.error('[PlaceDetailModal] 리뷰 등록 실패:', err)
+      showToastMessage('리뷰 등록에 실패했어요. 다시 시도해주세요.')
+    }
   }
 
   return (

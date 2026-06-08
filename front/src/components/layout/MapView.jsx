@@ -28,6 +28,32 @@ const ErrorMsg = styled.div`
   background: #f5f5f8;
 `
 
+const MyLocationBtn = styled.button`
+  position: absolute;
+  bottom: 24px;
+  right: 16px;
+  z-index: 10;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: none;
+  background: #ffffff;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+
+  &:hover { background: #f5f5f8; }
+  &:active { transform: scale(0.93); }
+
+  svg {
+    width: 22px;
+    height: 22px;
+  }
+`
+
 /** 카테고리별 핀 색상 */
 const CATEGORY_COLOR = {
   카페:   { bg: '#e8d664', border: '#b8962a', text: '#7a6210' },
@@ -128,8 +154,10 @@ export default function MapView({ places = [], onPlaceClick }) {
   const markersRef = useRef([])
   const myLocationRef = useRef(null)
   const infoOverlayRef = useRef(null)
+  const currentPosRef = useRef(null)   // 최신 내 위치 좌표 보관
   const [isReady, setIsReady] = useState(false)
   const [error, setError] = useState(null)
+  const [locating, setLocating] = useState(false)
 
   /* 지도 초기화 */
   useEffect(() => {
@@ -163,6 +191,7 @@ export default function MapView({ places = [], onPlaceClick }) {
             bestAccuracy = accuracy
 
             const pos = new window.kakao.maps.LatLng(latitude, longitude)
+            currentPosRef.current = pos  // 최신 위치 보관
 
             // 파란 점 위치 갱신
             if (myLocationRef.current) {
@@ -286,10 +315,62 @@ export default function MapView({ places = [], onPlaceClick }) {
   // onPlaceClick을 deps에 포함시켜 stale closure 방지
   }, [isReady, places, onPlaceClick])
 
+  const handleGoToMyLocation = () => {
+    if (!mapRef.current) return
+
+    // 이미 받아둔 위치가 있으면 즉시 이동
+    if (currentPosRef.current) {
+      mapRef.current.setCenter(currentPosRef.current)
+      mapRef.current.setLevel(3)
+      return
+    }
+
+    // 없으면 한 번만 getCurrentPosition 호출
+    if (!navigator.geolocation) return
+    setLocating(true)
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => {
+        const pos = new window.kakao.maps.LatLng(coords.latitude, coords.longitude)
+        currentPosRef.current = pos
+        mapRef.current.setCenter(pos)
+        mapRef.current.setLevel(3)
+        setLocating(false)
+      },
+      (err) => {
+        console.warn('[MapView] 위치 가져오기 실패:', err.message)
+        setLocating(false)
+      },
+      { enableHighAccuracy: true, timeout: 8000 }
+    )
+  }
+
   return (
     <MapWrap>
       <MapContainer ref={containerRef} />
       {error && <ErrorMsg><span>🗺</span><span>{error}</span></ErrorMsg>}
+      <MyLocationBtn
+        onClick={handleGoToMyLocation}
+        title="내 위치로 이동"
+        aria-label="내 위치로 이동"
+        style={{ opacity: locating ? 0.5 : 1 }}
+      >
+        {locating ? (
+          // 로딩 중 스피너
+          <svg viewBox="0 0 24 24" fill="none" stroke="#4285F4" strokeWidth="2.2" strokeLinecap="round">
+            <path d="M12 2a10 10 0 1 0 10 10" />
+          </svg>
+        ) : (
+          // 내 위치 아이콘
+          <svg viewBox="0 0 24 24" fill="none" stroke="#4285F4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="3" fill="#4285F4" stroke="none"/>
+            <circle cx="12" cy="12" r="8" />
+            <line x1="12" y1="2" x2="12" y2="4" />
+            <line x1="12" y1="20" x2="12" y2="22" />
+            <line x1="2" y1="12" x2="4" y2="12" />
+            <line x1="20" y1="12" x2="22" y2="12" />
+          </svg>
+        )}
+      </MyLocationBtn>
     </MapWrap>
   )
 }
