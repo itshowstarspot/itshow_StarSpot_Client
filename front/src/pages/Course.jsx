@@ -185,7 +185,7 @@ export default function Course({ selectedIdol }) {
           <BackBtn onClick={() => navigate(-1)}>←</BackBtn>
           <Title>코스</Title>
         </TopLeft>
-        <Button size="sm" onClick={() => setIsCreating(true)}>+ 새 코스</Button>
+        <Button size="sm" style={{ color: '#ffffff' }} onClick={() => setIsCreating(true)}>+ 새 코스</Button>
       </TopBar>
 
       <Content>

@@ -73,7 +73,7 @@ const NavBtn = styled.button`
 
 const Label = styled.span`
   font-size: 10px;
-  color: ${({ $active }) => ($active ? '#1a1a1a' : '#e8d664')};
+  color: ${({ $active }) => ($active ? '#ffffff' : '#e8d664')};
   font-weight: ${({ $active }) => ($active ? 700 : 500)};
   text-align: center;
   line-height: 1.2;

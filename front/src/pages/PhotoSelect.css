@@ -564,7 +564,7 @@
   border: 0;
   border-radius: 12px;
   background: #f0dc58;
-  color: #ffffff;
+  color: #ffffff !important;
   font-size: 23px;
   font-weight: 700;
   letter-spacing: 0;
@@ -575,6 +575,7 @@
 .photo-submit-button:disabled {
   opacity: 0.62;
   cursor: default;
+  color: #ffffff !important;
 }
 
 @media (max-width: 1500px) {

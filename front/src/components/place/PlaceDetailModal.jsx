@@ -301,7 +301,7 @@ const CancelBtn = styled.button`
 const SubmitBtn = styled.button`
   flex: 2; height: 48px; border-radius: 12px;
   border: none; background: #e8d664;
-  color: #1a1a1a; font-size: 15px; font-weight: 700;
+  color: #ffffff; font-size: 15px; font-weight: 700;
   cursor: pointer;
   &:disabled { background: rgba(232,214,100,0.3); color: rgba(45,47,54,0.3); cursor: default; }
 `

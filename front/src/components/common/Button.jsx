@@ -3,7 +3,7 @@ import styled, { css } from 'styled-components'
 const variants = {
   primary: css`
     background: #e8d664;
-    color: #1a1a1a;
+    color: #ffffff;
     &:hover:not(:disabled) { background: #d4c24e; }
   `,
   secondary: css`
