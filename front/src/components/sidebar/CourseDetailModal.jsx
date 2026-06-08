@@ -93,7 +93,7 @@ const NumBadge = styled.div`
   height: 22px;
   border-radius: 50%;
   background: #e8d664;
-  color: #1a1a1a;
+  color: #ffffff;
   font-size: 11px;
   font-weight: 700;
   display: flex;
@@ -172,7 +172,7 @@ const DeleteBtn = styled.button`
   border-radius: 10px;
   border: none;
   background: #e8d664;
-  color: #1a1a1a;
+  color: #ffffff;
   font-size: 14px;
   font-weight: 700;
   cursor: pointer;

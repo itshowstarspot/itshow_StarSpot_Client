@@ -119,7 +119,7 @@ const DropAddr = styled.div` font-size: 11px; color: rgba(45,47,54,0.45); margin
 const SearchBtn = styled.button`
   height: 42px; padding: 0 18px;
   background: #e8d664; border: none;
-  border-radius: 10px; color: #1a1a1a;
+  border-radius: 10px; color: #ffffff;
   font-size: 14px; font-weight: 700;
   cursor: pointer; flex-shrink: 0;
   transition: background 0.15s;

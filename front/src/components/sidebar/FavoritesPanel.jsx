@@ -62,7 +62,7 @@ const FilterChip = styled.button`
   border-radius: 13px;
   border: 1.5px solid ${({ $active }) => ($active ? '#e8d664' : 'rgba(45,47,54,0.15)')};
   background: ${({ $active }) => ($active ? '#e8d664' : 'transparent')};
-  color: ${({ $active }) => ($active ? '#1a1a1a' : 'rgba(45,47,54,0.5)')};
+  color: ${({ $active }) => ($active ? '#ffffff' : 'rgba(45,47,54,0.5)')};
   font-size: 11px;
   font-weight: ${({ $active }) => ($active ? 700 : 400)};
   cursor: pointer;
@@ -234,7 +234,7 @@ const AddBtn = styled.button`
   border: none;
   border-radius: 8px;
   background: #e8d664;
-  color: #1a1a1a;
+  color: #ffffff;
   font-size: 12px;
   font-weight: 700;
   cursor: pointer;

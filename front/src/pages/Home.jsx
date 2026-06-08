@@ -39,7 +39,7 @@ const PanelToggleBtn = styled.button`
   transform: translateX(-50%);
   z-index: 300;
   background: #e8d664;
-  color: #1a1a1a;
+  color: #ffffff;
   border: none;
   border-radius: 20px;
   padding: 10px 24px;
@@ -67,7 +67,7 @@ const FilterChip = styled.button`
   border-radius: 999px;
   border: 1.5px solid ${({ $active }) => ($active ? '#e8d664' : 'rgba(45,47,54,0.15)')};
   background: ${({ $active }) => ($active ? '#e8d664' : '#ffffff')};
-  color: ${({ $active }) => ($active ? '#1a1a1a' : 'rgba(45,47,54,0.6)')};
+  color: ${({ $active }) => ($active ? '#ffffff' : 'rgba(45,47,54,0.6)')};
   font-size: 12px;
   font-weight: 700;
   cursor: pointer;
