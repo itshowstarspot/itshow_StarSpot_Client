@@ -1,7 +1,6 @@
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
 
-// 피드 이미지는 /public/feeds/ 폴더에 이미지 파일을 넣고 파일명을 여기에 작성하세요.
-// 예: feed1.jpg → '/feeds/feed1.jpg'
+// 피드 mock 데이터
 const mockFeeds = [
   {
     id: '1',
@@ -27,8 +26,6 @@ const mockFeeds = [
 
 /**
  * 피드 목록 조회
- * @param {{ placeId?: string, sort?: 'latest' | 'popular' }} options
- * @returns {Promise<Feed[]>}
  */
 export const fetchFeeds = async ({ placeId, sort = 'latest' } = {}) => {
   if (BASE_URL) {
@@ -36,7 +33,7 @@ export const fetchFeeds = async ({ placeId, sort = 'latest' } = {}) => {
       const params = new URLSearchParams({ sort });
       if (placeId) params.append('placeId', placeId);
       
-      const res = await fetch(`${BASE_URL}/api/feeds?${params}`);
+      const res = await fetch(`${BASE_URL}/feeds?${params}`);
       if (!res.ok) throw new Error('피드 목록 조회 실패');
       
       const dbFeeds = await res.json();
@@ -48,10 +45,7 @@ export const fetchFeeds = async ({ placeId, sort = 'latest' } = {}) => {
         userId: feed.user_email || '익명',
         nickname: feed.nickname || '익명',
         content: feed.content,
-        
-        // [★핵심] 백엔드의 photo_path를 프론트의 image로 매핑하여 리뷰 사진 로딩!
-        image: feed.photo_path || '', 
-        
+        image: feed.image || feed.photo_path || '', 
         createdAt: feed.created_at || new Date().toISOString()
       }));
     } catch (err) {
@@ -68,27 +62,40 @@ export const fetchFeeds = async ({ placeId, sort = 'latest' } = {}) => {
 
 /**
  * 피드 등록
- * @param {{ placeId: string, image: string, content: string }} data
- * @returns {Promise<Feed>}
+ * @param {{ placeId: string, placeName: string, image: string, content: string, userEmail?: string, nickname?: string }} data
  */
 export const createFeed = async (data) => {
-  if (!data.content?.trim()) throw new Error('내용을 입력해주세요.')
+  if (!data.content?.trim()) throw new Error('내용을 입력해주세요.');
 
   if (BASE_URL) {
-    // [수정] 등록할 때도 백엔드 라우터 규칙에 맞게 /api/feeds 로 경로 수정
-    const res = await fetch(`${BASE_URL}/api/feeds`, {
+    const res = await fetch(`${BASE_URL}/feeds`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    })
-    if (!res.ok) throw new Error('피드 등록 실패')
-    return res.json()
+      body: JSON.stringify(data), // userEmail, nickname이 포함된 객체 전송
+    });
+
+    if (!res.ok) throw new Error('피드 등록 실패');
+    const result = await res.json();
+
+    // 🌟 프론트엔드 UI 컴포넌트(PlaceDetailModal) 구조에 맞춰 규격화 반환
+    return {
+      id: String(result.id),
+      placeId: String(data.placeId),
+      placeName: data.placeName,
+      userId: data.userEmail || '익명',
+      nickname: data.nickname || '익명',
+      content: result.content || data.content,
+      image: result.image || '',
+      createdAt: new Date().toISOString()
+    };
   }
 
   return {
     id: crypto.randomUUID(),
     ...data,
+    userId: data.userEmail || 'user1',
+    nickname: data.nickname || '익명',
     viewCount: 0,
     createdAt: new Date().toISOString(),
-  }
-}
+  };
+};

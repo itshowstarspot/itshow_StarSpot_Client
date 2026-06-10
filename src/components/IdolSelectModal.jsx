@@ -7,7 +7,7 @@ const Overlay = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 800;
+  z-index: 9999; /* 🌟 마이페이지 쌓임 맥락을 확실히 뚫도록 z-index 상향 유지 */
 `;
 
 const ModalCard = styled.div`
@@ -83,36 +83,38 @@ const Card = styled.button`
 `;
 
 export default function IdolSelectModal({ isOpen, idols, onSelect }) {
-  // 🌟 [초강력 절대 방어선]
-  // 부모 상태가 true를 주든 말든, 로컬스토리지 하드웨어에 유저 데이터나
-  // 최애 아이돌 데이터가 단 하나라도 포착되면 화면 렌더링을 완전히 폭파(null)시킵니다.
-  const storageUser = localStorage.getItem("user");
-  const storageIdol = localStorage.getItem("selected_idol");
+  // 🌟 [수정된 방어선]
+  // 부모가 명시적으로 모달을 열지 않은 상태(!isOpen)일 때만 자동 팝업 차단 로직이 작동하게 합니다.
+  // 이렇게 하면 마이페이지에서 버튼을 눌러 isOpen이 true가 되었을 때는 정상적으로 모달이 열립니다.
+  if (!isOpen) {
+    const storageUser = localStorage.getItem("user");
+    const storageIdol = localStorage.getItem("selected_idol");
 
-  // 1. 캐싱된 최애 아이돌 정보가 이미 로컬스토리지에 매칭되어 있다면 즉시 차단
-  if (storageIdol) return null;
+    if (storageIdol) return null;
 
-  // 2. 유저 정보 객체 내부의 모든 최애 필드명 변수 매핑 검사
-  if (storageUser) {
-    try {
-      const parsedUser = JSON.parse(storageUser);
-      if (
-        parsedUser.favorite_idol ||
-        parsedUser.favoriteIdol ||
-        parsedUser.favorite
-      ) {
-        return null; // 기존 회원이면 모달 UI를 그리지 않고 즉시 퇴근
+    if (storageUser) {
+      try {
+        const parsedUser = JSON.parse(storageUser);
+        if (
+          parsedUser.favorite_idol ||
+          parsedUser.favoriteIdol ||
+          parsedUser.favorite
+        ) {
+          return null;
+        }
+      } catch (e) {
+        console.error("모달 내부 세션 파싱 실패:", e);
       }
-    } catch (e) {
-      console.error("모달 내부 세션 파싱 실패:", e);
     }
+
+    // isOpen이 false이고 스토리지 조건도 안 걸리면 당연히 안 보여야 하므로 null
+    return null;
   }
 
-  // 기본 부모 제어 트리거 검사
-  if (!isOpen) return null;
-
   return (
-    <Overlay>
+    <Overlay onClick={() => onSelect(null)}>
+      {" "}
+      {/* 바깥 배경 터치 시 닫히도록 하려면 부모 핸들러 연동 권장 */}
       <ModalCard onClick={(e) => e.stopPropagation()}>
         <GridWrap>
           <Title>

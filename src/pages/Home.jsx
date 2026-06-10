@@ -91,7 +91,6 @@ const PanelOverlay = styled.div`
     background: rgba(0, 0, 0, 0.35);
     z-index: 190;
   }
-  border-radius: 0;
 `;
 
 export default function Home({ selectedIdol, onIdolChange, skipIdolPrompt }) {

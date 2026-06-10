@@ -12,6 +12,8 @@ import AccountSection from "../components/mypage/AccountSection";
 import { idols } from "../domain/idol/idol";
 
 const Page = styled.main`
+  position: relative; /* ⭐ 쌓임 맥락 형성을 위해 반드시 추가 */
+  z-index: 500; /* ⭐ 모달 오버레이(300)보다 높게 설정하여 위로 올림 */
   min-height: 100vh;
   background: #f5f5f8;
   color: #2d2f36;
