@@ -1,19 +1,23 @@
-import { useState } from 'react'
-import styled from 'styled-components'
-import { useNavigate } from 'react-router-dom'
-import IdolSelectModal from '../components/IdolSelectModal'
-import ProfileCard from '../components/mypage/ProfileCard'
-import FavoritesSection from '../components/mypage/FavoritesSection'
-import MyCoursesSection from '../components/mypage/MyCoursesSection'
-import QuickNavSection from '../components/mypage/QuickNavSection'
-import AccountSection from '../components/mypage/AccountSection'
-import { idols } from '../domain/idol/idol'
+import { useState, useEffect } from "react";
+import styled from "styled-components";
+import { useNavigate } from "react-router-dom";
+import axios from "axios";
+
+import IdolSelectModal from "../components/IdolSelectModal";
+import ProfileCard from "../components/mypage/ProfileCard";
+import FavoritesSection from "../components/mypage/FavoritesSection";
+import MyCoursesSection from "../components/mypage/MyCoursesSection";
+import QuickNavSection from "../components/mypage/QuickNavSection";
+import AccountSection from "../components/mypage/AccountSection";
+import { idols } from "../domain/idol/idol";
 
 const Page = styled.main`
+  position: relative; /* ⭐ 쌓임 맥락 형성을 위해 반드시 추가 */
+  z-index: 500; /* ⭐ 모달 오버레이(300)보다 높게 설정하여 위로 올림 */
   min-height: 100vh;
   background: #f5f5f8;
   color: #2d2f36;
-`
+`;
 
 const TopBar = styled.div`
   display: flex;
@@ -21,11 +25,11 @@ const TopBar = styled.div`
   gap: 12px;
   padding: 16px 20px;
   background: #ffffff;
-  border-bottom: 1px solid rgba(45,47,54,0.1);
+  border-bottom: 1px solid rgba(45, 47, 54, 0.1);
   position: sticky;
   top: 0;
   z-index: 100;
-`
+`;
 
 const BackBtn = styled.button`
   border: none;
@@ -34,14 +38,14 @@ const BackBtn = styled.button`
   font-size: 22px;
   cursor: pointer;
   line-height: 1;
-`
+`;
 
 const PageTitle = styled.h1`
   font-size: 16px;
   font-weight: 700;
   color: #2d2f36;
   margin: 0;
-`
+`;
 
 const Content = styled.div`
   max-width: 560px;
@@ -50,11 +54,127 @@ const Content = styled.div`
   display: flex;
   flex-direction: column;
   gap: 28px;
-`
+`;
 
-export default function MyPage({ selectedIdol, onIdolChange, nickname, onNicknameChange, onLogout, onDeleteAccount }) {
-  const navigate = useNavigate()
-  const [showIdolModal, setShowIdolModal] = useState(false)
+export default function MyPage({ onLogout, onDeleteAccount }) {
+  const navigate = useNavigate();
+
+  const [currentNickname, setCurrentNickname] = useState("사용자");
+  const [currentIdol, setCurrentIdol] = useState(null);
+  const [showIdolModal, setShowIdolModal] = useState(false);
+
+  // 마운트 시 데이터 세션 동기화
+  useEffect(() => {
+    const savedUser = localStorage.getItem("user");
+    if (savedUser) {
+      const userObj = JSON.parse(savedUser);
+
+      if (userObj.nickname) {
+        setCurrentNickname(userObj.nickname);
+      }
+
+      if (userObj.favorite_idol) {
+        const matchedIdol = idols.find(
+          (i) =>
+            i.name === userObj.favorite_idol || i.id === userObj.favorite_idol,
+        );
+        setCurrentIdol(matchedIdol || null);
+      }
+    }
+  }, []);
+
+  // 닉네임 변경 핸들러 + 백엔드 DB 연동
+  const handleNicknameChange = async (newNick) => {
+    setCurrentNickname(newNick);
+
+    const savedUser = localStorage.getItem("user");
+    if (!savedUser) return;
+
+    const userObj = JSON.parse(savedUser);
+    userObj.nickname = newNick;
+    localStorage.setItem("user", JSON.stringify(userObj));
+
+    try {
+      const userId = userObj.id || userObj.user_id;
+      const userEmail = userObj.email || userObj.user_email;
+
+      await axios.put(`http://localhost:5000/api/users/profile`, {
+        userId: userId,
+        email: userEmail,
+        nickname: newNick,
+        favorite_idol: userObj.favorite_idol,
+      });
+
+      console.log("마이페이지에서 닉네임 변경 및 DB 반영 완료! 🔄📛");
+    } catch (err) {
+      console.error("마이페이지 닉네임 DB 업데이트 실패:", err);
+    }
+  };
+
+  // 최애 아이돌 변경 핸들러 + 백엔드 DB 연동
+  const handleIdolSelect = async (idol) => {
+    setCurrentIdol(idol);
+    setShowIdolModal(false);
+
+    const savedUser = localStorage.getItem("user");
+    if (!savedUser) return;
+
+    const userObj = JSON.parse(savedUser);
+    userObj.favorite_idol = idol.name;
+    localStorage.setItem("user", JSON.stringify(userObj));
+
+    try {
+      const userId = userObj.id || userObj.user_id;
+      const userEmail = userObj.email || userObj.user_email;
+
+      await axios.put(`http://localhost:5000/api/users/profile`, {
+        userId: userId,
+        email: userEmail,
+        favorite_idol: idol.name,
+      });
+
+      console.log("마이페이지에서 최애 아이돌 변경 및 DB 반영 완료! 🔄⭐");
+    } catch (err) {
+      console.error("마이페이지 최애 아이돌 DB 업데이트 실패:", err);
+    }
+  };
+
+  // 로그아웃 핸들러
+  const handleLogoutClick = () => {
+    if (window.confirm("로그아웃 하시겠습니까?")) {
+      localStorage.removeItem("user");
+      if (onLogout) onLogout();
+      navigate("/");
+    }
+  };
+
+  // 계정 탈퇴 핸들러 + 백엔드 DB 연동
+  const handleDeleteAccountClick = async () => {
+    if (
+      window.confirm("정말로 탈퇴하시겠습니까? 모든 데이터가 영구 삭제됩니다.")
+    ) {
+      const savedUser = localStorage.getItem("user");
+      if (!savedUser) return;
+
+      const userObj = JSON.parse(savedUser);
+      const targetIdentifier =
+        userObj.id || userObj.user_id || userObj.email || userObj.user_email;
+
+      try {
+        await axios.delete(
+          `http://localhost:5000/api/users/${targetIdentifier}`,
+        );
+        alert("탈퇴가 완료되었습니다. 이용해 주셔서 감사합니다.");
+
+        localStorage.removeItem("user");
+        if (onDeleteAccount) onDeleteAccount();
+        navigate("/");
+      } catch (err) {
+        console.error("회원 탈퇴 처리 실패:", err);
+        alert("회원 탈퇴 중 오류가 발생했습니다.");
+      }
+    }
+  };
 
   return (
     <Page>
@@ -64,35 +184,34 @@ export default function MyPage({ selectedIdol, onIdolChange, nickname, onNicknam
       </TopBar>
 
       <Content>
-        {/* 프로필 — 아이돌 변경 필요 시 ProfileCard.jsx 수정 */}
         <ProfileCard
-          idol={selectedIdol}
-          nickname={nickname}
-          onNicknameChange={onNicknameChange}
+          idol={currentIdol}
+          nickname={currentNickname}
+          onNicknameChange={handleNicknameChange}
           onChangeClick={() => setShowIdolModal(true)}
         />
 
-        {/* 즐겨찾기 — 기능 추가 시 FavoritesSection.jsx 수정 */}
-        <FavoritesSection onMapClick={() => navigate('/home')} />
+        <FavoritesSection onMapClick={() => navigate("/home")} />
 
-        {/* 내 코스 — 기능 추가 시 MyCoursesSection.jsx 수정 */}
         <MyCoursesSection
-          onCourseClick={() => navigate('/course')}
-          onCreateClick={() => navigate('/course')}
+          onCourseClick={() => navigate("/course")}
+          onCreateClick={() => navigate("/course")}
         />
 
-        {/* 방문기록 / 피드 링크 — 항목 추가 시 QuickNavSection.jsx의 ITEMS 배열에 추가 */}
         <QuickNavSection onNavigate={(key) => navigate(`/${key}`)} />
 
-        {/* 로그아웃 / 계정 탈퇴 */}
-        <AccountSection onLogout={onLogout} onDeleteAccount={onDeleteAccount} />
+        {/* 중요: 새로 정의한 핸들러들을 하위 컴포넌트에 안전하게 바인딩 */}
+        <AccountSection
+          onLogout={handleLogoutClick}
+          onDeleteAccount={handleDeleteAccountClick}
+        />
       </Content>
 
       <IdolSelectModal
         isOpen={showIdolModal}
         idols={idols}
-        onSelect={(idol) => { onIdolChange(idol); setShowIdolModal(false) }}
+        onSelect={handleIdolSelect}
       />
     </Page>
-  )
+  );
 }

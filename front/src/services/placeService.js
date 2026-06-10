@@ -7,8 +7,9 @@
 
 import { places as mockPlaces } from '../data/places'
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
-const KAKAO_REST_KEY = import.meta.env.VITE_KAKAO_REST_KEY
+// 백엔드 진짜 API 주소 고정
+const BASE_URL = 'http://localhost:5000/api';
+const KAKAO_REST_KEY = import.meta.env.VITE_KAKAO_REST_KEY;
 
 /** 카카오 응답 → 앱 내부 Place 형식으로 변환 */
 function kakaoToPlace(item, idolId = '') {
@@ -21,7 +22,6 @@ function kakaoToPlace(item, idolId = '') {
     category: mapCategory(item.category_group_name),
     lat: parseFloat(item.y),
     lng: parseFloat(item.x),
-    // [수정] 기존에 place_name을 그대로 복사하던 버그 수정 — 카카오는 별도 description 필드 없음
     description: item.category_group_name || '',
     hours: '',
     phone: item.phone || '',
@@ -58,18 +58,33 @@ async function kakaoSearchKeyword(query, { x, y, radius = 5000, size = 15 } = {}
  */
 export const fetchPlacesByIdol = async (idolId) => {
   if (BASE_URL) {
-    const res = await fetch(`${BASE_URL}/places?idolId=${idolId}`)
-    if (!res.ok) throw new Error('장소 목록 조회 실패')
-    return res.json()
+    const res = await fetch(`${BASE_URL}/spots`); 
+    if (!res.ok) throw new Error('장소 목록 조회 실패');
+
+    const allSpots = await res.json();
+
+    return allSpots.map((spot) => ({
+      id: String(spot.id),
+      name: spot.placeName,          
+      address: spot.address,
+      category: spot.category || '기타',
+      lat: Number(spot.latitude),    
+      lng: Number(spot.longitude),   
+      description: spot.description || '',
+      
+      // [★수정★] 상세 모달창 연동을 위해 image와 imageUrl을 모두 뚫어줍니다.
+      image: spot.imageUrl || '',
+      imageUrl: spot.imageUrl || '',
+      
+      hours: spot.operatingHours || '',
+      holiday: spot.holiday || ''
+    }));
   }
-  return mockPlaces.filter((p) => p.idolId === idolId)
+  return mockPlaces.filter((p) => p.idolId === idolId);
 }
 
 /**
  * 장소 검색 (카카오 키워드 검색 우선, 없으면 mock)
- * @param {string} query
- * @param {string} [idolId]
- * @returns {Promise<Place[]>}
  */
 export const searchPlaces = async (query, idolId) => {
   if (BASE_URL) {
@@ -84,7 +99,7 @@ export const searchPlaces = async (query, idolId) => {
     try {
       const docs = await kakaoSearchKeyword(query)
       return docs.map((item) => kakaoToPlace(item, idolId))
-    } catch { /* mock으로 폴백 */ }
+    } catch { }
   }
 
   return mockPlaces.filter(
@@ -96,39 +111,42 @@ export const searchPlaces = async (query, idolId) => {
 
 /**
  * 장소 상세 조회
- * @param {string} placeId
- * @returns {Promise<Place>}
  */
 export const fetchPlaceDetail = async (placeId) => {
   if (BASE_URL) {
-    const res = await fetch(`${BASE_URL}/places/${placeId}`)
-    if (!res.ok) throw new Error('장소 상세 조회 실패')
-    return res.json()
-  }
-
-  if (KAKAO_REST_KEY && /^\d+$/.test(placeId)) {
     try {
-      const res = await fetch(
-        `https://dapi.kakao.com/v2/local/place/${placeId}.json`,
-        { headers: { Authorization: `KakaoAK ${KAKAO_REST_KEY}` } }
-      )
-      if (res.ok) {
-        const data = await res.json()
-        return kakaoToPlace(data)
-      }
-    } catch { /* mock으로 폴백 */ }
+      // [★체크★] 중복되던 /api를 걷어내어 정상적인 백엔드 주소 라우팅 보장
+      const res = await fetch(`${BASE_URL}/places/${placeId}`);
+      if (!res.ok) throw new Error('장소 상세 정보 조회 실패');
+      
+      const spot = await res.json();
+      
+      return {
+        id: String(spot.id),
+        name: spot.placeName || spot.name,
+        address: spot.address,
+        category: spot.category || '기타',
+        lat: Number(spot.latitude || spot.lat),
+        lng: Number(spot.longitude || spot.lng),
+        description: spot.description || '',
+        
+        // [★체크★] 모달창 상단 회색 영역을 채워줄 이미지 속성 매핑
+        image: spot.imageUrl || '',
+        imageUrl: spot.imageUrl || '',
+        
+        hours: spot.operatingHours || spot.hours || '',
+        holiday: spot.holiday || ''
+      };
+    } catch (err) {
+      console.error("fetchPlaceDetail 에러:", err);
+      throw err;
+    }
   }
-
-  const place = mockPlaces.find((p) => p.id === placeId)
-  if (!place) throw new Error('장소를 찾을 수 없습니다.')
-  return place
-}
+  return mockPlaces.find((p) => p.id === placeId);
+};
 
 /**
- * 카카오 키워드로 장소 검색 (거리순 등 외부 직접 호출용)
- * @param {string} query
- * @param {{ lat?: number, lng?: number }} options
- * @returns {Promise<Place[]>}
+ * 카카오 키워드로 장소 검색
  */
 export const searchPlacesByKakao = async (query, { lat, lng } = {}) => {
   if (!KAKAO_REST_KEY) throw new Error('VITE_KAKAO_REST_KEY가 없습니다.')

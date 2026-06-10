@@ -135,7 +135,7 @@ export const fetchRecommendedCourses = async (idolId) => {
  */
 export const fetchCourses = async () => {
   if (BASE_URL) {
-    const res = await fetch(`${BASE_URL}/courses`)
+    const res = await fetch(`${BASE_URL}/api/courses`);
     if (!res.ok) throw new Error('코스 목록 조회 실패')
     return res.json()
   }
