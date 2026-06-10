@@ -1,20 +1,26 @@
-import { useState } from 'react'
-import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
-import Start from './pages/Start'
-import Home from './pages/Home'
-import Login from './pages/Login'
-import Select from './pages/Select'
-import PlaceDetail from './pages/PlaceDetail'
-import Feed from './pages/Feed'
-import Photo from './pages/Photo'
-import PhotoFrame from './pages/PhotoFrame'
-import PhotoSelect from './pages/PhotoSelect'
-import RoutePage from './pages/Route'
-import Course from './pages/Course'
-import VisitHistory from './pages/VisitHistory'
-import MyPage from './pages/MyPage'
-import PostRegister from './pages/PostRegister'
-import { useLocalStorage } from './hooks/useLocalStorage'
+import { useState } from "react";
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  Navigate,
+  useNavigate,
+} from "react-router-dom";
+import Start from "./pages/Start";
+import Home from "./pages/Home";
+import Login from "./pages/Login";
+import Select from "./pages/Select";
+import PlaceDetail from "./pages/PlaceDetail";
+import Feed from "./pages/Feed";
+import Photo from "./pages/Photo";
+import PhotoFrame from "./pages/PhotoFrame";
+import PhotoSelect from "./pages/PhotoSelect";
+import RoutePage from "./pages/Route";
+import Course from "./pages/Course";
+import VisitHistory from "./pages/VisitHistory";
+import MyPage from "./pages/MyPage";
+import PostRegister from "./pages/PostRegister";
+import { useLocalStorage } from "./hooks/useLocalStorage";
 import {
   STORAGE_KEY_IDOL,
   STORAGE_KEY_LOGGED_IN,
@@ -23,41 +29,45 @@ import {
   STORAGE_KEY_FAVORITES,
   STORAGE_KEY_VISITS,
   STORAGE_KEY_LATEST_POST,
-} from './constants/storageKeys'
+} from "./constants/storageKeys";
 
 /** 로그인 안 된 상태에서 보호된 페이지 접근 시 /login으로 리다이렉트 */
 function PrivateRoute({ isLoggedIn, children }) {
-  return isLoggedIn ? children : <Navigate to="/login" replace />
+  return isLoggedIn ? children : <Navigate to="/login" replace />;
 }
 
 function SelectPage({ onSelect }) {
-  const navigate = useNavigate()
+  const navigate = useNavigate();
   return (
     <Select
       onSelect={(idol) => {
-        onSelect(idol)
-        navigate('/home')
+        onSelect(idol);
+        navigate("/home");
       }}
     />
-  )
+  );
 }
 
 function App() {
-  const [isLoggedIn, setIsLoggedIn] = useLocalStorage(STORAGE_KEY_LOGGED_IN, false)
-  const [selectedIdol, setSelectedIdol] = useLocalStorage(STORAGE_KEY_IDOL, null)
-  const [nickname, setNickname] = useLocalStorage(STORAGE_KEY_NICKNAME, '')
-  const [skipHomeIdolPrompt, setSkipHomeIdolPrompt] = useState(false)
+  const [isLoggedIn, setIsLoggedIn] = useLocalStorage(
+    STORAGE_KEY_LOGGED_IN,
+    false,
+  );
+  const [selectedIdol, setSelectedIdol] = useLocalStorage(
+    STORAGE_KEY_IDOL,
+    null,
+  );
+  const [nickname, setNickname] = useLocalStorage(STORAGE_KEY_NICKNAME, "");
+  const [skipHomeIdolPrompt, setSkipHomeIdolPrompt] = useState(false);
 
-  const handleLogin = () => { setIsLoggedIn(true) }
+  const handleLogin = () => {
+    setIsLoggedIn(true);
+  };
 
+  // 🌟 [수정 포인트] 로그아웃 시 이전 회원의 로컬스토리지 데이터를 완벽히 청소합니다.
   const handleLogout = () => {
-    setIsLoggedIn(false)
-    localStorage.removeItem(STORAGE_KEY_LOGGED_IN)
-  }
-
-  const handleDeleteAccount = () => {
-    // 모든 앱 데이터 삭제
-    ;[
+    // 1. 브라우저 로컬스토리지에 들어있는 유저 개인 데이터 일괄 삭제
+    const keysToRemove = [
       STORAGE_KEY_IDOL,
       STORAGE_KEY_LOGGED_IN,
       STORAGE_KEY_NICKNAME,
@@ -65,28 +75,78 @@ function App() {
       STORAGE_KEY_FAVORITES,
       STORAGE_KEY_VISITS,
       STORAGE_KEY_LATEST_POST,
-    ].forEach((key) => localStorage.removeItem(key))
-    sessionStorage.clear()
-    setSelectedIdol(null)
-    setNickname('')
-    setIsLoggedIn(false)
-  }
+      "user", // 백엔드 세션용 유저 키 데이터 청소
+      "selected_idol", // 백엔드 캐시용 아이돌 키 데이터 청소
+    ];
+
+    keysToRemove.forEach((key) => localStorage.removeItem(key));
+    sessionStorage.clear();
+
+    // 2. 리액트 App State도 완벽하게 초기화하여 잔상 제거
+    setSelectedIdol(null);
+    setNickname("");
+    setIsLoggedIn(false);
+    setSkipHomeIdolPrompt(false);
+
+    console.log("🧼 로그아웃 완료: 이전 세션 및 스토리지 데이터 청소 성공!");
+  };
+
+  const handleDeleteAccount = () => {
+    // 모든 앱 데이터 삭제
+    [
+      STORAGE_KEY_IDOL,
+      STORAGE_KEY_LOGGED_IN,
+      STORAGE_KEY_NICKNAME,
+      STORAGE_KEY_COURSES,
+      STORAGE_KEY_FAVORITES,
+      STORAGE_KEY_VISITS,
+      STORAGE_KEY_LATEST_POST,
+      "user",
+      "selected_idol",
+    ].forEach((key) => localStorage.removeItem(key));
+    sessionStorage.clear();
+    setSelectedIdol(null);
+    setNickname("");
+    setIsLoggedIn(false);
+  };
 
   return (
     <BrowserRouter>
       <Routes>
         {/* 시작하기 → 로그인 → 최애선택 → 홈 */}
-        <Route path="/" element={<Navigate to={isLoggedIn ? '/home' : '/login'} replace />} />
-        <Route path="/start" element={isLoggedIn ? <Navigate to="/home" replace /> : <Start />} />
+        <Route
+          path="/"
+          element={<Navigate to={isLoggedIn ? "/home" : "/login"} replace />}
+        />
+        <Route
+          path="/start"
+          element={isLoggedIn ? <Navigate to="/home" replace /> : <Start />}
+        />
 
         {/* 공개 페이지 */}
         <Route
           path="/login"
-          element={isLoggedIn ? <Navigate to="/home" replace /> : <Login onLogin={handleLogin} hasIdol={!!selectedIdol} />}
+          element={
+            isLoggedIn ? (
+              <Navigate to="/home" replace />
+            ) : (
+              <Login onLogin={handleLogin} hasIdol={!!selectedIdol} />
+            )
+          }
         />
         <Route
           path="/signup"
-          element={isLoggedIn ? <Navigate to="/home" replace /> : <Login onLogin={handleLogin} hasIdol={!!selectedIdol} defaultTab="signup" />}
+          element={
+            isLoggedIn ? (
+              <Navigate to="/home" replace />
+            ) : (
+              <Login
+                onLogin={handleLogin}
+                hasIdol={!!selectedIdol}
+                defaultTab="signup"
+              />
+            )
+          }
         />
 
         {/* 보호된 페이지 (로그인 필요) */}
@@ -96,8 +156,8 @@ function App() {
             <PrivateRoute isLoggedIn={isLoggedIn}>
               <SelectPage
                 onSelect={(idol) => {
-                  setSelectedIdol(idol)
-                  setSkipHomeIdolPrompt(false)
+                  setSelectedIdol(idol);
+                  setSkipHomeIdolPrompt(false);
                 }}
               />
             </PrivateRoute>
@@ -116,12 +176,54 @@ function App() {
             </PrivateRoute>
           }
         />
-        <Route path="/place/:id" element={<PrivateRoute isLoggedIn={isLoggedIn}><PlaceDetail /></PrivateRoute>} />
-        <Route path="/feed" element={<PrivateRoute isLoggedIn={isLoggedIn}><Feed /></PrivateRoute>} />
-        <Route path="/photo" element={<PrivateRoute isLoggedIn={isLoggedIn}><Photo selectedIdol={selectedIdol} /></PrivateRoute>} />
-        <Route path="/photoframe" element={<PrivateRoute isLoggedIn={isLoggedIn}><PhotoFrame /></PrivateRoute>} />
-        <Route path="/photoselect" element={<PrivateRoute isLoggedIn={isLoggedIn}><PhotoSelect selectedIdol={selectedIdol} /></PrivateRoute>} />
-        <Route path="/route" element={<PrivateRoute isLoggedIn={isLoggedIn}><RoutePage /></PrivateRoute>} />
+        <Route
+          path="/place/:id"
+          element={
+            <PrivateRoute isLoggedIn={isLoggedIn}>
+              <PlaceDetail />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/feed"
+          element={
+            <PrivateRoute isLoggedIn={isLoggedIn}>
+              <Feed />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/photo"
+          element={
+            <PrivateRoute isLoggedIn={isLoggedIn}>
+              <Photo selectedIdol={selectedIdol} />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/photoframe"
+          element={
+            <PrivateRoute isLoggedIn={isLoggedIn}>
+              <PhotoFrame />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/photoselect"
+          element={
+            <PrivateRoute isLoggedIn={isLoggedIn}>
+              <PhotoSelect selectedIdol={selectedIdol} />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/route"
+          element={
+            <PrivateRoute isLoggedIn={isLoggedIn}>
+              <RoutePage />
+            </PrivateRoute>
+          }
+        />
         <Route
           path="/post"
           element={
@@ -130,12 +232,22 @@ function App() {
             </PrivateRoute>
           }
         />
-        <Route path="/course" element={<PrivateRoute isLoggedIn={isLoggedIn}><Course selectedIdol={selectedIdol} /></PrivateRoute>} />
+        <Route
+          path="/course"
+          element={
+            <PrivateRoute isLoggedIn={isLoggedIn}>
+              <Course selectedIdol={selectedIdol} />
+            </PrivateRoute>
+          }
+        />
         <Route
           path="/visit"
           element={
             <PrivateRoute isLoggedIn={isLoggedIn}>
-              <VisitHistory selectedIdol={selectedIdol} onIdolChange={setSelectedIdol} />
+              <VisitHistory
+                selectedIdol={selectedIdol}
+                onIdolChange={setSelectedIdol}
+              />
             </PrivateRoute>
           }
         />
@@ -145,20 +257,23 @@ function App() {
           element={
             <PrivateRoute isLoggedIn={isLoggedIn}>
               <MyPage
-              selectedIdol={selectedIdol}
-              onIdolChange={setSelectedIdol}
-              nickname={nickname}
-              onNicknameChange={setNickname}
-              onLogout={handleLogout}
-              onDeleteAccount={handleDeleteAccount}
-            />
+                selectedIdol={selectedIdol}
+                onIdolChange={setSelectedIdol}
+                nickname={nickname}
+                onNicknameChange={setNickname}
+                onLogout={handleLogout}
+                onDeleteAccount={handleDeleteAccount}
+              />
             </PrivateRoute>
           }
         />
-        <Route path="*" element={<Navigate to={isLoggedIn ? '/home' : '/'} replace />} />
+        <Route
+          path="*"
+          element={<Navigate to={isLoggedIn ? "/home" : "/"} replace />}
+        />
       </Routes>
     </BrowserRouter>
-  )
+  );
 }
 
-export default App
+export default App;

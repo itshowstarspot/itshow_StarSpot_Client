@@ -1,4 +1,4 @@
-import styled from 'styled-components'
+import styled from "styled-components";
 
 const Overlay = styled.div`
   position: fixed;
@@ -8,7 +8,7 @@ const Overlay = styled.div`
   align-items: center;
   justify-content: center;
   z-index: 800;
-`
+`;
 
 const ModalCard = styled.div`
   background: #ffffff;
@@ -19,40 +19,40 @@ const ModalCard = styled.div`
   max-height: 88vh;
   overflow-y: auto;
   box-shadow: 0 16px 48px rgba(0, 0, 0, 0.22);
-`
+`;
 
 /* 제목 */
 const Title = styled.p`
-  color: #E8C664;
-  font-family: 'YPairing', sans-serif;
+  color: #e8c664;
+  font-family: "YPairing", sans-serif;
   font-size: 20px;
   font-style: normal;
   font-weight: 400;
   line-height: normal;
   margin-bottom: 14px;
-`
+`;
 
 const IdolHighlight = styled.strong`
-  color: #E8B664;
-  font-family: 'YPairing', sans-serif;
+  color: #e8b664;
+  font-family: "YPairing", sans-serif;
   font-size: 32px;
   font-style: normal;
   font-weight: 400;
   line-height: normal;
-`
+`;
 
 /* 카드 그리드 감싸는 노리끼리 회색 배경 박스 */
 const GridWrap = styled.div`
   border-radius: 10px 10px 0 0;
   background: rgba(230, 227, 208, 0.34);
   padding: 16px;
-`
+`;
 
 const Grid = styled.div`
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 12px;
-`
+`;
 
 /* 카드: 이미지만 */
 const Card = styled.button`
@@ -64,7 +64,9 @@ const Card = styled.button`
   background: #f0f0f0;
   aspect-ratio: 3 / 4;
   display: block;
-  transition: transform 0.18s, box-shadow 0.18s;
+  transition:
+    transform 0.18s,
+    box-shadow 0.18s;
 
   &:hover {
     transform: scale(1.04);
@@ -78,10 +80,36 @@ const Card = styled.button`
     object-position: top center;
     display: block;
   }
-`
+`;
 
 export default function IdolSelectModal({ isOpen, idols, onSelect }) {
-  if (!isOpen) return null
+  // 🌟 [초강력 절대 방어선]
+  // 부모 상태가 true를 주든 말든, 로컬스토리지 하드웨어에 유저 데이터나
+  // 최애 아이돌 데이터가 단 하나라도 포착되면 화면 렌더링을 완전히 폭파(null)시킵니다.
+  const storageUser = localStorage.getItem("user");
+  const storageIdol = localStorage.getItem("selected_idol");
+
+  // 1. 캐싱된 최애 아이돌 정보가 이미 로컬스토리지에 매칭되어 있다면 즉시 차단
+  if (storageIdol) return null;
+
+  // 2. 유저 정보 객체 내부의 모든 최애 필드명 변수 매핑 검사
+  if (storageUser) {
+    try {
+      const parsedUser = JSON.parse(storageUser);
+      if (
+        parsedUser.favorite_idol ||
+        parsedUser.favoriteIdol ||
+        parsedUser.favorite
+      ) {
+        return null; // 기존 회원이면 모달 UI를 그리지 않고 즉시 퇴근
+      }
+    } catch (e) {
+      console.error("모달 내부 세션 파싱 실패:", e);
+    }
+  }
+
+  // 기본 부모 제어 트리거 검사
+  if (!isOpen) return null;
 
   return (
     <Overlay>
@@ -105,5 +133,5 @@ export default function IdolSelectModal({ isOpen, idols, onSelect }) {
         </GridWrap>
       </ModalCard>
     </Overlay>
-  )
+  );
 }

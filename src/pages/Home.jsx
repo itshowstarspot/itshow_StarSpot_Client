@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from "react"; // 🌟 useEffect 추가
+import { useState, useMemo, useCallback, useEffect } from "react";
 import styled from "styled-components";
 import Sidebar from "../components/sidebar/Sidebar";
 import ActivePanel from "../components/sidebar/ActivePanel";
@@ -22,7 +22,7 @@ const Page = styled.div`
   background: #f5f5f8;
 `;
 
-/* ── 지도 영역: 나머지 공간 채움 ── */
+/* ── 지도 영역 ── */
 const MapArea = styled.div`
   flex: 1;
   position: relative;
@@ -31,7 +31,7 @@ const MapArea = styled.div`
   flex-direction: column;
 `;
 
-/* ── 모바일에서 패널 토글 버튼 ── */
+/* ── 모바일 패널 토글 버튼 ── */
 const PanelToggleBtn = styled.button`
   display: none;
   position: absolute;
@@ -91,11 +91,11 @@ const PanelOverlay = styled.div`
     background: rgba(0, 0, 0, 0.35);
     z-index: 190;
   }
+  border-radius: 0;
 `;
 
 export default function Home({ selectedIdol, onIdolChange, skipIdolPrompt }) {
   const [activeNav, setActiveNav] = useState("search");
-  const [isModalOpen, setIsModalOpen] = useState(false);
   const [panelOpen, setPanelOpen] = useState(false);
   const [selectedPlaceId, setSelectedPlaceId] = useState(
     () => getPendingReview()?.placeId ?? null,
@@ -103,32 +103,64 @@ export default function Home({ selectedIdol, onIdolChange, skipIdolPrompt }) {
   const [categoryFilter, setCategoryFilter] = useState(null);
   const [selectedCourse, setSelectedCourse] = useState(null);
 
-  const { filteredPlaces } = usePlaces(selectedIdol?.id);
+  // 🌟 [안전화] 로컬스토리지 파싱 로직의 최상단 스코프 고정
+  const hasIdolInStorage = useMemo(() => {
+    const savedUserStr = localStorage.getItem("user");
+    if (!savedUserStr) return null;
+    try {
+      const userObj = JSON.parse(savedUserStr);
+      const idolName =
+        userObj.favorite_idol || userObj.favoriteIdol || userObj.favorite;
+      if (idolName && idolName !== "선택 안 됨" && idolName !== "null") {
+        return idolName;
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }, []);
+
+  // 🌟 [안전화] 동기화 누수를 방지하기 위한 이중 바리케이드 초기 셋업
+  const [isModalOpen, setIsModalOpen] = useState(() => {
+    const savedIdol = localStorage.getItem("selected_idol");
+    if (savedIdol) return false;
+    if (hasIdolInStorage) return false;
+    return !skipIdolPrompt;
+  });
+
+  // 상위 주입 상태 동기화용 변수 계산
+  const currentIdolId = useMemo(() => {
+    if (selectedIdol?.id) return selectedIdol.id;
+    if (hasIdolInStorage) {
+      const matched = idols.find(
+        (i) => i.name === hasIdolInStorage || i.id === hasIdolInStorage,
+      );
+      return matched?.id || null;
+    }
+    return null;
+  }, [selectedIdol, hasIdolInStorage]);
+
+  // 커스텀 훅 호출 (Hook 규칙 준수)
+  const { filteredPlaces } = usePlaces(currentIdolId);
   const { removeCourse } = useCourse();
 
-  // 🌟 1. useEffect 내부 로직을 아래와 같이 수정하여 로컬스토리지의 '진짜 최애 유무'를 판단합니다.
+  // 부모 상태(App.jsx)와 동기화 시켜주는 useEffect 및 캐시 복구 강제화
   useEffect(() => {
-    const savedUser = localStorage.getItem("user");
-    if (savedUser) {
-      const userObj = JSON.parse(savedUser);
-
-      // 로컬스토리지에 최애 아이돌이 명확하게 등록되어 있다면 매핑해서 부모 상태 업데이트
-      if (userObj.favorite_idol) {
-        const matchedIdol = idols.find(
-          (i) =>
-            i.name === userObj.favorite_idol || i.id === userObj.favorite_idol,
-        );
-        if (matchedIdol && matchedIdol.id !== selectedIdol?.id) {
+    if (hasIdolInStorage) {
+      const matchedIdol = idols.find(
+        (i) => i.name === hasIdolInStorage || i.id === hasIdolInStorage,
+      );
+      if (matchedIdol) {
+        if (matchedIdol.id !== selectedIdol?.id) {
           onIdolChange(matchedIdol);
         }
-      } else {
-        // 🌟 로컬스토리지에 최애가 null(없음)이면 부모가 준 기본값(정국 등)을 강제로 비워버립니다!
-        if (selectedIdol !== null) {
-          onIdolChange(null);
+        // 기존 회원이 로그인 시 selected_idol 스토리지가 비어있다면 자동 복구 유도
+        if (!localStorage.getItem("selected_idol")) {
+          localStorage.setItem("selected_idol", JSON.stringify(matchedIdol));
         }
       }
     }
-  }, [selectedIdol, onIdolChange]);
+  }, [selectedIdol, onIdolChange, hasIdolInStorage]);
 
   const displayPlaces = useMemo(
     () =>
@@ -138,47 +170,43 @@ export default function Home({ selectedIdol, onIdolChange, skipIdolPrompt }) {
     [filteredPlaces, categoryFilter],
   );
 
-  // 🌟 2. 모달을 띄우는 조건식 라인을 아래와 같이 변경합니다.
-  const shouldOpenIdolModal = isModalOpen || (!skipIdolPrompt && !selectedIdol);
-
   const handlePlaceClick = useCallback((id) => setSelectedPlaceId(id), []);
   const handleCourseOpen = useCallback(
     (course) => setSelectedCourse(course),
     [],
   );
 
-  // 🌟 handleIdolSelect 함수를 아래 코드로 통째로 덮어씌우세요!
   const handleIdolSelect = async (idol) => {
-    // 부모(App.jsx) 상태 업데이트 및 수동 모달 상태(isModalOpen) 닫기
     onIdolChange(idol);
     setIsModalOpen(false);
 
-    // 로컬스토리지 데이터 동기화
     const savedUser = localStorage.getItem("user");
     if (!savedUser) return;
 
     const userObj = JSON.parse(savedUser);
     userObj.favorite_idol = idol.name;
     localStorage.setItem("user", JSON.stringify(userObj));
+    localStorage.setItem("selected_idol", JSON.stringify(idol));
 
-    // 백엔드 데이터베이스 실시간 반영
     try {
-      // 🌟 [수정] 테이블 구조 분석 결과: 'id'가 유저 고유 번호(PK)입니다.
-      // 만약 세션 구조상 email만 저장되어 있다면 대조할 수 있도록 둘 다 구조 분해 할당합니다.
       const userId = userObj.id || userObj.user_id;
       const userEmail = userObj.email || userObj.user_email;
 
       await axios.put(`http://localhost:5000/api/users/profile`, {
         userId: userId,
-        email: userEmail, // PK가 없을 때를 대비해 email도 함께 백엔드로 전송
+        email: userEmail,
         favorite_idol: idol.name,
       });
-
       console.log("백엔드 DB에 최애 아이돌 동기화 성공! 🔄⭐");
     } catch (err) {
       console.error("백엔드 DB 최애 아이돌 업데이트 실패:", err);
     }
   };
+
+  // 🌟 최종 차단 플래그 연산
+  const hasAnyIdol =
+    selectedIdol || localStorage.getItem("selected_idol") || hasIdolInStorage;
+  const shouldOpenIdolModal = hasAnyIdol ? false : isModalOpen;
 
   return (
     <Page>
@@ -240,12 +268,14 @@ export default function Home({ selectedIdol, onIdolChange, skipIdolPrompt }) {
 
       <PanelOverlay $open={panelOpen} onClick={() => setPanelOpen(false)} />
 
-      {/* ─── 아이돌 선택 모달 ─── */}
-      <IdolSelectModal
-        isOpen={shouldOpenIdolModal}
-        idols={idols}
-        onSelect={handleIdolSelect}
-      />
+      {/* ─── 아이돌 선택 모달 (새 회원 타겟 완전 분기 완료) ─── */}
+      {shouldOpenIdolModal && (
+        <IdolSelectModal
+          isOpen={shouldOpenIdolModal}
+          idols={idols}
+          onSelect={handleIdolSelect}
+        />
+      )}
     </Page>
   );
 }

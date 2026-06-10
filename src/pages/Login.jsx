@@ -1,9 +1,10 @@
 import { useState } from "react";
 import styled, { keyframes } from "styled-components";
 import { useNavigate } from "react-router-dom";
-import axios from "axios"; // 🌟 axios 추가됨!
+import axios from "axios";
 import mainLogo from "../assets/logo.svg";
 import { EyeIcon } from "../components/common/icons";
+import { idols } from "../domain/idol/idol"; // 🌟 매칭을 위한 idols 데이터 임포트 추가
 
 // 모듈 레벨에 선언 — 컴포넌트 렌더마다 재생성 방지
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -34,7 +35,7 @@ const Page = styled.div`
     top: -60px;
     right: -60px;
     user-select: none;
-    pointer-events: none; /* 🌟 별 배경이 마우스 클릭을 방해하지 못하도록 차단 */
+    pointer-events: none;
   }
 `;
 
@@ -193,8 +194,7 @@ const SuccessMsg = styled.div`
 `;
 
 /* ── 로그인 폼 ── */
-function LoginForm({ onLogin, hasIdol }) {
-  const navigate = useNavigate();
+function LoginForm({ onLogin }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
@@ -212,16 +212,44 @@ function LoginForm({ onLogin, hasIdol }) {
 
     setIsLoading(true);
     try {
-      // 🌟 포트 5000으로 통일
       const response = await axios.post(
         "http://localhost:5000/api/users/login",
         { email, password },
       );
 
       if (response.data.success) {
-        localStorage.setItem("user", JSON.stringify(response.data.user));
+        const loggedInUser = response.data.user;
+
+        // 1. 공통 유저 세션 저장
+        localStorage.setItem("user", JSON.stringify(loggedInUser));
+
+        // 2. App.jsx의 useLocalStorage와 완벽 연동을 위해 데이터 전처리 주입
+        const favoriteName =
+          loggedInUser.favorite_idol || loggedInUser.favoriteIdol;
+
+        if (favoriteName) {
+          const matchedIdol = idols.find(
+            (i) => i.name === favoriteName || i.id === favoriteName,
+          );
+
+          if (matchedIdol) {
+            localStorage.setItem("selected_idol", JSON.stringify(matchedIdol));
+          }
+        }
+
+        if (loggedInUser.nickname) {
+          localStorage.setItem("nickname", loggedInUser.nickname);
+        }
+
+        // 3. 부모 로그인 상태 플래그 활성화
         onLogin?.();
-        navigate(hasIdol ? "/home" : "/select");
+
+        console.log(
+          `기존 회원 로그인 성공! 최애(${favoriteName}) 상태 세션을 구축하여 지도로 진입합니다. 🚀`,
+        );
+
+        // 🌟 [핵심 변경] 리액트 내부 라우팅 대신 하드 네비게이션으로 진입하여 스토리지 동기화 타이밍 버그 원천 박멸
+        window.location.href = "/home";
       }
     } catch (err) {
       setError(
@@ -229,7 +257,7 @@ function LoginForm({ onLogin, hasIdol }) {
           "이메일 또는 비밀번호가 올바르지 않아요.",
       );
     } finally {
-      setIsLoading(false); // 🌟 에러가 나도 로딩을 풀어줌
+      setIsLoading(false);
     }
   };
 
@@ -324,7 +352,6 @@ function SignupForm({ onSignupDone }) {
 
     setIsLoading(true);
     try {
-      // 🌟 회원가입 포트도 5000번으로 일치시킴!
       const response = await axios.post(
         "http://localhost:5000/api/users/signup",
         {
@@ -345,7 +372,7 @@ function SignupForm({ onSignupDone }) {
         email: err.response?.data?.message || "회원가입에 실패했어요.",
       }));
     } finally {
-      setIsLoading(false); // 🌟 실패해도 버튼 재작동이 가능하게 로딩 풀어줌
+      setIsLoading(false);
     }
   };
 
