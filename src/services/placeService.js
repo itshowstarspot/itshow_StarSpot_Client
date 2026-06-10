@@ -63,9 +63,6 @@ export const fetchPlacesByIdol = async (idolId) => {
 
     const allSpots = await res.json();
 
-    // [★연동 치트키★] 
-    // idolId(karina 등) 비교 필터를 완전히 지우고, DB에 있는 데이터를 무조건 다 변환해서 던집니다.
-    // 이렇게 하면 어떤 아이돌을 선택하든 DB에 등록된 성지들이 지도에 바로 나타납니다.
     return allSpots.map((spot) => ({
       id: String(spot.id),
       name: spot.placeName,          
@@ -74,7 +71,11 @@ export const fetchPlacesByIdol = async (idolId) => {
       lat: Number(spot.latitude),    
       lng: Number(spot.longitude),   
       description: spot.description || '',
+      
+      // [★수정★] 상세 모달창 연동을 위해 image와 imageUrl을 모두 뚫어줍니다.
       image: spot.imageUrl || '',
+      imageUrl: spot.imageUrl || '',
+      
       hours: spot.operatingHours || '',
       holiday: spot.holiday || ''
     }));
@@ -113,28 +114,36 @@ export const searchPlaces = async (query, idolId) => {
  */
 export const fetchPlaceDetail = async (placeId) => {
   if (BASE_URL) {
-    const res = await fetch(`${BASE_URL}/places/${placeId}`)
-    if (!res.ok) throw new Error('장소 상세 조회 실패')
-    return res.json()
-  }
-
-  if (KAKAO_REST_KEY && /^\d+$/.test(placeId)) {
     try {
-      const res = await fetch(
-        `https://dapi.kakao.com/v2/local/place/${placeId}.json`,
-        { headers: { Authorization: `KakaoAK ${KAKAO_REST_KEY}` } }
-      )
-      if (res.ok) {
-        const data = await res.json()
-        return kakaoToPlace(data)
-      }
-    } catch { }
+      // [★체크★] 중복되던 /api를 걷어내어 정상적인 백엔드 주소 라우팅 보장
+      const res = await fetch(`${BASE_URL}/places/${placeId}`);
+      if (!res.ok) throw new Error('장소 상세 정보 조회 실패');
+      
+      const spot = await res.json();
+      
+      return {
+        id: String(spot.id),
+        name: spot.placeName || spot.name,
+        address: spot.address,
+        category: spot.category || '기타',
+        lat: Number(spot.latitude || spot.lat),
+        lng: Number(spot.longitude || spot.lng),
+        description: spot.description || '',
+        
+        // [★체크★] 모달창 상단 회색 영역을 채워줄 이미지 속성 매핑
+        image: spot.imageUrl || '',
+        imageUrl: spot.imageUrl || '',
+        
+        hours: spot.operatingHours || spot.hours || '',
+        holiday: spot.holiday || ''
+      };
+    } catch (err) {
+      console.error("fetchPlaceDetail 에러:", err);
+      throw err;
+    }
   }
-
-  const place = mockPlaces.find((p) => p.id === placeId)
-  if (!place) throw new Error('장소를 찾을 수 없습니다.')
-  return place
-}
+  return mockPlaces.find((p) => p.id === placeId);
+};
 
 /**
  * 카카오 키워드로 장소 검색

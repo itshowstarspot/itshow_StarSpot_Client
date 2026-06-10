@@ -32,20 +32,39 @@ const mockFeeds = [
  */
 export const fetchFeeds = async ({ placeId, sort = 'latest' } = {}) => {
   if (BASE_URL) {
-    const params = new URLSearchParams({ sort })
-    if (placeId) params.append('placeId', placeId)
-    
-    // [수정] 백엔드 라우터 규칙에 맞게 /api/feeds 로 요청 주소 변경
-    const res = await fetch(`${BASE_URL}/api/feeds?${params}`)
-    if (!res.ok) throw new Error('피드 조회 실패')
-    return res.json()
+    try {
+      const params = new URLSearchParams({ sort });
+      if (placeId) params.append('placeId', placeId);
+      
+      const res = await fetch(`${BASE_URL}/api/feeds?${params}`);
+      if (!res.ok) throw new Error('피드 목록 조회 실패');
+      
+      const dbFeeds = await res.json();
+      
+      return dbFeeds.map(feed => ({
+        id: String(feed.id),
+        placeId: String(feed.place_id || placeId),
+        placeName: feed.location_name || '성지순례 장소',
+        userId: feed.user_email || '익명',
+        nickname: feed.nickname || '익명',
+        content: feed.content,
+        
+        // [★핵심] 백엔드의 photo_path를 프론트의 image로 매핑하여 리뷰 사진 로딩!
+        image: feed.photo_path || '', 
+        
+        createdAt: feed.created_at || new Date().toISOString()
+      }));
+    } catch (err) {
+      console.error("fetchFeeds API 에러:", err);
+      throw err;
+    }
   }
-
-  let feeds = placeId ? mockFeeds.filter((f) => f.placeId === placeId) : [...mockFeeds]
-  if (sort === 'popular') feeds.sort((a, b) => b.viewCount - a.viewCount)
-  else feeds.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-  return feeds
-}
+  
+  let feeds = placeId ? mockFeeds.filter((f) => f.placeId === placeId) : [...mockFeeds];
+  if (sort === 'popular') feeds.sort((a, b) => b.viewCount - a.viewCount);
+  else feeds.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  return feeds;
+};
 
 /**
  * 피드 등록
