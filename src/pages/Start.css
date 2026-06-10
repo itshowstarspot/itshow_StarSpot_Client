@@ -1,0 +1,223 @@
+@font-face {
+    font-family: 'YPairing';
+    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2601-4@1.1/YPairingFont.woff2') format('woff2');
+    font-weight: 400;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'YPairing';
+    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2601-4@1.1/YPairingFont-Bd.woff2') format('woff2');
+    font-weight: 700;
+    font-display: swap;
+}
+
+.start-page {
+  position: fixed;
+  inset: 0;
+  min-width: 320px;
+  min-height: 100svh;
+  overflow: hidden;
+  background: #d8ddd2;
+  color: #25233f;
+  font-family:
+    'YPairing',
+    'Noto Sans KR',
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
+}
+
+.start-page::after {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  content: '';
+  background: rgba(0, 0, 0, 0.42);
+  pointer-events: none;
+}
+
+.start-map {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.start-map-loading {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.45) 1px, transparent 1px) 0 0 / 120px 120px,
+    linear-gradient(0deg, rgba(255, 255, 255, 0.45) 1px, transparent 1px) 0 0 / 120px 120px,
+    #d9ded4;
+}
+
+.start-map-message {
+  position: absolute;
+  z-index: 4;
+  left: 50%;
+  bottom: 24px;
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.9);
+  color: #4b4221;
+  font-size: 14px;
+  font-weight: 700;
+  transform: translateX(-50%);
+}
+
+.start-card {
+  position: absolute;
+  z-index: 2;
+  left: 50%;
+  top: calc(50% + 41px);
+  width: min(83.75vw, 1608px);
+  height: min(74.63vh, 806px);
+  min-height: 560px;
+  transform: translate(-50%, -50%);
+  border-radius: 36px;
+  background: #fff;
+  box-shadow: 0 26px 70px rgba(0, 0, 0, 0.08);
+}
+
+.start-star {
+  position: absolute;
+  object-fit: contain;
+  pointer-events: none;
+  user-select: none;
+}
+
+.start-star-large {
+  top: -102px;
+  left: 30px;
+  width: 300px;
+  transform: rotate(-10deg);
+}
+
+.start-star-soft {
+  z-index: 2;
+  top: 18px;
+  left: 51.9%;
+  width: 300px;
+  transform: rotate(-12deg);
+}
+
+.start-brand {
+  position: absolute;
+  z-index: 1;
+  left: 50%;
+  top: 43.7%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform: translate(-50%, -50%);
+}
+
+.start-logo {
+  width: 370px;
+  height: auto;
+  object-fit: contain;
+  border-radius: 50%;
+  clip-path: circle(48.5% at 50% 50%);
+}
+
+.start-button {
+  position: absolute;
+  z-index: 3;
+  left: 50%;
+  bottom: 109px;
+  width: min(31vw, 594px);
+  min-width: 360px;
+  height: 133px;
+  border: 0;
+  border-radius: 16px;
+  background: #f4e794;
+  color: #fff;
+  font-family: 'YPairing', 'Noto Sans KR', system-ui, sans-serif;
+  font-size: clamp(30px, 2vw, 40px);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0;
+  transform: translateX(-50%);
+  cursor: pointer;
+}
+
+.start-button:hover {
+  background: #f1df7f;
+}
+
+.start-button:active {
+  transform: translateX(-50%) translateY(1px);
+}
+
+.start-button-star {
+  position: absolute;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.start-button-star.pale {
+  z-index: 1;
+  right: -28px;
+  top: -96px;
+  width: 200px;
+  transform: rotate(-12deg);
+}
+
+.start-button-star.gold {
+  z-index: 2;
+  right: -91px;
+  top: -78px;
+  width: 200px;
+  transform: rotate(9deg);
+}
+
+@media (max-width: 900px) {
+  .start-card {
+    width: calc(100vw - 32px);
+    height: min(76vh, 660px);
+    min-height: 500px;
+    top: 50%;
+    border-radius: 28px;
+  }
+
+  .start-star-large {
+    left: 16px;
+    top: -58px;
+    width: 180px;
+  }
+
+  .start-star-soft {
+    left: auto;
+    right: 2%;
+    top: 62px;
+    width: 180px;
+  }
+
+  .start-button {
+    bottom: 76px;
+    width: min(78vw, 420px);
+    min-width: 0;
+    height: 96px;
+  }
+
+  .start-logo {
+    width: min(78vw, 330px);
+  }
+
+  .start-button-star.pale {
+    right: -8px;
+    top: -68px;
+    width: 136px;
+  }
+
+  .start-button-star.gold {
+    right: -54px;
+    top: -54px;
+    width: 136px;
+  }
+}
