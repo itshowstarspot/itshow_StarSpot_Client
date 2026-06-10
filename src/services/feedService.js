@@ -12,16 +12,6 @@ const mockFeeds = [
     viewCount: 124,
     createdAt: '2026-05-10T10:00:00.000Z',
   },
-  {
-    id: '2',
-    placeId: '2',
-    placeName: '한남동 식당',
-    userId: 'user2',
-    image: '/feeds/feed2.jpg',
-    content: '카리나 추천 맛집! 진짜 맛있어요.',
-    viewCount: 89,
-    createdAt: '2026-05-12T14:00:00.000Z',
-  },
 ]
 
 /**
@@ -38,16 +28,31 @@ export const fetchFeeds = async ({ placeId, sort = 'latest' } = {}) => {
       
       const dbFeeds = await res.json();
       
-      return dbFeeds.map(feed => ({
-        id: String(feed.id),
-        placeId: String(feed.place_id || placeId),
-        placeName: feed.location_name || '성지순례 장소',
-        userId: feed.user_email || '익명',
-        nickname: feed.nickname || '익명',
-        content: feed.content,
-        image: feed.image || feed.photo_path || '', 
-        createdAt: feed.created_at || new Date().toISOString()
-      }));
+      return dbFeeds.map(feed => {
+        // 🔍 백엔드 SQL 결과물에서 데이터가 꼬이지 않도록 안전장치 마련
+        // 올려주신 데이터 순서에 따르면 장소 이름은 아래 필드 중 하나에 들어있습니다.
+        const actualPlaceName = feed.place_name || feed.course_name || feed.location_name;
+        
+        return {
+          id: String(feed.id || feed.feed_id || feed.place_id || '0'),
+          // 데이터 맨 끝에 들어오는 장소 식별자 숫자 매핑 (예: 11, 12)
+          placeId: String(feed.place_id || placeId),
+          
+          // 🌟 [핵심 수정] 만약 아이돌 이름(세븐틴, 에스파)이 장소명으로 잘못 들어왔다면, 
+          // 다른 주소나 코스 필드를 대체해서 매칭하도록 분기 처리합니다.
+          placeName: (actualPlaceName === feed.idol_name || actualPlaceName === feed.name)
+            ? (feed.address || '성지순례 장소') 
+            : (actualPlaceName || '성지순례 장소'),
+            
+          userId: feed.user_email || feed.userId || '익명',
+          nickname: feed.nickname || '익명',
+          content: feed.content || feed.review_text || '',
+          
+          // 🌟 이미지 경로 문제 해결 (/uploads/ 또는 base64 데이터 대응)
+          image: feed.image || feed.photo_path || feed.photoSrc || '', 
+          createdAt: feed.created_at || feed.createdAt || new Date().toISOString()
+        };
+      });
     } catch (err) {
       console.error("fetchFeeds API 에러:", err);
       throw err;
@@ -62,7 +67,6 @@ export const fetchFeeds = async ({ placeId, sort = 'latest' } = {}) => {
 
 /**
  * 피드 등록
- * @param {{ placeId: string, placeName: string, image: string, content: string, userEmail?: string, nickname?: string }} data
  */
 export const createFeed = async (data) => {
   if (!data.content?.trim()) throw new Error('내용을 입력해주세요.');
@@ -71,13 +75,12 @@ export const createFeed = async (data) => {
     const res = await fetch(`${BASE_URL}/feeds`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data), // userEmail, nickname이 포함된 객체 전송
+      body: JSON.stringify(data),
     });
 
     if (!res.ok) throw new Error('피드 등록 실패');
     const result = await res.json();
 
-    // 🌟 프론트엔드 UI 컴포넌트(PlaceDetailModal) 구조에 맞춰 규격화 반환
     return {
       id: String(result.id),
       placeId: String(data.placeId),
@@ -85,7 +88,7 @@ export const createFeed = async (data) => {
       userId: data.userEmail || '익명',
       nickname: data.nickname || '익명',
       content: result.content || data.content,
-      image: result.image || '',
+      image: result.image || result.photo_path || data.image || '',
       createdAt: new Date().toISOString()
     };
   }

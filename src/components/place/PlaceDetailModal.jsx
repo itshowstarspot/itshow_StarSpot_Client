@@ -561,6 +561,9 @@ export default function PlaceDetailModal({ placeId, onClose, initialReview }) {
   const toastTimerRef = useRef(null);
 
   // placeId 변경 시 데이터 로드 + pending 리뷰 확인을 하나의 effect로 통합
+  // 🌟 깔끔하게 문법을 수정한 복구 코드
+  // 💡 PlaceDetailModal.jsx 내부의 useEffect 수정하기
+
   useEffect(() => {
     if (!placeId) return;
 
@@ -570,17 +573,24 @@ export default function PlaceDetailModal({ placeId, onClose, initialReview }) {
     setShowSheet(false);
     setPendingPhoto(null);
 
+    // 1. 장소 상세 데이터 가져오기
     fetchPlaceDetail(placeId)
       .then(setPlace)
       .catch((err) => console.error("[PlaceDetailModal] 장소 조회 실패:", err))
       .finally(() => setIsLoading(false));
 
-    fetchFeeds({ placeId })
-      .then(setReviews)
+    // 2. 해당 장소의 리뷰 데이터 가져오기 및 클라이언트 필터링 추가 🌟
+    fetchFeeds({ placeId: String(placeId) })
+      .then((data) => {
+        // 💡 서버가 모든 피드를 통째로 내려주더라도 현재 장소ID와 맞는 피드만 정확히 걸러냅니다.
+        const filteredReviews = data.filter(
+          (r) => String(r.placeId) === String(placeId),
+        );
+        setReviews(filteredReviews);
+      })
       .catch((err) => console.warn("[PlaceDetailModal] 리뷰 조회 실패:", err));
 
-    // pending 리뷰 (카메라 촬영 후 돌아온 경우) 처리
-    // photoSrc를 state에 저장한 뒤 ReviewSheet로 전달
+    // 3. pending 리뷰 처리
     const pending = getPendingReview();
     if (pending?.placeId === placeId) {
       clearPendingReview();
