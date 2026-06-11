@@ -91,7 +91,7 @@ const VisitPhoto = styled.div`
 `;
 
 /**
- * 장소 상세 페이지
+ * 장소 상세 페이지 (중복 선언 통합 완료)
  */
 export default function PlaceDetail() {
   const { id } = useParams();
@@ -103,27 +103,68 @@ export default function PlaceDetail() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // 🛡️ [강력 방어] URL 파라미터가 아예 없거나 'undefined' 텍스트일 때 즉시 홈으로 리다이렉트
+  useEffect(() => {
+    if (!id || id === "undefined" || id.trim() === "") {
+      console.warn(
+        "❌ 유효하지 않은 장소 ID가 포착되어 홈으로 강제 리다이렉트합니다.",
+      );
+      navigate("/", { replace: true });
+    }
+  }, [id, navigate]);
+
   useEffect(() => {
     const load = async () => {
+      // 주소 검증 단계 통과 여부 확인
+      if (!id || id === "undefined") {
+        setError(
+          "유효하지 않은 장소 요청입니다. 올바른 경로로 다시 접근해 주세요.",
+        );
+        setIsLoading(false);
+        return;
+      }
+
       setIsLoading(true);
+      setError(null);
+
       try {
         const [placeData, feedData] = await Promise.all([
           fetchPlaceDetail(id),
           fetchFeeds({ placeId: id }),
         ]);
+
+        if (!placeData) {
+          setError("장소 상세 정보를 찾을 수 없습니다.");
+          return;
+        }
+
         setPlace(placeData);
-        setFeeds(feedData);
+        setFeeds(feedData || []);
       } catch (err) {
-        setError(err.message);
+        setError(err.message || "데이터를 불러오는 중 에러가 발생했습니다.");
       } finally {
         setIsLoading(false);
       }
     };
+
     load();
   }, [id]);
 
   if (isLoading) return <LoadingSpinner padding="40vh" />;
-  if (error) return <EmptyState icon="⚠️" message={error} />;
+
+  if (error) {
+    return (
+      <Page>
+        <TopBar>
+          <BackBtn onClick={() => navigate("/")}>←</BackBtn>
+          <PageTitle>오류 발생</PageTitle>
+        </TopBar>
+        <Content style={{ paddingTop: "60px" }}>
+          <EmptyState icon="⚠️" message={error} />
+        </Content>
+      </Page>
+    );
+  }
 
   return (
     <Page>
@@ -138,7 +179,6 @@ export default function PlaceDetail() {
             place={place}
             isFavorite={checkFavorite(place.id)}
             onFavorite={() => toggleFavorite(place.id)}
-            /* 🌟 [교정] 아예 다른 페이지로 가지 않고, 홈페이지의 길찾기 패널을 깨우도록 파라미터 전달 */
             onRoute={() => {
               navigate(`/?mode=route&placeId=${place.id}`);
             }}

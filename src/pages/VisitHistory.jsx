@@ -170,7 +170,6 @@ export default function VisitHistory() {
     axios
       .get(`http://localhost:5000/api/users/visit-history/${userEmail}`)
       .then((res) => {
-        // 백엔드가 준 확실한 배열 데이터를 다이렉트로 집어넣습니다.
         setVisits(res.data || []);
         setLoading(false);
       })
@@ -183,6 +182,29 @@ export default function VisitHistory() {
   useEffect(() => {
     fetchVisitHistory();
   }, []);
+
+  // 🛡️ [추가] 안전하게 장소 상세페이지로 네비게이션하는 헬퍼 함수
+  const handleCardClick = (item) => {
+    if (!item) return;
+
+    // 백엔드 데이터에 혼재할 수 있는 모든 ID 네이밍 규칙 다각도로 필터링
+    const finalPlaceId =
+      item.placeId || item.place_id || item.id || item.spotId || item._id;
+
+    if (
+      finalPlaceId &&
+      String(finalPlaceId) !== "undefined" &&
+      String(finalPlaceId).trim() !== ""
+    ) {
+      navigate(`/place/${finalPlaceId}`);
+    } else {
+      console.error(
+        "❌ 이 아이템에서 유효한 장소 ID를 추출할 수 없습니다. 데이터 구조 확인 필요:",
+        item,
+      );
+      alert("장소 ID를 가져올 수 없어 상세 페이지로 이동할 수 없습니다.");
+    }
+  };
 
   return (
     <Page>
@@ -201,7 +223,6 @@ export default function VisitHistory() {
           <LoadingText>기록을 불러오는 중입니다... ⏳</LoadingText>
         ) : (
           <>
-            {/* 🌟visits 배열이 빈 배열일 때만 텅 빈 카드 노출 */}
             {visits.length === 0 ? (
               <EmptyCard>
                 <EmptyIcon>🎒</EmptyIcon>
@@ -212,12 +233,11 @@ export default function VisitHistory() {
                 </EmptyText>
               </EmptyCard>
             ) : (
-              /* 🌟 콘솔에 잡힌 진짜 Array 데이터 한 건 이상 존재 시 실시간 드로잉 보장 */
               <VisitList>
                 {visits.map((item, index) => (
                   <VisitCard
                     key={item.id || index}
-                    onClick={() => navigate(`/place/${item.place_id}`)}
+                    onClick={() => handleCardClick(item)} // ⭕ 안전한 핸들러로 전면 대체
                   >
                     {item.member_name && (
                       <MemberName>{item.member_name}</MemberName>

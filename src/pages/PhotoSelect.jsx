@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios"; // 🌟 [추가] 비동기 요청을 위해 반드시 필요한 임포트
+import axios from "axios";
 import "./PhotoSelect.css";
 import MapView from "../components/layout/MapView";
 import PlaceDetailModal from "../components/place/PlaceDetailModal";
@@ -8,7 +8,6 @@ import Sidebar from "../components/sidebar/Sidebar";
 import ActivePanel from "../components/sidebar/ActivePanel";
 import { CloseIcon } from "../components/common/icons";
 import { usePlaces } from "../hooks/usePlaces";
-import { createFeed } from "../services/feedService";
 import { setPendingReview } from "../stores/reviewStore";
 import { readCapturedPhotos, clearCapturedPhotos } from "../utils/photoStorage";
 import { SESSION_KEY_REVIEW_PLACE } from "../constants/storageKeys";
@@ -39,10 +38,7 @@ export default function PhotoSelect({ selectedIdol }) {
   const [today] = useState(formatToday);
   const [isModalOpen, setIsModalOpen] = useState(true);
 
-  // ── reviewFlow: 리뷰용 사진 선택 모드 ──────────────────────────
-  // reviewPlaceId  : 리뷰 대상 장소 ID (PlaceDetailModal과 무관)
-  // selectedPlaceId: 지도 핀 클릭 시 PlaceDetailModal을 열 장소 ID
-  // 두 역할을 같은 state에 두면 PlaceDetailModal이 자동으로 열려버림
+  // ── reviewFlow: 리뷰용 사진 선택 모드 상태 관리 ──
   const [reviewFlow] = useState(() => {
     try {
       return !!sessionStorage.getItem(SESSION_KEY_REVIEW_PLACE);
@@ -50,6 +46,7 @@ export default function PhotoSelect({ selectedIdol }) {
       return false;
     }
   });
+
   const [reviewPlaceId] = useState(() => {
     try {
       const saved = sessionStorage.getItem(SESSION_KEY_REVIEW_PLACE);
@@ -59,23 +56,29 @@ export default function PhotoSelect({ selectedIdol }) {
       return null;
     }
   });
-  // reviewFlow일 때는 null로 시작 — PlaceDetailModal이 자동으로 뜨지 않게
-  const [selectedPlaceId, setSelectedPlaceId] = useState(null);
-  // ────────────────────────────────────────────────────────────────
 
+  const [selectedPlaceId, setSelectedPlaceId] = useState(null);
   const [content, setContent] = useState("");
   const [submitError, setSubmitError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [newReview, setNewReview] = useState(null);
+  const [newReview] = useState(null);
   const { filteredPlaces } = usePlaces(selectedIdol?.id);
+
   const selectedPhoto =
     capturedPhotos.find((item) => item.id === selectedId) ?? capturedPhotos[0];
 
-  const handlePlaceClick = useCallback((id) => setSelectedPlaceId(id), []);
+  // 장소 클릭 시 전면 상세페이지(/place/:id)로 이동시키는 핸들러
+  const handlePlaceClick = useCallback(
+    (id) => {
+      if (id && id !== "undefined") {
+        navigate(`/place/${id}`);
+      }
+    },
+    [navigate],
+  );
 
-  // 🌟 DB 고유 숫자 ID(1~20)와 Multipart 규격을 완벽 정렬한 최종 handleSubmit
+  // ── 최종 데이터 등록 핸들러 ──
   const handleSubmit = async () => {
-    // reviewFlow: 사진만 고르고 돌아가기 — 텍스트는 ReviewSheet에서 입력
     if (reviewFlow) {
       if (!selectedPhoto) return;
       setPendingReview(reviewPlaceId, selectedPhoto.src);
@@ -93,34 +96,30 @@ export default function PhotoSelect({ selectedIdol }) {
     setSubmitError("");
 
     try {
-      // 1. 유저 정보 수급
       const savedUser = JSON.parse(localStorage.getItem("user") || "{}");
       const userEmail = savedUser?.email || savedUser?.user_email;
 
-      // 2. 🚨 [매우 중요] DB spots 테이블과 100% 매칭되는 진짜 숫자 ID 찾기 로직
       let targetSpotId =
         selectedPlaceId ||
         reviewPlaceId ||
         sessionStorage.getItem("review_place_id");
 
-      // 만약 가져온 ID가 없거나 문자가 섞여있다면, 최애 아이돌 이름을 판별하여 진짜 DB 상의 대표 장소 ID(숫자) 할당
       const idolName = selectedIdol?.name || "";
 
       if (!targetSpotId || isNaN(Number(targetSpotId))) {
         if (idolName.includes("정국")) {
-          targetSpotId = "1"; // 우돈청 진짜 ID
+          targetSpotId = "1";
         } else if (idolName.includes("지민")) {
-          targetSpotId = "5"; // 자연도소금빵 진짜 ID
+          targetSpotId = "5";
         } else if (idolName.includes("카리나")) {
-          targetSpotId = "8"; // 실비옥 진짜 ID
+          targetSpotId = "8";
         } else if (idolName.includes("영케이")) {
-          targetSpotId = "11"; // 추암해수욕장 진짜 ID
+          targetSpotId = "11";
         } else if (idolName.includes("영지")) {
-          targetSpotId = "14"; // 대박곱창 진짜 ID
+          targetSpotId = "14";
         } else if (idolName.includes("재현")) {
-          targetSpotId = "17"; // 볼링볼링 진짜 ID
+          targetSpotId = "17";
         } else {
-          // 리스트(filteredPlaces)에 진짜 DB 객체들이 있다면 그 첫 번째 실제 ID 차용
           targetSpotId =
             filteredPlaces && filteredPlaces[0]?.id
               ? String(filteredPlaces[0].id)
@@ -128,14 +127,12 @@ export default function PhotoSelect({ selectedIdol }) {
         }
       }
 
-      // 3. 백엔드 Multer가 한 방에 파싱할 수 있게 FormData 규격 작성
       const formData = new FormData();
       formData.append("userEmail", userEmail);
-      formData.append("spotId", targetSpotId); // 드디어 진짜 1~20 사이의 유효한 숫자 ID 탑재!
+      formData.append("spotId", targetSpotId);
       formData.append("title", `${idolName} 성지순례 후기`);
       formData.append("content", content.trim());
 
-      // base64 형태의 촬영 사진 데이터 -> Blob 스트림으로 변환 후 photo에 장착
       if (selectedPhoto.src.startsWith("data:")) {
         const response = await fetch(selectedPhoto.src);
         const blob = await response.blob();
@@ -144,7 +141,6 @@ export default function PhotoSelect({ selectedIdol }) {
         formData.append("photo", selectedPhoto.src);
       }
 
-      // 4. 멀티파트 헤더 탑재 후 서버로 발송!
       const res = await axios.post(
         "http://localhost:5000/api/users/posts",
         formData,
@@ -156,11 +152,7 @@ export default function PhotoSelect({ selectedIdol }) {
       );
 
       clearCapturedPhotos();
-
-      // 백엔드가 제공하는 정식 알림창 띄우기
       alert(res.data.message);
-
-      // 홈으로 복귀하여 실시간 데이터 연동 확인
       navigate("/home");
     } catch (error) {
       console.error("리뷰 및 방문기록 등록 실패:", error);
@@ -223,7 +215,6 @@ export default function PhotoSelect({ selectedIdol }) {
       <section className="photo-map-area" aria-label="지도">
         <MapView places={filteredPlaces} onPlaceClick={handlePlaceClick} />
 
-        {/* reviewFlow에서는 PlaceDetailModal을 열지 않음 */}
         {!reviewFlow && selectedPlaceId && (
           <PlaceDetailModal
             placeId={selectedPlaceId}
@@ -265,7 +256,6 @@ export default function PhotoSelect({ selectedIdol }) {
             <img src={selectedPhoto.src} alt="선택된 사진" />
             <p>{today}</p>
 
-            {/* reviewFlow: 텍스트 입력 숨김 — 리뷰 내용은 ReviewSheet에서 작성 */}
             {reviewFlow ? (
               <p
                 style={{

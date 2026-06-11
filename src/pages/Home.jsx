@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
 import styled from "styled-components";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import Sidebar from "../components/sidebar/Sidebar";
 import ActivePanel from "../components/sidebar/ActivePanel";
 import MapView from "../components/layout/MapView";
@@ -91,6 +91,8 @@ const PanelOverlay = styled.div`
 
 export default function Home({ selectedIdol, onIdolChange, skipIdolPrompt }) {
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
+
   const [activeNav, setActiveNav] = useState("search");
   const [panelOpen, setPanelOpen] = useState(false);
   const [selectedPlaceId, setSelectedPlaceId] = useState(
@@ -104,12 +106,17 @@ export default function Home({ selectedIdol, onIdolChange, skipIdolPrompt }) {
   const [mapCenter, setMapCenter] = useState(null);
   const [routeCoords, setRouteCoords] = useState(null);
 
-  /* ── 🌟 [교정 완료] 외부 링크 가로채기 파이프라인 정비 ── */
+  /* ── ⭕ [수정 완료] 외부 링크 및 내부 길찾기 전환 파이프라인 정비 ── */
   useEffect(() => {
     const mode = searchParams.get("mode");
     const placeId = searchParams.get("placeId");
 
-    if (mode === "route" && placeId) {
+    // placeId가 없거나 문자열 "undefined" 이면 작동 자체를 차단
+    if (!placeId || placeId === "undefined" || String(placeId).trim() === "") {
+      return;
+    }
+
+    if (mode === "route") {
       setActiveNav("route");
 
       fetchPlaceDetail(placeId)
@@ -117,7 +124,11 @@ export default function Home({ selectedIdol, onIdolChange, skipIdolPrompt }) {
           if (place) {
             const finalLat = Number(place.lat || place.latitude);
             const finalLng = Number(place.lng || place.longitude);
-            const finalName = place.name || place.placeName || "우돈청";
+            const finalName = place.name || place.placeName || "선택된 장소";
+
+            // 백엔드 명세에 맞춘 안전한 ID 검증 프로퍼티 오버로딩
+            const parsedId =
+              place.id || place._id || place.spotId || place.placeId || placeId;
 
             if (!isNaN(finalLat) && !isNaN(finalLng)) {
               const destinationData = {
@@ -129,15 +140,17 @@ export default function Home({ selectedIdol, onIdolChange, skipIdolPrompt }) {
 
               setRouteCoords(destinationData);
               setMapCenter({ lat: finalLat, lng: finalLng });
+
+              // 🛡️ 최종 추출된 ID가 "undefined" 문자열이 아닐 때만 스테이트 주입
+              if (parsedId && String(parsedId) !== "undefined") {
+                setSelectedPlaceId(String(parsedId));
+              }
             }
           }
         })
         .catch((err) =>
-          console.error("홈페이지 길찾기 데이터 빌드 실패:", err),
+          console.error("❌ 홈페이지 길찾기 데이터 빌드 실패:", err),
         );
-
-      // 🌟 중요: 쿼리를 완전히 지우면 서브 컴포넌트 내부의 searchParams.get("placeId")가 끊기므로
-      // mode 파라미터만 안전하게 제거하거나, state 트리거 작동 후 보존하도록 수정
     }
   }, [searchParams]);
 
@@ -191,10 +204,7 @@ export default function Home({ selectedIdol, onIdolChange, skipIdolPrompt }) {
       if (matchedIdol) {
         if (matchedIdol.id !== selectedIdol?.id) onIdolChange(matchedIdol);
         if (!localStorage.getItem("selected_idol")) {
-          style = localStorage.setItem(
-            "selected_idol",
-            JSON.stringify(matchedIdol),
-          );
+          localStorage.setItem("selected_idol", JSON.stringify(matchedIdol));
         }
       }
     }
@@ -208,7 +218,37 @@ export default function Home({ selectedIdol, onIdolChange, skipIdolPrompt }) {
     [filteredPlaces, categoryFilter],
   );
 
-  const handlePlaceClick = useCallback((id) => setSelectedPlaceId(id), []);
+  // ⭕ [수정] undefined 문자열 및 다양한 ID 프로퍼티 대응 방어 코드
+  const handlePlaceClick = useCallback(
+    (placeOrId) => {
+      if (!placeOrId) return;
+
+      let id = "";
+      // 1. 인자가 객체로 넘어왔을 경우 (place)
+      if (typeof placeOrId === "object") {
+        id =
+          placeOrId.id ||
+          placeOrId.spotId ||
+          placeOrId._id ||
+          placeOrId.placeId;
+      } else {
+        // 2. 인자가 ID 값 단독으로 넘어왔을 경우
+        id = placeOrId;
+      }
+
+      // 'undefined' 문자열이거나 값이 유효하지 않다면 라우팅 차단
+      if (id && String(id) !== "undefined" && String(id).trim() !== "") {
+        navigate(`/place/${id}`);
+      } else {
+        console.error(
+          "❌ 유효하지 않은 장소 ID가 포착되어 이동을 차단했습니다:",
+          placeOrId,
+        );
+      }
+    },
+    [navigate],
+  );
+
   const handleCourseOpen = useCallback(
     (course) => setSelectedCourse(course),
     [],
@@ -257,7 +297,7 @@ export default function Home({ selectedIdol, onIdolChange, skipIdolPrompt }) {
           onCourseOpen={handleCourseOpen}
           onRouteSearch={setRouteCoords}
           mapCenter={mapCenter}
-          myLocation={myLocation} // 🌟 보이지 않던 누락 링크 보완완료!
+          myLocation={myLocation}
           routeCoords={routeCoords}
         />
       </Sidebar>
@@ -288,7 +328,7 @@ export default function Home({ selectedIdol, onIdolChange, skipIdolPrompt }) {
           📍 장소 목록
         </PanelToggleBtn>
 
-        {selectedPlaceId && (
+        {selectedPlaceId && selectedPlaceId !== "undefined" && (
           <PlaceDetailModal
             placeId={selectedPlaceId}
             onClose={() => setSelectedPlaceId(null)}

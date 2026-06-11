@@ -52,12 +52,13 @@ export const fetchPlacesByIdol = async (idolId) => {
     const allSpots = await res.json();
 
     return allSpots.map((spot) => ({
-      id: String(spot.id),
-      name: spot.placeName || spot.place_name,          
+      // 🔥 [수정] 백엔드에서 넘겨주는 ID 컬럼명(placeId 등)을 우선적으로 받도록 안전장치 마련
+      id: String(spot.placeId || spot.id || spot.spotId), 
+      name: spot.placeName || spot.place_name || spot.name,          
       address: spot.address,
       category: spot.category || '기타',
-      lat: Number(spot.latitude),    
-      lng: Number(spot.longitude),   
+      lat: Number(spot.latitude || spot.lat),    
+      lng: Number(spot.longitude || spot.lng),   
       description: spot.description || '',
       image: spot.imageUrl || '',
       imageUrl: spot.imageUrl || '',
@@ -83,7 +84,8 @@ export const searchPlaces = async (query, idolId) => {
     
     const spots = await res.json();
     return spots.map(spot => ({
-      id: String(spot.id),
+      // 🔥 [수정] 동일하게 안전한 ID 매핑 적용
+      id: String(spot.placeId || spot.id || spot.spotId),
       name: spot.placeName || spot.name,
       placeName: spot.placeName || spot.name,
       address: spot.address,
@@ -114,6 +116,12 @@ export const searchPlaces = async (query, idolId) => {
 
 /** 장소 상세 조회 */
 export const fetchPlaceDetail = async (placeId) => {
+  // 🛡️ [추가 예외 처리] placeId가 아예 없거나 문자열 "undefined"이면 요청 자체를 차단
+  if (!placeId || placeId === 'undefined') {
+    console.error("⚠️ 유효하지 않은 placeId로 상세 조회가 요청되었습니다.");
+    return null; 
+  }
+
   if (BASE_URL) {
     try {
       const res = await fetch(`${BASE_URL}/places/${placeId}`);
@@ -121,7 +129,8 @@ export const fetchPlaceDetail = async (placeId) => {
       const spot = await res.json();
       
       return {
-        id: String(spot.id),
+        // 🔥 [수정] 동일하게 안전한 ID 매핑 적용
+        id: String(spot.placeId || spot.id || spot.spotId),
         name: spot.placeName || spot.name,
         address: spot.address,
         category: spot.category || '기타',
@@ -148,9 +157,7 @@ export const searchPlacesByKakao = async (query, { lat, lng } = {}) => {
   return docs.map((item) => kakaoToPlace(item))
 }
 
-/**
- * 🌟 [교정 완료] 외부 지도 플랫폼 길찾기 URL 생성 및 이동 함수
- */
+/** 외부 지도 플랫폼 길찾기 URL 생성 및 이동 함수 */
 export const openExternalMapRoute = (start, end, platform = 'kakao') => {
   if (!end || !end.lat || !end.lng) {
     alert('도착지 정보가 올바르지 않습니다.');
@@ -161,14 +168,12 @@ export const openExternalMapRoute = (start, end, platform = 'kakao') => {
   const endName = end.name || '목적지';
 
   if (platform === 'naver') {
-    // 최신 통합 네이버 지도 v5 디렉션 주소 규격 적용
     const naverUrl = start?.lat && start?.lng
       ? `https://map.naver.com/v5/dir/${start.lng},${start.lat},${encodeURIComponent(startName)}/${end.lng},${end.lat},${encodeURIComponent(endName)}/-/transit`
       : `https://map.naver.com/v5/search/${encodeURIComponent(endName)}`;
     
     window.open(naverUrl, '_blank');
   } else {
-    // 카카오맵 외부 연동 길찾기 규격 적용
     const kakaoUrl = start?.lat && start?.lng
       ? `https://map.kakao.com/link/from/${encodeURIComponent(startName)},${start.lat},${start.lng}/to/${encodeURIComponent(endName)},${end.lat},${end.lng}`
       : `https://map.kakao.com/link/to/${encodeURIComponent(endName)},${end.lat},${end.lng}`;

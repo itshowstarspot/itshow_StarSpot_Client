@@ -254,7 +254,27 @@ export default function MapView({
         infoEl.appendChild(nameEl);
         if (clickedPlace.address) infoEl.appendChild(addrEl);
         infoEl.appendChild(closeEl);
-        infoEl.addEventListener("click", () => onPlaceClick?.(clickedPlace.id));
+        // ⭕ [수정 완료] 다양한 ID 속성을 지원하고, 최종 검증을 거쳐 부모에게 전달합니다.
+        infoEl.addEventListener("click", () => {
+          if (!clickedPlace) return;
+
+          // 데이터의 고유 ID 값을 다각도로 찾아내기 (id, spotId, _id 등)
+          const finalId =
+            clickedPlace.id ||
+            clickedPlace.spotId ||
+            clickedPlace._id ||
+            clickedPlace.placeId;
+
+          if (finalId && String(finalId) !== "undefined") {
+            onPlaceClick?.(finalId);
+          } else {
+            console.error(
+              "❌ 클릭한 장소의 고유 ID를 찾을 수 없습니다. 데이터 구조를 확인하세요:",
+              clickedPlace,
+            );
+            alert("장소 정보가 올바르지 않습니다.");
+          }
+        });
 
         const infoOverlay = new kakao.CustomOverlay({
           position,
