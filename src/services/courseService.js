@@ -33,24 +33,28 @@ const RECOMMENDED_COURSES = [
   },
 ]
 
-// 🌟 [수정] 로컬 스토리지 'user' 객체에서 이메일 문자열만 파싱하여 추출하는 안전장치
-const getAuthHeaders = () => {
+// 🌟 [추출 함수] 백엔드가 이메일을 편하게 추출할 수 있도록 가공
+const getLoggedInUserEmail = () => {
   try {
     const userStorage = localStorage.getItem('user')
     if (userStorage) {
-      // 문자열로 되어 있는 객체를 JSON으로 변환
       const parsedUser = JSON.parse(userStorage)
-      // 객체 내부의 email 주소만 추출 (예: test15@gmail.com)
-      const userEmail = parsedUser.email || parsedUser.userEmail
-      
-      if (userEmail) {
-        return { 'Authorization': `Bearer ${userEmail}` }
-      }
+      return parsedUser.email || parsedUser.userEmail || null
     }
   } catch (error) {
     console.error("로컬 스토리지 인증 정보 파싱 실패:", error)
   }
-  return {}
+  return null
+}
+
+// 헤더 생성 함수
+const getAuthHeaders = () => {
+  const email = getLoggedInUserEmail()
+  // Bearer가 안 먹힐 수 있으므로 이메일 원본 주소 헤더도 쌍으로 안전하게 같이 보냅니다.
+  return email ? { 
+    'Authorization': `Bearer ${email}`,
+    'X-User-Email': email 
+  } : {}
 }
 
 const getLocalCourses = () => {
@@ -86,9 +90,11 @@ export const fetchRecommendedCourses = async (idolId) => {
 /**
  * 일반 코스 목록 조회
  */
-export const fetchCourses = async () => {
+export const fetchCourses = async (userEmail) => {
   try {
-    const res = await fetch(`${API_BASE_URL}/courses`)
+    const email = userEmail || getLoggedInUserEmail()
+    const url = email ? `${API_BASE_URL}/courses?userEmail=${email}` : `${API_BASE_URL}/courses`
+    const res = await fetch(url)
     if (!res.ok) throw new Error()
     return await res.json()
   } catch {
@@ -97,16 +103,20 @@ export const fetchCourses = async () => {
 }
 
 /**
- * 코스 생성 (🌟 토큰 헤더 반영 및 패킷 정형화 버전)
+ * 코스 생성 (🌟 빠졌던 idolId 수급 및 패킷 규격 완전체 버전)
  */
 export const createCourse = async (data) => {
   if (data.places.length < COURSE_MIN_PLACES) {
     throw new Error(`코스는 최소 ${COURSE_MIN_PLACES}개의 장소가 필요합니다.`)
   }
 
-  // 🌟 백엔드 실제 테이블 스펙에 맞춤 (존재하지 않는 description 전달 방지)
+  const email = getLoggedInUserEmail();
+
+  // 🌟 [치명적 원인 해결] 백엔드가 원했던 idolId(혹은 idol_id) 및 userEmail 데이터를 바디에 명확히 탑재합니다!
   const payload = {
     title: data.title,
+    idolId: data.idolId,                     // 👈 이게 빠져있었습니다!
+    userEmail: data.userEmail || email,      // 👈 바디에도 안전하게 포함
     spotIds: data.places.map((place) => Number(place.id))
   }
 
@@ -115,7 +125,7 @@ export const createCourse = async (data) => {
       method: 'POST',
       headers: { 
         'Content-Type': 'application/json',
-        ...getAuthHeaders() // 🌟 파싱된 진짜 이메일 주소가 전달됩니다!
+        ...getAuthHeaders()
       },
       body: JSON.stringify(payload),
     })
@@ -127,6 +137,7 @@ export const createCourse = async (data) => {
     
     return await res.json()
   } catch {
+    // 서버 통신 에러 시 로컬 저장 백업 기능 유지
     const newCourse = {
       id: crypto.randomUUID(),
       ...data,

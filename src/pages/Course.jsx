@@ -1,22 +1,22 @@
-import { useEffect, useRef, useState } from 'react'
-import styled from 'styled-components'
-import { useNavigate } from 'react-router-dom'
-import Button from '../components/common/Button'
-import EmptyState from '../components/common/EmptyState'
-import LoadingSpinner from '../components/common/LoadingSpinner'
-import CourseCard from '../components/course/CourseCard'
-import CoursePlaceItem from '../components/course/CoursePlaceItem'
-import Modal from '../components/common/Modal'
-import { useCourse } from '../hooks/useCourse'
-import { usePlaces } from '../hooks/usePlaces'
-import { COURSE_MIN_PLACES } from '../domain/course/course'
-import { fetchRecommendedCourses } from '../services/courseService'
+import { useEffect, useRef, useState } from "react";
+import styled from "styled-components";
+import { useNavigate } from "react-router-dom";
+import Button from "../components/common/Button";
+import EmptyState from "../components/common/EmptyState";
+import LoadingSpinner from "../components/common/LoadingSpinner";
+import CourseCard from "../components/course/CourseCard";
+import CoursePlaceItem from "../components/course/CoursePlaceItem";
+import Modal from "../components/common/Modal";
+import { useCourse } from "../hooks/useCourse";
+import { usePlaces } from "../hooks/usePlaces";
+import { COURSE_MIN_PLACES } from "../domain/course/course";
+import { fetchRecommendedCourses } from "../services/courseService";
 
 const Page = styled.main`
   min-height: 100vh;
   background: #f5f5f8;
   color: #2d2f36;
-`
+`;
 
 const TopBar = styled.div`
   display: flex;
@@ -24,17 +24,17 @@ const TopBar = styled.div`
   justify-content: space-between;
   padding: 16px 20px;
   background: #ffffff;
-  border-bottom: 1px solid rgba(45,47,54,0.1);
+  border-bottom: 1px solid rgba(45, 47, 54, 0.1);
   position: sticky;
   top: 0;
   z-index: 100;
-`
+`;
 
 const TopLeft = styled.div`
   display: flex;
   align-items: center;
   gap: 12px;
-`
+`;
 
 const BackBtn = styled.button`
   border: none;
@@ -42,9 +42,13 @@ const BackBtn = styled.button`
   color: #e8d664;
   font-size: 20px;
   cursor: pointer;
-`
+`;
 
-const Title = styled.h1`font-size: 16px; font-weight: 700; color: #2d2f36;`
+const Title = styled.h1`
+  font-size: 16px;
+  font-weight: 700;
+  color: #2d2f36;
+`;
 
 const Content = styled.div`
   padding: 20px;
@@ -53,51 +57,55 @@ const Content = styled.div`
   display: flex;
   flex-direction: column;
   gap: 28px;
-`
+`;
 
 const SectionTitle = styled.h2`
   font-size: 16px;
   font-weight: 700;
   color: #2d2f36;
   margin-bottom: 14px;
-`
+`;
 
 const CourseList = styled.div`
   display: flex;
   flex-direction: column;
   gap: 12px;
-`
+`;
 
 const SelectedList = styled.div`
   display: flex;
   flex-direction: column;
   gap: 8px;
-`
+`;
 
 const PlacePickerGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
   gap: 10px;
-`
+`;
 
 const PlacePickBtn = styled.button`
   padding: 10px 14px;
-  background: ${({ $selected }) => $selected ? 'rgba(232,214,100,0.1)' : '#ffffff'};
-  border: 1.5px solid ${({ $selected }) => $selected ? '#e8d664' : 'rgba(45,47,54,0.12)'};
+  background: ${({ $selected }) =>
+    $selected ? "rgba(232,214,100,0.1)" : "#ffffff"};
+  border: 1.5px solid
+    ${({ $selected }) => ($selected ? "#e8d664" : "rgba(45,47,54,0.12)")};
   border-radius: 10px;
-  color: ${({ $selected }) => $selected ? '#b8962a' : '#2d2f36'};
+  color: ${({ $selected }) => ($selected ? "#b8962a" : "#2d2f36")};
   font-size: 13px;
   text-align: left;
   cursor: pointer;
   transition: all 0.18s;
 
-  &:hover { border-color: #e8d664; }
-`
+  &:hover {
+    border-color: #e8d664;
+  }
+`;
 
 const TitleInput = styled.input`
   width: 100%;
   background: #f5f5f8;
-  border: 1px solid rgba(45,47,54,0.15);
+  border: 1px solid rgba(45, 47, 54, 0.15);
   border-radius: 8px;
   padding: 10px 14px;
   color: #2d2f36;
@@ -106,15 +114,19 @@ const TitleInput = styled.input`
   margin-bottom: 12px;
   box-sizing: border-box;
 
-  &:focus { border-color: #e8d664; }
-  &::placeholder { color: rgba(45,47,54,0.35); }
-`
+  &:focus {
+    border-color: #e8d664;
+  }
+  &::placeholder {
+    color: rgba(45, 47, 54, 0.35);
+  }
+`;
 
 const ErrorMsg = styled.p`
   font-size: 13px;
   color: #e85050;
   margin-top: 6px;
-`
+`;
 
 const ShareToast = styled.div`
   position: fixed;
@@ -128,59 +140,97 @@ const ShareToast = styled.div`
   font-size: 14px;
   font-weight: 600;
   z-index: 999;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.3);
-`
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+`;
 
-/**
- * 코스 페이지 - 코스 생성 및 목록 조회
- */
 export default function Course({ selectedIdol }) {
-  const navigate = useNavigate()
-  const { courses, selectedPlaces, addPlace, removePlace, reorderPlaces, submitCourse, loadCourses, removeCourse, shareCourse, shareLink, isLoading, error } = useCourse()
-  const { places } = usePlaces(selectedIdol?.id)
+  const navigate = useNavigate();
 
-  const [isCreating, setIsCreating] = useState(false)
-  const [courseTitle, setCourseTitle] = useState('')
-  const [showToast, setShowToast] = useState(false)
-  const [recommendedCourses, setRecommendedCourses] = useState([])
-  const [recLoading, setRecLoading] = useState(false)
-  const toastTimerRef = useRef(null)
+  // 훅에서 필수 자원 모두 획득
+  const {
+    courses,
+    selectedPlaces,
+    addPlace,
+    removePlace,
+    reorderPlaces,
+    submitCourse,
+    loadCourses,
+    removeCourse,
+    shareCourse,
+    isLoading,
+    error,
+  } = useCourse();
 
-  useEffect(() => { loadCourses() }, [loadCourses])
+  const { places = [] } = usePlaces(selectedIdol?.id);
+
+  const [isCreating, setIsCreating] = useState(false);
+  const [courseTitle, setCourseTitle] = useState("");
+  const [showToast, setShowToast] = useState(false);
+  const [recommendedCourses, setRecommendedCourses] = useState([]);
+  const [recLoading, setRecLoading] = useState(false);
+  const toastTimerRef = useRef(null);
 
   useEffect(() => {
-    setRecLoading(true)
+    loadCourses();
+  }, [loadCourses]);
+
+  useEffect(() => {
+    setRecLoading(true);
     fetchRecommendedCourses(selectedIdol?.id)
       .then(setRecommendedCourses)
       .catch((err) => {
-        console.warn('[Course] 추천 코스 조회 실패:', err)
-        setRecommendedCourses([])
+        console.warn("[Course] 추천 코스 조회 실패:", err);
+        setRecommendedCourses([]);
       })
-      .finally(() => setRecLoading(false))
-  }, [selectedIdol?.id])
+      .finally(() => setRecLoading(false));
+  }, [selectedIdol?.id]);
 
-  // 언마운트 시 toast 타이머 정리
-  useEffect(() => () => clearTimeout(toastTimerRef.current), [])
+  useEffect(() => () => clearTimeout(toastTimerRef.current), []);
 
   const handleShare = (courseId) => {
-    shareCourse(courseId)
-    clearTimeout(toastTimerRef.current)
-    setShowToast(true)
-    toastTimerRef.current = setTimeout(() => setShowToast(false), 2500)
-  }
+    shareCourse(courseId);
+    clearTimeout(toastTimerRef.current);
+    setShowToast(true);
+    toastTimerRef.current = setTimeout(() => setShowToast(false), 2500);
+  };
 
+  // 🌟 침묵 타파용 추적 로그 심은 제출 함수
   const handleSubmit = async () => {
-    if (!courseTitle.trim()) return
+    console.log("=== [디버깅] 코스 생성 버튼 최종 클릭됨 ===");
+    console.log("입력한 코스 제목:", courseTitle);
+    console.log("현재 훅이 인지한 선택 장소 배열:", selectedPlaces);
+    console.log("선택 장소 개수:", selectedPlaces?.length);
+
+    if (!courseTitle.trim()) {
+      console.warn("❌ 차단 필터링: 코스 제목이 누락되었습니다.");
+      return;
+    }
+
     try {
-      const result = await submitCourse({ title: courseTitle, idolId: selectedIdol?.id })
+      console.log("🚀 useCourse 훅의 submitCourse 전송 함수를 호출합니다...");
+      const result = await submitCourse({
+        title: courseTitle,
+        idolId: selectedIdol?.id,
+      });
+
+      console.log("🎯 훅 처리 결과 수신:", result);
       if (result) {
-        setCourseTitle('')
-        setIsCreating(false)
+        setCourseTitle("");
+        setIsCreating(false);
       }
     } catch (err) {
-      console.error('[Course] 코스 생성 실패:', err)
+      console.error("🔥 UI 단에서 포착된 최상위 코스 생성 에러:", err);
     }
-  }
+  };
+
+  // 안전장치 계산 변수
+  const validPlacesCount = Array.isArray(selectedPlaces)
+    ? selectedPlaces.length
+    : 0;
+
+  // 버튼 강제 활성화 검증식 (최소 제한 수치보다 크거나 같으면 무조건 해제)
+  const isFormValid =
+    courseTitle.trim().length > 0 && validPlacesCount >= COURSE_MIN_PLACES;
 
   return (
     <Page>
@@ -189,7 +239,13 @@ export default function Course({ selectedIdol }) {
           <BackBtn onClick={() => navigate(-1)}>←</BackBtn>
           <Title>코스</Title>
         </TopLeft>
-        <Button size="sm" style={{ color: '#ffffff' }} onClick={() => setIsCreating(true)}>+ 새 코스</Button>
+        <Button
+          size="sm"
+          style={{ color: "#ffffff" }}
+          onClick={() => setIsCreating(true)}
+        >
+          + 새 코스
+        </Button>
       </TopBar>
 
       <Content>
@@ -198,17 +254,18 @@ export default function Course({ selectedIdol }) {
           <SectionTitle>⭐ 추천 코스</SectionTitle>
           {recLoading && <LoadingSpinner />}
           {!recLoading && recommendedCourses.length === 0 && (
-            <EmptyState icon="🗺️" message="아이돌을 선택하면 추천 코스가 표시돼요!" />
+            <EmptyState
+              icon="🗺️"
+              message="아이돌을 선택하면 추천 코스가 표시돼요!"
+            />
           )}
           <CourseList>
-            {recommendedCourses.map((course) => (
-              <CourseCard
-                key={course.id}
-                title={course.title}
-                description={course.description}
-                places={course.places}
-                isRecommended
-              />
+            {/* 데이터가 객체 감싸기 형태든, 순수 배열 형태든 무조건 배열을 추출해 map을 돌립니다 */}
+            {(Array.isArray(recommendedCourses)
+              ? recommendedCourses
+              : recommendedCourses?.data || []
+            ).map((course) => (
+              <CourseCard key={course.id} course={course} />
             ))}
           </CourseList>
         </div>
@@ -218,7 +275,10 @@ export default function Course({ selectedIdol }) {
           <SectionTitle>📍 내 코스</SectionTitle>
           {isLoading && <LoadingSpinner />}
           {!isLoading && courses.length === 0 && (
-            <EmptyState icon="➕" message="아직 만든 코스가 없어요. 새 코스를 만들어보세요!" />
+            <EmptyState
+              icon="➕"
+              message="아직 만든 코스가 없어요. 새 코스를 만들어보세요!"
+            />
           )}
           <CourseList>
             {courses.map((course) => (
@@ -236,7 +296,7 @@ export default function Course({ selectedIdol }) {
 
       {/* 코스 생성 모달 */}
       <Modal isOpen={isCreating} onClose={() => setIsCreating(false)}>
-        <h2 style={{ color: '#2d2f36', marginBottom: 16 }}>새 코스 만들기</h2>
+        <h2 style={{ color: "#2d2f36", marginBottom: 16 }}>새 코스 만들기</h2>
 
         <TitleInput
           placeholder="코스 이름 입력"
@@ -245,60 +305,89 @@ export default function Course({ selectedIdol }) {
           maxLength={50}
         />
 
-        <p style={{ fontSize: 14, fontWeight: 700, color: '#2d2f36', marginBottom: 10 }}>
+        <p
+          style={{
+            fontSize: 14,
+            fontWeight: 700,
+            color: "#2d2f36",
+            marginBottom: 10,
+          }}
+        >
           장소 선택 (최소 {COURSE_MIN_PLACES}개)
         </p>
 
-        {places.length === 0 ? (
+        {!places || places.length === 0 ? (
           <EmptyState icon="📍" message="선택 가능한 장소가 없어요." />
         ) : (
           <PlacePickerGrid>
             {places.map((place) => {
-              const isSelected = selectedPlaces.some(p => p.id === place.id)
+              // 🌟 의존 관계를 useCourse 측 selectedPlaces 배열로 명확히 단일화
+              const isSelected =
+                Array.isArray(selectedPlaces) &&
+                selectedPlaces.some((p) => p.id === place.id);
               return (
                 <PlacePickBtn
                   key={place.id}
                   $selected={isSelected}
-                  onClick={() => isSelected ? removePlace(place.id) : addPlace(place)}
+                  onClick={() =>
+                    isSelected ? removePlace(place.id) : addPlace(place)
+                  }
                 >
-                  {isSelected ? '✓ ' : ''}{place.name}
+                  {isSelected ? "✓ " : ""}
+                  {place.name}
                 </PlacePickBtn>
-              )
+              );
             })}
           </PlacePickerGrid>
         )}
 
-        {selectedPlaces.length > 0 && (
+        {validPlacesCount > 0 && (
           <div style={{ marginTop: 16 }}>
-            <p style={{ fontSize: 14, fontWeight: 700, color: '#2d2f36', marginBottom: 10 }}>순서 조정</p>
+            <p
+              style={{
+                fontSize: 14,
+                fontWeight: 700,
+                color: "#2d2f36",
+                marginBottom: 10,
+              }}
+            >
+              순서 조정
+            </p>
             <SelectedList>
-              {selectedPlaces.map((place, idx) => (
-                <CoursePlaceItem
-                  key={place.id}
-                  index={idx}
-                  place={place}
-                  onRemove={() => removePlace(place.id)}
-                />
-              ))}
+              {Array.isArray(selectedPlaces) &&
+                selectedPlaces.map((place, idx) => (
+                  <CoursePlaceItem
+                    key={place.id}
+                    index={idx}
+                    place={place}
+                    onRemove={() => removePlace(place.id)}
+                  />
+                ))}
             </SelectedList>
           </div>
         )}
 
         {error && <ErrorMsg>{error}</ErrorMsg>}
 
-        <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
-          <Button variant="secondary" fullWidth onClick={() => setIsCreating(false)}>취소</Button>
+        <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
+          <Button
+            variant="secondary"
+            fullWidth
+            onClick={() => setIsCreating(false)}
+          >
+            취소
+          </Button>
           <Button
             fullWidth
             onClick={handleSubmit}
-            disabled={selectedPlaces.length < COURSE_MIN_PLACES || !courseTitle.trim() || isLoading}
+            disabled={!isFormValid || isLoading}
           >
-            {isLoading ? '생성 중...' : '코스 생성'}
+            {isLoading ? "생성 중..." : "코스 생성"}
           </Button>
         </div>
       </Modal>
 
       {showToast && <ShareToast>🔗 링크가 클립보드에 복사되었어요!</ShareToast>}
     </Page>
-  )
+  );
 }
