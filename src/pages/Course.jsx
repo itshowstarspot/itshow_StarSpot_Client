@@ -249,7 +249,7 @@ export default function Course({ selectedIdol }) {
       </TopBar>
 
       <Content>
-        {/* 추천 코스 */}
+        {/* 🌟 추천 코스 (이전 UI/UX 레이아웃 구조 완벽 복구 완료) */}
         <div>
           <SectionTitle>⭐ 추천 코스</SectionTitle>
           {recLoading && <LoadingSpinner />}
@@ -260,12 +260,16 @@ export default function Course({ selectedIdol }) {
             />
           )}
           <CourseList>
-            {/* 데이터가 객체 감싸기 형태든, 순수 배열 형태든 무조건 배열을 추출해 map을 돌립니다 */}
             {(Array.isArray(recommendedCourses)
               ? recommendedCourses
               : recommendedCourses?.data || []
             ).map((course) => (
-              <CourseCard key={course.id} course={course} />
+              <CourseCard
+                key={course.id}
+                title={course.title} // 제목 전달
+                places={course.places} // 장소 배열 전달
+                description={course.description} // (필요시) 설명 전달
+              />
             ))}
           </CourseList>
         </div>
@@ -321,7 +325,6 @@ export default function Course({ selectedIdol }) {
         ) : (
           <PlacePickerGrid>
             {places.map((place) => {
-              // 🌟 의존 관계를 useCourse 측 selectedPlaces 배열로 명확히 단일화
               const isSelected =
                 Array.isArray(selectedPlaces) &&
                 selectedPlaces.some((p) => p.id === place.id);
