@@ -55,7 +55,13 @@ const Content = styled.div`
   gap: 28px;
 `;
 
-export default function MyPage({ onLogout, onDeleteAccount, onIdolChange }) {
+// 🌟 구조 분해 할당 목록에 App.jsx가 내려주는 'onNicknameChange'를 정확히 수급합니다.
+export default function MyPage({
+  onLogout,
+  onDeleteAccount,
+  onIdolChange,
+  onNicknameChange,
+}) {
   const navigate = useNavigate();
 
   const [currentNickname, setCurrentNickname] = useState("사용자");
@@ -64,36 +70,48 @@ export default function MyPage({ onLogout, onDeleteAccount, onIdolChange }) {
 
   // 마운트 시 데이터 세션 동기화
   useEffect(() => {
-    const savedUser = localStorage.getItem("user");
-    if (savedUser) {
-      const userObj = JSON.parse(savedUser);
+    try {
+      const savedUser = localStorage.getItem("user");
+      if (savedUser) {
+        const userObj = JSON.parse(savedUser);
 
-      if (userObj.nickname) {
-        setCurrentNickname(userObj.nickname);
-      }
+        if (userObj && userObj.nickname) {
+          setCurrentNickname(userObj.nickname);
+        }
 
-      if (userObj.favorite_idol) {
-        const matchedIdol = idols.find(
-          (i) =>
-            i.name === userObj.favorite_idol || i.id === userObj.favorite_idol,
-        );
-        setCurrentIdol(matchedIdol || null);
+        if (userObj && userObj.favorite_idol) {
+          const matchedIdol = idols.find(
+            (i) =>
+              i.name === userObj.favorite_idol ||
+              i.id === userObj.favorite_idol,
+          );
+          setCurrentIdol(matchedIdol || null);
+        }
       }
+    } catch (err) {
+      console.error("마이페이지 초기 로드 중 로컬스토리지 파싱 에러:", err);
     }
   }, []);
 
-  // 닉네임 변경 핸들러 + 백엔드 DB 연동
+  // 닉네임 변경 핸들러 + 백엔드 DB 연동 (오타 및 흐름 완벽 수정 ✨)
   const handleNicknameChange = async (newNick) => {
+    if (!newNick || !newNick.trim()) return;
+
     setCurrentNickname(newNick);
+
+    // 🌟 App.jsx 전역 상태 동기화 (기존의 props. 에러 제거)
+    if (onNicknameChange) {
+      onNicknameChange(newNick);
+    }
 
     const savedUser = localStorage.getItem("user");
     if (!savedUser) return;
 
-    const userObj = JSON.parse(savedUser);
-    userObj.nickname = newNick;
-    localStorage.setItem("user", JSON.stringify(userObj));
-
     try {
+      const userObj = JSON.parse(savedUser);
+      userObj.nickname = newNick;
+      localStorage.setItem("user", JSON.stringify(userObj));
+
       const userId = userObj.id || userObj.user_id;
       const userEmail = userObj.email || userObj.user_email;
 
@@ -110,12 +128,13 @@ export default function MyPage({ onLogout, onDeleteAccount, onIdolChange }) {
     }
   };
 
-  // 최애 아이돌 변경 핸들러 + 백엔드 DB 연동 (✨ 실시간 전역 연동 보완 완료)
+  // 최애 아이돌 변경 핸들러 + 백엔드 DB 연동
   const handleIdolSelect = async (idol) => {
+    if (!idol) return;
+
     setCurrentIdol(idol);
     setShowIdolModal(false);
 
-    // 🌟 [추가] 부모 컴포넌트(App 또는 라우터)의 최애 아이돌 상태도 함께 즉시 동기화
     if (onIdolChange) {
       onIdolChange(idol);
     }
@@ -123,12 +142,12 @@ export default function MyPage({ onLogout, onDeleteAccount, onIdolChange }) {
     const savedUser = localStorage.getItem("user");
     if (!savedUser) return;
 
-    const userObj = JSON.parse(savedUser);
-    userObj.favorite_idol = idol.name;
-    localStorage.setItem("user", JSON.stringify(userObj));
-    localStorage.setItem("selected_idol", JSON.stringify(idol));
-
     try {
+      const userObj = JSON.parse(savedUser);
+      userObj.favorite_idol = idol.name;
+      localStorage.setItem("user", JSON.stringify(userObj));
+      localStorage.setItem("selected_idol", JSON.stringify(idol));
+
       const userId = userObj.id || userObj.user_id;
       const userEmail = userObj.email || userObj.user_email;
 
@@ -162,11 +181,11 @@ export default function MyPage({ onLogout, onDeleteAccount, onIdolChange }) {
       const savedUser = localStorage.getItem("user");
       if (!savedUser) return;
 
-      const userObj = JSON.parse(savedUser);
-      const targetIdentifier =
-        userObj.id || userObj.user_id || userObj.email || userObj.user_email;
-
       try {
+        const userObj = JSON.parse(savedUser);
+        const targetIdentifier =
+          userObj.id || userObj.user_id || userObj.email || userObj.user_email;
+
         await axios.delete(
           `http://localhost:5000/api/users/${targetIdentifier}`,
         );
@@ -215,8 +234,9 @@ export default function MyPage({ onLogout, onDeleteAccount, onIdolChange }) {
 
       <IdolSelectModal
         isOpen={showIdolModal}
-        idols={idols}
+        idols={idols || []}
         onSelect={handleIdolSelect}
+        onClose={() => setShowIdolModal(false)}
       />
     </Page>
   );

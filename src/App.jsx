@@ -17,7 +17,6 @@ import PhotoFrame from "./pages/PhotoFrame";
 import PhotoSelect from "./pages/PhotoSelect";
 import RoutePage from "./pages/Route";
 import Course from "./pages/Course";
-import VisitHistory from "./pages/VisitHistory";
 import MyPage from "./pages/MyPage";
 import PostRegister from "./pages/PostRegister";
 import { useLocalStorage } from "./hooks/useLocalStorage";
@@ -48,6 +47,43 @@ function SelectPage({ onSelect }) {
   );
 }
 
+// 🌟 [안전 격리] VisitHistory 컴포넌트를 App 함수 외부 독립된 영역에 선언합니다.
+// 이렇게 해야 BrowserRouter 내부 구역에서 안전하게 useNavigate를 호출할 수 있습니다.
+function VisitHistory() {
+  const navigate = useNavigate();
+  return (
+    <div
+      style={{
+        padding: "50px",
+        textAlign: "center",
+        fontSize: "20px",
+        color: "#2d2f36",
+        background: "#f5f5f8",
+        minHeight: "100vh",
+      }}
+    >
+      <button
+        onClick={() => navigate(-1)}
+        style={{
+          padding: "10px 20px",
+          marginBottom: "20px",
+          cursor: "pointer",
+          background: "#e8d664",
+          border: "none",
+          borderRadius: "8px",
+          fontWeight: "bold",
+        }}
+      >
+        ← 마이페이지로 돌아가기
+      </button>
+      <h1 style={{ marginTop: "40px" }}>🎒 방문 기록 페이지 테스트 성공!</h1>
+      <p style={{ color: "#666", fontSize: "16px" }}>
+        라우터와 네비게이트 연결이 아주 완벽하게 성공했습니다.
+      </p>
+    </div>
+  );
+}
+
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useLocalStorage(
     STORAGE_KEY_LOGGED_IN,
@@ -59,8 +95,6 @@ function App() {
   );
   const [nickname, setNickname] = useLocalStorage(STORAGE_KEY_NICKNAME, "");
   const [skipHomeIdolPrompt, setSkipHomeIdolPrompt] = useState(false);
-
-  // 🌟 앱 전체 및 독립형 길찾기 페이지(/route)에서 공유할 지도 중심 좌표 상태 선언!
   const [mapCenter, setMapCenter] = useState({ lat: 37.4741, lng: 126.9329 });
 
   const handleLogin = () => {
@@ -79,15 +113,12 @@ function App() {
       "user",
       "selected_idol",
     ];
-
     keysToRemove.forEach((key) => localStorage.removeItem(key));
     sessionStorage.clear();
-
     setSelectedIdol(null);
     setNickname("");
     setIsLoggedIn(false);
     setSkipHomeIdolPrompt(false);
-
     console.log("🧼 로그아웃 완료: 이전 세션 및 스토리지 데이터 청소 성공!");
   };
 
@@ -215,7 +246,6 @@ function App() {
           }
         />
 
-        {/* 독립형 길찾기 페이지 컴포넌트 연동 */}
         <Route
           path="/route"
           element={
@@ -244,14 +274,13 @@ function App() {
             </PrivateRoute>
           }
         />
+
+        {/* 🌟 내부 선언된 안전한 VisitHistory 컴포넌트로 연결 */}
         <Route
           path="/visit"
           element={
             <PrivateRoute isLoggedIn={isLoggedIn}>
-              <VisitHistory
-                selectedIdol={selectedIdol}
-                onIdolChange={setSelectedIdol}
-              />
+              <VisitHistory />
             </PrivateRoute>
           }
         />
