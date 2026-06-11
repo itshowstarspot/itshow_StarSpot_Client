@@ -183,26 +183,16 @@ export default function VisitHistory() {
     fetchVisitHistory();
   }, []);
 
-  // 🛡️ [추가] 안전하게 장소 상세페이지로 네비게이션하는 헬퍼 함수
+  // 🎯 DB 구조를 bjm-1 형태로 바꿨기 때문에 다이렉트로 꽂아 이동합니다!
   const handleCardClick = (item) => {
     if (!item) return;
 
-    // 백엔드 데이터에 혼재할 수 있는 모든 ID 네이밍 규칙 다각도로 필터링
-    const finalPlaceId =
-      item.placeId || item.place_id || item.id || item.spotId || item._id;
+    const finalPlaceId = item.place_id || item.placeId || item.id;
 
-    if (
-      finalPlaceId &&
-      String(finalPlaceId) !== "undefined" &&
-      String(finalPlaceId).trim() !== ""
-    ) {
+    if (finalPlaceId && String(finalPlaceId) !== "undefined") {
       navigate(`/place/${finalPlaceId}`);
     } else {
-      console.error(
-        "❌ 이 아이템에서 유효한 장소 ID를 추출할 수 없습니다. 데이터 구조 확인 필요:",
-        item,
-      );
-      alert("장소 ID를 가져올 수 없어 상세 페이지로 이동할 수 없습니다.");
+      alert("장소 고유 키가 존재하지 않는 기록입니다.");
     }
   };
 
@@ -237,7 +227,7 @@ export default function VisitHistory() {
                 {visits.map((item, index) => (
                   <VisitCard
                     key={item.id || index}
-                    onClick={() => handleCardClick(item)} // ⭕ 안전한 핸들러로 전면 대체
+                    onClick={() => handleCardClick(item)}
                   >
                     {item.member_name && (
                       <MemberName>{item.member_name}</MemberName>
