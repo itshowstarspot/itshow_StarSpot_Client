@@ -8,7 +8,6 @@ const MapWrap = styled.div`
   height: 100%;
   min-height: 0;
   flex: 1;
- screen;
 `;
 
 const MapContainer = styled.div`
@@ -101,7 +100,6 @@ function createMyLocationEl() {
   return wrap;
 }
 
-// 🌟 [수정] 위로 파란 동그라미(GPS 위치)를 던져줄 onMyLocationChange 프로퍼티 추가 접수
 export default function MapView({
   places = [],
   onPlaceClick,
@@ -126,6 +124,15 @@ export default function MapView({
   const [error, setError] = useState(null);
   const [locating, setLocating] = useState(false);
 
+  // 리렌더링마다 함수가 새로 생성되어 useEffect를 오염시키는 것을 막기 위한 Ref 보관 기법
+  const onMapCenterChangeRef = useRef(onMapCenterChange);
+  const onMyLocationChangeRef = useRef(onMyLocationChange);
+
+  useEffect(() => {
+    onMapCenterChangeRef.current = onMapCenterChange;
+    onMyLocationChangeRef.current = onMyLocationChange;
+  }, [onMapCenterChange, onMyLocationChange]);
+
   /* 지도 초기화 및 위치 추적 */
   useEffect(() => {
     let watchId = null;
@@ -143,8 +150,11 @@ export default function MapView({
 
         window.kakao.maps.event.addListener(map, "idle", () => {
           const center = map.getCenter();
-          if (onMapCenterChange) {
-            onMapCenterChange({ lat: center.getLat(), lng: center.getLng() });
+          if (onMapCenterChangeRef.current) {
+            onMapCenterChangeRef.current({
+              lat: center.getLat(),
+              lng: center.getLng(),
+            });
           }
         });
 
@@ -165,9 +175,8 @@ export default function MapView({
             const pos = new window.kakao.maps.LatLng(latitude, longitude);
             currentPosRef.current = pos;
 
-            // 🌟 [추가] 실시간 GPS 트래킹 좌표가 바뀔 때마다 부모 컴포넌트에 좌표 오브젝트 업로드
-            if (onMyLocationChange) {
-              onMyLocationChange({ lat: latitude, lng: longitude });
+            if (onMyLocationChangeRef.current) {
+              onMyLocationChangeRef.current({ lat: latitude, lng: longitude });
             }
 
             if (myLocationRef.current) {
@@ -203,7 +212,7 @@ export default function MapView({
     return () => {
       if (watchId !== null) navigator.geolocation.clearWatch(watchId);
     };
-  }, [onMapCenterChange, onMyLocationChange]);
+  }, []); // 지도 초기 로드 시 딱 한 번만 바인딩되도록 비워줍니다.
 
   /* 장소 핀 마커 */
   useEffect(() => {
@@ -360,8 +369,11 @@ export default function MapView({
           coords.longitude,
         );
         currentPosRef.current = pos;
-        if (onMyLocationChange)
-          onMyLocationChange({ lat: coords.latitude, lng: coords.longitude });
+        if (onMyLocationChangeRef.current)
+          onMyLocationChangeRef.current({
+            lat: coords.latitude,
+            lng: coords.longitude,
+          });
         mapRef.current.setCenter(pos);
         mapRef.current.setLevel(3);
         setLocating(false);

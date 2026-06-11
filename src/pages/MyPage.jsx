@@ -12,8 +12,7 @@ import AccountSection from "../components/mypage/AccountSection";
 import { idols } from "../domain/idol/idol";
 
 const Page = styled.main`
-  position: relative; /* ⭐ 쌓임 맥락 형성을 위해 반드시 추가 */
-  z-index: 500; /* ⭐ 모달 오버레이(300)보다 높게 설정하여 위로 올림 */
+  position: relative;
   min-height: 100vh;
   background: #f5f5f8;
   color: #2d2f36;
@@ -56,7 +55,7 @@ const Content = styled.div`
   gap: 28px;
 `;
 
-export default function MyPage({ onLogout, onDeleteAccount }) {
+export default function MyPage({ onLogout, onDeleteAccount, onIdolChange }) {
   const navigate = useNavigate();
 
   const [currentNickname, setCurrentNickname] = useState("사용자");
@@ -111,10 +110,15 @@ export default function MyPage({ onLogout, onDeleteAccount }) {
     }
   };
 
-  // 최애 아이돌 변경 핸들러 + 백엔드 DB 연동
+  // 최애 아이돌 변경 핸들러 + 백엔드 DB 연동 (✨ 실시간 전역 연동 보완 완료)
   const handleIdolSelect = async (idol) => {
     setCurrentIdol(idol);
     setShowIdolModal(false);
+
+    // 🌟 [추가] 부모 컴포넌트(App 또는 라우터)의 최애 아이돌 상태도 함께 즉시 동기화
+    if (onIdolChange) {
+      onIdolChange(idol);
+    }
 
     const savedUser = localStorage.getItem("user");
     if (!savedUser) return;
@@ -122,6 +126,7 @@ export default function MyPage({ onLogout, onDeleteAccount }) {
     const userObj = JSON.parse(savedUser);
     userObj.favorite_idol = idol.name;
     localStorage.setItem("user", JSON.stringify(userObj));
+    localStorage.setItem("selected_idol", JSON.stringify(idol));
 
     try {
       const userId = userObj.id || userObj.user_id;
@@ -143,6 +148,7 @@ export default function MyPage({ onLogout, onDeleteAccount }) {
   const handleLogoutClick = () => {
     if (window.confirm("로그아웃 하시겠습니까?")) {
       localStorage.removeItem("user");
+      localStorage.removeItem("selected_idol");
       if (onLogout) onLogout();
       navigate("/");
     }
@@ -167,6 +173,7 @@ export default function MyPage({ onLogout, onDeleteAccount }) {
         alert("탈퇴가 완료되었습니다. 이용해 주셔서 감사합니다.");
 
         localStorage.removeItem("user");
+        localStorage.removeItem("selected_idol");
         if (onDeleteAccount) onDeleteAccount();
         navigate("/");
       } catch (err) {
@@ -200,7 +207,6 @@ export default function MyPage({ onLogout, onDeleteAccount }) {
 
         <QuickNavSection onNavigate={(key) => navigate(`/${key}`)} />
 
-        {/* 중요: 새로 정의한 핸들러들을 하위 컴포넌트에 안전하게 바인딩 */}
         <AccountSection
           onLogout={handleLogoutClick}
           onDeleteAccount={handleDeleteAccountClick}

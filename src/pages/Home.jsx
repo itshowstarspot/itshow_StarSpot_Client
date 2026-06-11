@@ -97,13 +97,10 @@ export default function Home({ selectedIdol, onIdolChange, skipIdolPrompt }) {
   const [selectedCourse, setSelectedCourse] = useState(null);
 
   /* ── 길찾기 및 위치 상태 관리 ── */
-  const [myLocation, setMyLocation] = useState(null); // 실시간 GPS 좌표 저장소
+  const [myLocation, setMyLocation] = useState(null);
   const [mapCenter, setMapCenter] = useState(null);
-
-  // 🌟 [버그 해결] 누락되어 있던 routeCoords 상태 변수 선언 추가!
   const [routeCoords, setRouteCoords] = useState(null);
 
-  // 길찾기 탭을 벗어나면 지도 상의 경로선 데이터를 초기화합니다.
   useEffect(() => {
     if (activeNav !== "route") {
       setRouteCoords(null);
