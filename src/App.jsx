@@ -15,7 +15,7 @@ import Feed from "./pages/Feed";
 import Photo from "./pages/Photo";
 import PhotoFrame from "./pages/PhotoFrame";
 import PhotoSelect from "./pages/PhotoSelect";
-import RoutePage from "./pages/Route";
+import RoutePage from "./pages/Route"; // 👈 여기서 사용됩니다!
 import Course from "./pages/Course";
 import VisitHistory from "./pages/VisitHistory";
 import MyPage from "./pages/MyPage";
@@ -60,13 +60,15 @@ function App() {
   const [nickname, setNickname] = useLocalStorage(STORAGE_KEY_NICKNAME, "");
   const [skipHomeIdolPrompt, setSkipHomeIdolPrompt] = useState(false);
 
+  // 🌟 [추가 포인트] 타임아웃 에러를 박멸하기 위해 앱 전체에서 공유할 지도 중심 좌표 상태 선언!
+  // 기본값은 사용자분의 현재 위치인 미림마이스터고 좌표로 세팅해 둡니다.
+  const [mapCenter, setMapCenter] = useState({ lat: 37.4741, lng: 126.9329 });
+
   const handleLogin = () => {
     setIsLoggedIn(true);
   };
 
-  // 🌟 [수정 포인트] 로그아웃 시 이전 회원의 로컬스토리지 데이터를 완벽히 청소합니다.
   const handleLogout = () => {
-    // 1. 브라우저 로컬스토리지에 들어있는 유저 개인 데이터 일괄 삭제
     const keysToRemove = [
       STORAGE_KEY_IDOL,
       STORAGE_KEY_LOGGED_IN,
@@ -75,14 +77,13 @@ function App() {
       STORAGE_KEY_FAVORITES,
       STORAGE_KEY_VISITS,
       STORAGE_KEY_LATEST_POST,
-      "user", // 백엔드 세션용 유저 키 데이터 청소
-      "selected_idol", // 백엔드 캐시용 아이돌 키 데이터 청소
+      "user",
+      "selected_idol",
     ];
 
     keysToRemove.forEach((key) => localStorage.removeItem(key));
     sessionStorage.clear();
 
-    // 2. 리액트 App State도 완벽하게 초기화하여 잔상 제거
     setSelectedIdol(null);
     setNickname("");
     setIsLoggedIn(false);
@@ -92,7 +93,6 @@ function App() {
   };
 
   const handleDeleteAccount = () => {
-    // 모든 앱 데이터 삭제
     [
       STORAGE_KEY_IDOL,
       STORAGE_KEY_LOGGED_IN,
@@ -113,7 +113,6 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* 시작하기 → 로그인 → 최애선택 → 홈 */}
         <Route
           path="/"
           element={<Navigate to={isLoggedIn ? "/home" : "/login"} replace />}
@@ -216,14 +215,20 @@ function App() {
             </PrivateRoute>
           }
         />
+
+        {/* 🌟 [수정 완료] 길찾기 라우트에 mapCenter와 값을 갱신할 setMapCenter 핸들러를 바인딩합니다 */}
         <Route
           path="/route"
           element={
             <PrivateRoute isLoggedIn={isLoggedIn}>
-              <RoutePage />
+              <RoutePage
+                mapCenter={mapCenter}
+                onMapCenterChange={setMapCenter}
+              />
             </PrivateRoute>
           }
         />
+
         <Route
           path="/post"
           element={
