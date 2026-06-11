@@ -86,6 +86,12 @@ const VisitCard = styled.div`
   display: flex;
   flex-direction: column;
   gap: 6px;
+  transition: transform 0.2s ease;
+  cursor: pointer;
+
+  &:hover {
+    transform: translateY(-2px);
+  }
 `;
 
 const PlaceName = styled.h3`
@@ -100,30 +106,49 @@ const VisitDate = styled.span`
   color: #a1a7b5;
 `;
 
+const LoadingText = styled.div`
+  text-align: center;
+  color: #a1a7b5;
+  padding: 20px;
+  font-size: 14px;
+`;
+
 export default function VisitHistory() {
   const navigate = useNavigate();
   const [visits, setVisits] = useState([]);
+  const [loading, setLoading] = useState(true); // 🌟 1. loading 상태 추가로 에러 원천 차단
 
   useEffect(() => {
-    // 로컬스토리지나 백엔드에서 방문 기록 들고오기 (예외 방어)
     const savedUser = localStorage.getItem("user");
-    if (!savedUser) return;
+    if (!savedUser) {
+      setLoading(false);
+      return;
+    }
 
     try {
       const userObj = JSON.parse(savedUser);
+      // 🌟 2. 로컬스토리지에서 이메일 주소 명확하게 추출
+      const userEmail = userObj.email || userObj.user_email;
 
-      // 🌟 [백엔드 연동부] 나중에 DB 테이블 완성되면 주석 해제해서 연동하세요!
-      /*
-      const userId = userObj.id || userObj.user_id;
-      axios.get(`http://localhost:5000/api/visits/${userId}`)
-        .then(res => setVisits(res.data))
-        .catch(err => console.error("방문기록 로드 실패:", err));
-      */
+      if (!userEmail) {
+        setLoading(false);
+        return;
+      }
 
-      // 임시Mock 데이터 테스트용 (데이터가 들어왔을 때 UI 확인용)
-      // setVisits([{ id: 1, name: "서울시어린이대공원휴게소", date: "2026-06-11" }]);
+      // 🌟 3. 추출한 userEmail을 활용해 백엔드 라우터 호출
+      axios
+        .get(`http://localhost:5000/api/users/visit-history/${userEmail}`)
+        .then((res) => {
+          setVisits(res.data || []);
+          setLoading(false);
+        })
+        .catch((err) => {
+          console.error("방문 기록 데이터 로드 실패:", err);
+          setLoading(false);
+        });
     } catch (e) {
-      console.error(e);
+      console.error("유저 세션 파싱 에러:", e);
+      setLoading(false);
     }
   }, []);
 
@@ -137,7 +162,9 @@ export default function VisitHistory() {
       <Content>
         <SectionTitle>📸 내가 다녀온 성지 순례</SectionTitle>
 
-        {visits.length === 0 ? (
+        {loading ? (
+          <LoadingText>기록을 불러오는 중입니다... ⏳</LoadingText>
+        ) : visits.length === 0 ? (
           <EmptyCard>
             <EmptyIcon>🎒</EmptyIcon>
             <EmptyText>
@@ -149,8 +176,13 @@ export default function VisitHistory() {
         ) : (
           <VisitList>
             {visits.map((item) => (
-              <VisitCard key={item.id}>
-                <PlaceName>{item.name}</PlaceName>
+              // 장소 카드를 누르면 상세 페이지(`/place/장소ID`)로 유연하게 이동하는 네비게이션 추가
+              <VisitCard
+                key={item.id}
+                onClick={() => navigate(`/place/${item.place_id}`)}
+              >
+                {/* 🌟 4. 백엔드 별칭에 맞게 item.place_name으로 맵핑 */}
+                <PlaceName>{item.place_name}</PlaceName>
                 <VisitDate>방문 일시: {item.date}</VisitDate>
               </VisitCard>
             ))}
