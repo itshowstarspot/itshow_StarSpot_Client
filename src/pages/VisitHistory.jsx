@@ -46,10 +46,34 @@ const Content = styled.div`
   gap: 20px;
 `;
 
-const SectionTitle = styled.h2`
-  font-size: 18px;
-  font-weight: 700;
-  margin: 0 0 4px 0;
+const SectionTitle = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+
+  h2 {
+    font-size: 18px;
+    font-weight: 700;
+    margin: 0;
+  }
+`;
+
+const RefreshBtn = styled.button`
+  background: #ffffff;
+  border: 1px solid rgba(45, 47, 54, 0.1);
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  color: #7e838f;
+  transition: all 0.2s;
+
+  &:hover {
+    background: #f5f5f8;
+    color: #2d2f36;
+  }
 `;
 
 const EmptyCard = styled.div`
@@ -101,6 +125,16 @@ const PlaceName = styled.h3`
   color: #2d2f36;
 `;
 
+const MemberName = styled.span`
+  font-size: 11px;
+  font-weight: 600;
+  color: #e8d664;
+  background: rgba(232, 214, 100, 0.1);
+  padding: 2px 6px;
+  border-radius: 4px;
+  width: fit-content;
+`;
+
 const VisitDate = styled.span`
   font-size: 12px;
   color: #a1a7b5;
@@ -116,40 +150,38 @@ const LoadingText = styled.div`
 export default function VisitHistory() {
   const navigate = useNavigate();
   const [visits, setVisits] = useState([]);
-  const [loading, setLoading] = useState(true); // 🌟 1. loading 상태 추가로 에러 원천 차단
+  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const savedUser = localStorage.getItem("user");
-    if (!savedUser) {
-      setLoading(false);
-      return;
-    }
+  const fetchVisitHistory = () => {
+    let userEmail = "test15@gmail.com";
 
     try {
-      const userObj = JSON.parse(savedUser);
-      // 🌟 2. 로컬스토리지에서 이메일 주소 명확하게 추출
-      const userEmail = userObj.email || userObj.user_email;
-
-      if (!userEmail) {
-        setLoading(false);
-        return;
+      const savedUser = localStorage.getItem("user");
+      if (savedUser) {
+        const userObj = JSON.parse(savedUser);
+        userEmail = userObj.email || userObj.user_email || userEmail;
       }
-
-      // 🌟 3. 추출한 userEmail을 활용해 백엔드 라우터 호출
-      axios
-        .get(`http://localhost:5000/api/users/visit-history/${userEmail}`)
-        .then((res) => {
-          setVisits(res.data || []);
-          setLoading(false);
-        })
-        .catch((err) => {
-          console.error("방문 기록 데이터 로드 실패:", err);
-          setLoading(false);
-        });
     } catch (e) {
       console.error("유저 세션 파싱 에러:", e);
-      setLoading(false);
     }
+
+    setLoading(true);
+
+    axios
+      .get(`http://localhost:5000/api/users/visit-history/${userEmail}`)
+      .then((res) => {
+        // 백엔드가 준 확실한 배열 데이터를 다이렉트로 집어넣습니다.
+        setVisits(res.data || []);
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error("방문 기록 데이터 로드 실패:", err);
+        setLoading(false);
+      });
+  };
+
+  useEffect(() => {
+    fetchVisitHistory();
   }, []);
 
   return (
@@ -160,33 +192,43 @@ export default function VisitHistory() {
       </TopBar>
 
       <Content>
-        <SectionTitle>📸 내가 다녀온 성지 순례</SectionTitle>
+        <SectionTitle>
+          <h2>📸 내가 다녀온 성지 순례</h2>
+          <RefreshBtn onClick={fetchVisitHistory}>새로고침 🔄</RefreshBtn>
+        </SectionTitle>
 
         {loading ? (
           <LoadingText>기록을 불러오는 중입니다... ⏳</LoadingText>
-        ) : visits.length === 0 ? (
-          <EmptyCard>
-            <EmptyIcon>🎒</EmptyIcon>
-            <EmptyText>
-              아직 방문 인증한 장소가 없어요.
-              <br />
-              지도를 보고 나만의 발자국을 남겨보세요!
-            </EmptyText>
-          </EmptyCard>
         ) : (
-          <VisitList>
-            {visits.map((item) => (
-              // 장소 카드를 누르면 상세 페이지(`/place/장소ID`)로 유연하게 이동하는 네비게이션 추가
-              <VisitCard
-                key={item.id}
-                onClick={() => navigate(`/place/${item.place_id}`)}
-              >
-                {/* 🌟 4. 백엔드 별칭에 맞게 item.place_name으로 맵핑 */}
-                <PlaceName>{item.place_name}</PlaceName>
-                <VisitDate>방문 일시: {item.date}</VisitDate>
-              </VisitCard>
-            ))}
-          </VisitList>
+          <>
+            {/* 🌟visits 배열이 빈 배열일 때만 텅 빈 카드 노출 */}
+            {visits.length === 0 ? (
+              <EmptyCard>
+                <EmptyIcon>🎒</EmptyIcon>
+                <EmptyText>
+                  아직 방문 인증한 장소가 없어요.
+                  <br />
+                  지도를 보고 나만의 발자국을 남겨보세요!
+                </EmptyText>
+              </EmptyCard>
+            ) : (
+              /* 🌟 콘솔에 잡힌 진짜 Array 데이터 한 건 이상 존재 시 실시간 드로잉 보장 */
+              <VisitList>
+                {visits.map((item, index) => (
+                  <VisitCard
+                    key={item.id || index}
+                    onClick={() => navigate(`/place/${item.place_id}`)}
+                  >
+                    {item.member_name && (
+                      <MemberName>{item.member_name}</MemberName>
+                    )}
+                    <PlaceName>{item.place_name}</PlaceName>
+                    <VisitDate>방문 일시: {item.date}</VisitDate>
+                  </VisitCard>
+                ))}
+              </VisitList>
+            )}
+          </>
         )}
       </Content>
     </Page>

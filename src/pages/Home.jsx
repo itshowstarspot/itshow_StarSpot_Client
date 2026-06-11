@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
 import styled from "styled-components";
+import { useSearchParams } from "react-router-dom";
 import Sidebar from "../components/sidebar/Sidebar";
 import ActivePanel from "../components/sidebar/ActivePanel";
 import MapView from "../components/layout/MapView";
@@ -11,6 +12,7 @@ import { usePlaces } from "../hooks/usePlaces";
 import { useCourse } from "../hooks/useCourse";
 import { getPendingReview } from "../stores/reviewStore";
 import { CATEGORIES } from "../constants/categories";
+import { fetchPlaceDetail } from "../services/placeService";
 import axios from "axios";
 
 const Page = styled.div`
@@ -88,6 +90,7 @@ const PanelOverlay = styled.div`
 `;
 
 export default function Home({ selectedIdol, onIdolChange, skipIdolPrompt }) {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [activeNav, setActiveNav] = useState("search");
   const [panelOpen, setPanelOpen] = useState(false);
   const [selectedPlaceId, setSelectedPlaceId] = useState(
@@ -100,6 +103,43 @@ export default function Home({ selectedIdol, onIdolChange, skipIdolPrompt }) {
   const [myLocation, setMyLocation] = useState(null);
   const [mapCenter, setMapCenter] = useState(null);
   const [routeCoords, setRouteCoords] = useState(null);
+
+  /* ── 🌟 [교정 완료] 외부 링크 가로채기 파이프라인 정비 ── */
+  useEffect(() => {
+    const mode = searchParams.get("mode");
+    const placeId = searchParams.get("placeId");
+
+    if (mode === "route" && placeId) {
+      setActiveNav("route");
+
+      fetchPlaceDetail(placeId)
+        .then((place) => {
+          if (place) {
+            const finalLat = Number(place.lat || place.latitude);
+            const finalLng = Number(place.lng || place.longitude);
+            const finalName = place.name || place.placeName || "우돈청";
+
+            if (!isNaN(finalLat) && !isNaN(finalLng)) {
+              const destinationData = {
+                lat: finalLat,
+                lng: finalLng,
+                name: finalName,
+                isDirectTrigger: true,
+              };
+
+              setRouteCoords(destinationData);
+              setMapCenter({ lat: finalLat, lng: finalLng });
+            }
+          }
+        })
+        .catch((err) =>
+          console.error("홈페이지 길찾기 데이터 빌드 실패:", err),
+        );
+
+      // 🌟 중요: 쿼리를 완전히 지우면 서브 컴포넌트 내부의 searchParams.get("placeId")가 끊기므로
+      // mode 파라미터만 안전하게 제거하거나, state 트리거 작동 후 보존하도록 수정
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     if (activeNav !== "route") {
@@ -151,7 +191,10 @@ export default function Home({ selectedIdol, onIdolChange, skipIdolPrompt }) {
       if (matchedIdol) {
         if (matchedIdol.id !== selectedIdol?.id) onIdolChange(matchedIdol);
         if (!localStorage.getItem("selected_idol")) {
-          localStorage.setItem("selected_idol", JSON.stringify(matchedIdol));
+          style = localStorage.setItem(
+            "selected_idol",
+            JSON.stringify(matchedIdol),
+          );
         }
       }
     }
@@ -214,7 +257,8 @@ export default function Home({ selectedIdol, onIdolChange, skipIdolPrompt }) {
           onCourseOpen={handleCourseOpen}
           onRouteSearch={setRouteCoords}
           mapCenter={mapCenter}
-          myLocation={myLocation}
+          myLocation={myLocation} // 🌟 보이지 않던 누락 링크 보완완료!
+          routeCoords={routeCoords}
         />
       </Sidebar>
 

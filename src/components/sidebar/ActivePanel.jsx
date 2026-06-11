@@ -10,16 +10,17 @@ export default function ActivePanel({
   onCourseOpen,
   onRouteSearch,
   mapCenter,
-  myLocation, // 🌟 [추가] 내 GPS 좌표 접수
+  myLocation,
+  routeCoords, // 🌟 [교정] 부모(Home)가 낚아챈 우돈청 데이터를 접수합니다.
 }) {
   switch (navId) {
     case "route":
-      // 🌟 [수정] RoutePanel로 내 실시간 GPS 데이터(myLocation) 최종 전달
       return (
         <RoutePanel
           onRouteSearch={onRouteSearch}
           mapCenter={mapCenter}
           myLocation={myLocation}
+          routeCoords={routeCoords} // 🌟 [교정] 길찾기 패널에게 우돈청 데이터를 최종 배달합니다.
         />
       );
     case "favorite":

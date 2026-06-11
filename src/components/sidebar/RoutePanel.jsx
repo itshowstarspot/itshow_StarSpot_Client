@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import styled from "styled-components";
 import axios from "axios";
 
@@ -151,7 +151,12 @@ const SearchButton = styled.button`
   cursor: pointer;
   box-shadow: 0 4px 12px rgba(232, 214, 100, 0.2);
 
-  &:hover {
+  &:disabled {
+    background: #e2dbab;
+    cursor: not-allowed;
+  }
+
+  &:hover:not(:disabled) {
     background: #d4c255;
   }
 `;
@@ -281,15 +286,6 @@ const NodeDetail = styled.div`
   gap: 6px;
 `;
 
-const MiniVehicleBadge = styled.span`
-  font-size: 11px;
-  font-weight: 700;
-  padding: 1px 5px;
-  border-radius: 4px;
-  background: ${({ $bg }) => $bg || "#e8d664"};
-  color: #ffffff;
-`;
-
 const SuggestionList = styled.ul`
   position: absolute;
   top: calc(100% + 6px);
@@ -322,7 +318,13 @@ const SuggestionItem = styled.li`
   }
 `;
 
-export default function RoutePanel({ onRouteSearch, mapCenter, myLocation }) {
+/* ── 🌟 메인 컴포넌트 교정 진입 ── */
+export default function RoutePanel({
+  onRouteSearch,
+  mapCenter,
+  myLocation,
+  routeCoords,
+}) {
   const [startQuery, setStartQuery] = useState("");
   const [endQuery, setEndQuery] = useState("");
   const [startCoord, setStartCoord] = useState(null);
@@ -330,7 +332,7 @@ export default function RoutePanel({ onRouteSearch, mapCenter, myLocation }) {
   const [suggestions, setSuggestions] = useState([]);
   const [activeField, setActiveField] = useState(null);
 
-  // 🌟 동적 라우팅 결과 상태값 관리 변수들
+  const [isLoading, setIsLoading] = useState(false);
   const [hasRouteResult, setHasRouteResult] = useState(false);
   const [routeSummary, setRouteSummary] = useState({
     totalMinutes: 0,
@@ -339,12 +341,114 @@ export default function RoutePanel({ onRouteSearch, mapCenter, myLocation }) {
     distanceKm: 0,
   });
 
+  // 무한 루프 실행 방지를 위해 이미 자동 처리 완료된 외부 신호 ID 저장용 ref
+  const lastProcessedTriggerId = useRef(null);
+
   const centerLng = mapCenter?.lng || 126.978;
   const centerLat = mapCenter?.lat || 37.5665;
 
+  // 📌 교정 완료된 useEffect 부분
+  useEffect(() => {
+    // 트리거 신호가 유효하고, 직전 처리했던 신호 ID와 다를 때만 진입
+    if (
+      routeCoords?.isDirectTrigger &&
+      routeCoords.id !== lastProcessedTriggerId.current
+    ) {
+      // 내 위치 정보가 아직 도착하지 않았다면 대기 상태 표시
+      if (!myLocation?.lat || !myLocation?.lng) {
+        setStartQuery("📍 내 위치를 받아오는 중...");
+        return;
+      }
+
+      // 조건 충족 시 중복 실행되지 않도록 즉시 ref 업데이트
+      lastProcessedTriggerId.current = routeCoords.id;
+
+      setEndQuery(routeCoords.name);
+      const targetEnd = { lat: routeCoords.lat, lng: routeCoords.lng };
+      setEndCoord(targetEnd);
+
+      const targetStart = { lat: myLocation.lat, lng: myLocation.lng };
+      setStartQuery("📍 내 현재 위치");
+      setStartCoord(targetStart);
+
+      // 자동 경로 탐색 API 호출
+      triggerAutoFindRoute(targetStart, targetEnd);
+    }
+  }, [routeCoords, myLocation]);
+
+  /* 🌟 동적 파라미터를 받아 바로 카카오 API 연동해 지도를 그리는 자동 주행 헬퍼 함수 */
+  const triggerAutoFindRoute = async (start, end) => {
+    if (isLoading) return;
+    setIsLoading(true);
+
+    try {
+      const res = await axios.get(
+        "https://apis-navi.kakaomobility.com/v1/directions",
+        {
+          headers: {
+            Authorization: `KakaoAK ${import.meta.env.VITE_KAKAO_REST_KEY}`,
+          },
+          params: {
+            origin: `${start.lng},${start.lat}`,
+            destination: `${end.lng},${end.lat}`,
+            priority: "RECOMMEND",
+          },
+        },
+      );
+
+      const linePath = [];
+      const route = res.data.routes?.[0];
+      if (!route) {
+        alert("경로를 찾을 수 없습니다.");
+        setIsLoading(false);
+        return;
+      }
+
+      route.sections[0].roads.forEach((road) => {
+        road.vertexes.forEach((vertex, index) => {
+          if (index % 2 === 0) {
+            linePath.push({ lng: vertex, lat: road.vertexes[index + 1] });
+          }
+        });
+      });
+
+      const totalMinutes = Math.ceil(route.summary.duration / 60);
+      const distanceKm = (route.summary.distance / 1000).toFixed(1);
+
+      const now = new Date();
+      now.setMinutes(now.getMinutes() + totalMinutes);
+      let hours = now.getHours();
+      const ampm = hours >= 12 ? "오후" : "오전";
+      hours = hours % 12 || 12;
+      const minutesStr = now.getMinutes().toString().padStart(2, "0");
+
+      setRouteSummary({
+        totalMinutes,
+        arrivalTimeStr: `${ampm} ${hours}:${minutesStr} 도착`,
+        taxiFare: route.summary.fare.taxi,
+        distanceKm,
+      });
+
+      // 지도가 선을 그리도록 부모 이벤트 트리거 호출
+      onRouteSearch({ start, end, path: linePath });
+      setHasRouteResult(true);
+    } catch (err) {
+      console.error("자동 경로 탐색 실패:", err);
+      alert("경로 탐색 중 오류가 발생했습니다.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // 기존 검색어 추천 연동 로직 (Debounce)
   useEffect(() => {
     const query = activeField === "start" ? startQuery : endQuery;
-    if (!query || query.length < 2) {
+    if (
+      !query ||
+      query.length < 2 ||
+      query.startsWith("📍") ||
+      query.startsWith("내 위치")
+    ) {
       setSuggestions([]);
       return;
     }
@@ -391,10 +495,10 @@ export default function RoutePanel({ onRouteSearch, mapCenter, myLocation }) {
       setHasRouteResult(false);
 
       if (field === "start") {
-        setStartQuery(finalName);
+        setStartQuery("📍 " + finalName);
         setStartCoord({ lat: myLocation.lat, lng: myLocation.lng });
       } else {
-        setEndQuery(finalName);
+        setEndQuery("📍 " + finalName);
         setEndCoord({ lat: myLocation.lat, lng: myLocation.lng });
       }
     } catch (err) {
@@ -427,74 +531,12 @@ export default function RoutePanel({ onRouteSearch, mapCenter, myLocation }) {
     setActiveField(null);
   };
 
-  // 🌟 카카오 모빌리티 실시간 데이터 파싱 및 연동 핸들러
   const handleFindRoute = async () => {
     if (!startCoord || !endCoord) {
       alert("출발지와 목적지를 모두 지정해 주세요.");
       return;
     }
-    try {
-      const res = await axios.get(
-        "https://apis-navi.kakaomobility.com/v1/directions",
-        {
-          headers: {
-            Authorization: `KakaoAK ${import.meta.env.VITE_KAKAO_REST_KEY}`,
-          },
-          params: {
-            origin: `${startCoord.lng},${startCoord.lat}`,
-            destination: `${endCoord.lng},${endCoord.lat}`,
-            priority: "RECOMMEND",
-          },
-        },
-      );
-
-      const linePath = [];
-      const route = res.data.routes?.[0];
-      if (!route) {
-        alert("탐색된 경로가 없습니다.");
-        return;
-      }
-
-      // 지도 라인 드로잉용 데이터 파싱
-      route.sections[0].roads.forEach((road) => {
-        road.vertexes.forEach((vertex, index) => {
-          if (index % 2 === 0) {
-            linePath.push({ lng: vertex, lat: road.vertexes[index + 1] });
-          }
-        });
-      });
-
-      // 🌟 실시간 정보 변환 연산
-      const durationSec = route.summary.duration; // 총 소요시간 (초 단위)
-      const distanceMeter = route.summary.distance; // 총 거리 (미터 단위)
-      const taxiFare = route.summary.fare.taxi; // 예상 택시 요금 (원)
-
-      const totalMinutes = Math.ceil(durationSec / 60);
-      const distanceKm = (distanceMeter / 1000).toFixed(1);
-
-      // 도착 예정 시간 연산 (현재 시간 + 소요 분)
-      const now = new Date();
-      now.setMinutes(now.getMinutes() + totalMinutes);
-      let hours = now.getHours();
-      const ampm = hours >= 12 ? "오후" : "오전";
-      hours = hours % 12;
-      hours = hours ? hours : 12; // 0시는 12시로 표시
-      const minutesStr = now.getMinutes().toString().padStart(2, "0");
-      const arrivalTimeStr = `${ampm} ${hours}:${minutesStr} 도착`;
-
-      // 결과값 State 세팅
-      setRouteSummary({
-        totalMinutes,
-        arrivalTimeStr,
-        taxiFare,
-        distanceKm,
-      });
-
-      onRouteSearch({ start: startCoord, end: endCoord, path: linePath });
-      setHasRouteResult(true);
-    } catch (err) {
-      alert("경로 검색에 실패했습니다.");
-    }
+    triggerAutoFindRoute(startCoord, endCoord);
   };
 
   return (
@@ -600,10 +642,11 @@ export default function RoutePanel({ onRouteSearch, mapCenter, myLocation }) {
             </svg>
           </SwapButton>
         </FormContainer>
-        <SearchButton onClick={handleFindRoute}>경로 검색하기</SearchButton>
+        <SearchButton onClick={handleFindRoute} disabled={isLoading}>
+          {isLoading ? "경로 탐색 중..." : "경로 검색하기"}
+        </SearchButton>
       </SearchHeader>
 
-      {/* ── 🌟 실시간 데이터가 주입되어 연동되는 결과창 섹션 ── */}
       {hasRouteResult && (
         <ResultContainer>
           <SummaryBox>
@@ -629,7 +672,6 @@ export default function RoutePanel({ onRouteSearch, mapCenter, myLocation }) {
           </SummaryBox>
 
           <TimelineContainer>
-            {/* 출발 노드 - 실시간 반영 */}
             <TimelineItem>
               <LineGraphic $isTransit={true} $color="#e8d664" />
               <NodeIcon $color="#c09d32">출</NodeIcon>
@@ -639,7 +681,6 @@ export default function RoutePanel({ onRouteSearch, mapCenter, myLocation }) {
               </NodeContent>
             </TimelineItem>
 
-            {/* 안내 노드 */}
             <TimelineItem>
               <LineGraphic $isTransit={true} $color="#e8d664" />
               <NodeIcon $color="#e8d664">🚗</NodeIcon>
@@ -649,7 +690,6 @@ export default function RoutePanel({ onRouteSearch, mapCenter, myLocation }) {
               </NodeContent>
             </TimelineItem>
 
-            {/* 도착 노드 - 실시간 반영 */}
             <TimelineItem>
               <LineGraphic $isTransit={false} />
               <NodeIcon $color="#c09d32">도</NodeIcon>

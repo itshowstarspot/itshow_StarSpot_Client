@@ -213,13 +213,8 @@ function App() {
         <Route
           path="/route"
           element={
-            <PrivateRoute isLoggedIn={isLoggedIn}>
-              <RoutePage
-                mapCenter={mapCenter}
-                onMapCenterChange={setMapCenter}
-              />
-            </PrivateRoute>
-          }
+            <RoutePage />
+          } 
         />
 
         <Route

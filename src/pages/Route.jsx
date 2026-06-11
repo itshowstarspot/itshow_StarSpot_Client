@@ -82,8 +82,8 @@ const DotLine = styled.div`
 `;
 
 const InputWrap = styled.div`
-  flex: 1;
   position: relative;
+  flex: 1;
 `;
 
 const StyledInput = styled.input`
@@ -169,7 +169,7 @@ const MainContent = styled.div`
 `;
 
 const MapArea = styled.div`
-  flex: 1.1; /* 지도가 상단 지분 차지 */
+  flex: 1.1;
   position: relative;
 `;
 
@@ -180,7 +180,7 @@ const MapContainer = styled.div`
 
 /* 하단 경로 결과 카드 리스트 (네이버 지도식 UI) */
 const ResultSection = styled.div`
-  flex: 0.9; /* 아래쪽 절반은 경로 추천 카드 스크롤 리스트 */
+  flex: 0.9;
   background: #ffffff;
   border-top: 1px solid rgba(45, 47, 54, 0.08);
   display: flex;
@@ -358,7 +358,6 @@ function AutoInput({ value, onChange, onSelect, placeholder }) {
   );
 }
 
-// 📌 더미 경로 목록 데이터 (유저가 선택한 교통수단 모드에 맞춰 필터링/전시용)
 const DUMMY_ROUTES_DATA = [
   {
     id: 1,
@@ -390,20 +389,22 @@ const DUMMY_ROUTES_DATA = [
   },
 ];
 
-export default function Route() {
+/* ── 메인 컴포넌트 ── */
+// 🌟 부모(Home)에서 전달받을 props 명시 (myLocation, routeCoords 추가)
+export default function Route({ myLocation, routeCoords }) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const placeId = searchParams.get("placeId");
 
-  const { location, isDefault, isLocating } = useCurrentLocation();
+  // useCurrentLocation 훅은 백그라운드 캐시가 늦을 수 있으므로 부모의 myLocation 우선 활용
+  const { location: gpsLocation, isLocating } = useCurrentLocation();
   const {
     containerRef: mapRef,
     error,
     map: mapInstance,
-  } = useKakaoMap({ center: location, level: 4 });
+  } = useKakaoMap({ center: myLocation || gpsLocation, level: 4 });
 
-  // 상단 인터랙션 상태들
-  const [transportMode, setTransportMode] = useState("WALK"); // WALK, TRANSIT, DRIVE
+  const [transportMode, setTransportMode] = useState("WALK");
   const [originText, setOriginText] = useState("");
   const [originCoord, setOriginCoord] = useState(null);
   const [destText, setDestText] = useState("");
@@ -414,7 +415,7 @@ export default function Route() {
   const markersRef = useRef([]);
   const polylineRef = useRef(null);
 
-  // 🌟 [핵심] 좌표 데이터 기반으로 실제 지번/도로명 한글 주소 텍스트로 치환하기
+  // 좌표 데이터 기반 주소 텍스트 치환 핸들러
   const updateAddressFromCoords = useCallback((coords) => {
     if (!coords) return;
     if (window.kakao && window.kakao.maps && window.kakao.maps.services) {
@@ -426,7 +427,7 @@ export default function Route() {
             : result[0].address.address_name;
           const fullAddrText = `📍 ${addr}`;
           setOriginText(fullAddrText);
-          setFetchedAddress(fullAddrText); // 검증 바인딩용
+          setFetchedAddress(fullAddrText);
           setOriginCoord(coords);
         } else {
           setOriginText("📍 현재 위치 (GPS 확보됨)");
@@ -439,36 +440,64 @@ export default function Route() {
     }
   }, []);
 
-  // 초기 로딩 시 찐 사용자의 하드웨어 GPS 매핑
+  // 🌟 [자동완성 교정 1] 부모(MapView)에서 수신받은 실시간 위치 정보가 갱신되면 출발지를 자동 바인딩
   useEffect(() => {
-    if (isLocating) {
+    const activeLocation = myLocation || gpsLocation;
+    if (activeLocation) {
+      updateAddressFromCoords(activeLocation);
+    } else if (isLocating) {
       setOriginText("실시간 내 GPS 수신 중...");
-      return;
     }
-    if (location) {
-      updateAddressFromCoords(location);
-    }
-  }, [isLocating, location, updateAddressFromCoords]);
+  }, [myLocation, gpsLocation, isLocating, updateAddressFromCoords]);
 
-  // 목적지 디테일 데이터 로드 파싱
+  // 🌟 [자동완성 교정 2] 우돈청 등 [길찾기] 버튼 클릭으로 연동된 directTrigger 신호 즉시 반영
   useEffect(() => {
-    if (!placeId) return;
-    fetchPlaceDetail(placeId)
-      .then((place) => {
-        setDestText(place.name);
-        if (place.lat && place.lng)
-          setDestCoord({ lat: place.lat, lng: place.lng });
-      })
-      .catch((err) => console.error("목적지 파싱 오류", err));
-  }, [placeId]);
+    if (routeCoords && routeCoords.isDirectTrigger) {
+      setDestText(routeCoords.name);
+      setDestCoord({ lat: routeCoords.lat, lng: routeCoords.lng });
+    } else if (placeId) {
+      // 쿼리 스트링 기반 기존 처리
+      fetchPlaceDetail(placeId)
+        .then((place) => {
+          if (!place) return;
+          const finalName = place.placeName || place.name || "목적지";
+          const finalLat = place.latitude || place.lat;
+          const finalLng = place.longitude || place.lng;
 
-  // 🌟 [네이버 지도 연동 핵심] 코스 목록 카드를 클릭하는 즉시 실시간 경로 맵 그리기 로직
+          setDestText(finalName);
+          if (finalLat && finalLng) {
+            setDestCoord({ lat: Number(finalLat), lng: Number(finalLng) });
+          }
+        })
+        .catch((err) => console.error("목적지 파싱 오류", err));
+    }
+  }, [placeId, routeCoords]);
+
+  // 🌟 [자동완성 교정 3] 출발지와 목적지가 모두 완비되는 순간 광화문을 탈출하여 초점 맞추고 자동으로 가상 선 그리기
+  useEffect(() => {
+    if (originCoord && destCoord && mapInstance && window.kakao) {
+      const maps = window.kakao.maps;
+      const startPos = new maps.LatLng(originCoord.lat, originCoord.lng);
+      const endPos = new maps.LatLng(destCoord.lat, destCoord.lng);
+
+      const bounds = new maps.LatLngBounds();
+      bounds.extend(startPos);
+      bounds.extend(endPos);
+      mapInstance.setBounds(bounds);
+
+      // 사용자가 루트 카드를 누르기 전에도 최초 1회 화면에 기본 점라인 매칭 트리거
+      if (!activeRouteId && filteredRoutes.length > 0) {
+        handleDrawRouteOnMap(filteredRoutes[0]);
+      }
+    }
+  }, [originCoord, destCoord, mapInstance, activeRouteId]);
+
+  // 경로 그리기 로직
   const handleDrawRouteOnMap = useCallback(
     (routeItem) => {
       if (!originCoord || !destCoord) return;
       setActiveRouteId(routeItem.id);
 
-      // 구 렌더링 자원 리셋
       markersRef.current.forEach((m) => m.setMap(null));
       markersRef.current = [];
       if (polylineRef.current) polylineRef.current.setMap(null);
@@ -479,7 +508,6 @@ export default function Route() {
       const startPos = new maps.LatLng(originCoord.lat, originCoord.lng);
       const endPos = new maps.LatLng(destCoord.lat, destCoord.lng);
 
-      // 출발 마커와 도착 마커 생성
       const startMarker = new maps.Marker({
         position: startPos,
         map: mapInstance,
@@ -487,13 +515,6 @@ export default function Route() {
       const endMarker = new maps.Marker({ position: endPos, map: mapInstance });
       markersRef.current = [startMarker, endMarker];
 
-      // 지도 뷰 영역 카메라 앵글 재조정
-      const bounds = new maps.LatLngBounds();
-      bounds.extend(startPos);
-      bounds.extend(endPos);
-      mapInstance.setBounds(bounds);
-
-      // 네이버 맵처럼 선택한 수단에 맞춰 선 색상 다르게 부여하는 깨알 디테일
       const strokeColors = {
         WALK: "#4285F4",
         TRANSIT: "#2DB400",
@@ -512,7 +533,6 @@ export default function Route() {
     [originCoord, destCoord, mapInstance, transportMode],
   );
 
-  // 교통수단 탭 전환 시 선택 데이터 초기화 및 맵 클리어
   const handleTabChange = (mode) => {
     setTransportMode(mode);
     setActiveRouteId(null);
@@ -524,20 +544,17 @@ export default function Route() {
     }
   };
 
-  // 현재 활성화된 이동 수단 탭 데이터만 필터링
   const filteredRoutes = DUMMY_ROUTES_DATA.filter(
     (r) => r.type === transportMode,
   );
 
   return (
     <Page>
-      {/* 1️⃣ 상단 탑바 */}
       <TopBar>
         <BackBtn onClick={() => navigate(-1)}>←</BackBtn>
         <Title>실시간 길찾기</Title>
       </TopBar>
 
-      {/* 2️⃣ 상단 출발지 / 도착지 검색 패널 (찐 GPS 한글 주소 연동) */}
       <RoutePanelContainer>
         <RouteRow>
           <DotCol>
@@ -559,7 +576,10 @@ export default function Route() {
           {originText !== fetchedAddress && (
             <MyLocBtn
               type="button"
-              onClick={() => location && updateAddressFromCoords(location)}
+              onClick={() => {
+                const activeLoc = myLocation || gpsLocation;
+                if (activeLoc) updateAddressFromCoords(activeLoc);
+              }}
             >
               📍 현위치
             </MyLocBtn>
@@ -585,7 +605,6 @@ export default function Route() {
         </RouteRow>
       </RoutePanelContainer>
 
-      {/* 3️⃣ 교통수단 대형 카테고리 탭 리스트 */}
       <TransportTabRow>
         <TabButton
           $isActive={transportMode === "WALK"}
@@ -607,7 +626,6 @@ export default function Route() {
         </TabButton>
       </TransportTabRow>
 
-      {/* 4️⃣ 메인 컨텐츠 영역 (지도 반 + 경로 카드 목록 반 분할 구성) */}
       <MainContent>
         <MapArea>
           {error ? (
