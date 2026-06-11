@@ -29,7 +29,12 @@ export const usePlaces = (idolId) => {
     setIsLoading(true)
     setError(null)
     try {
-      const data = await fetchPlacesByIdol(idolId)
+      // 🌟 현재 로그인한 유저 정보 획득
+      const savedUser = JSON.parse(localStorage.getItem("user") || "{}");
+      const userEmail = savedUser?.email || savedUser?.user_email || "";
+
+      // 백엔드 조회 시 유저 정보를 함께 넘겨 유저별 즐겨찾기(isFavorite 등)가 매핑된 데이터를 받습니다.
+      const data = await fetchPlacesByIdol(idolId, userEmail)
       
       // [★매핑 치트키★] 백엔드의 영문 카테고리를 프론트의 한글 버튼 상태와 일치시킵니다.
       const mappedData = data.map(place => ({
@@ -37,7 +42,7 @@ export const usePlaces = (idolId) => {
         category: mapEngCategoryToKor(place.category)
       }));
       
-      console.log("포착된 idolId:", idolId);
+      console.log("포착된 idolId:", idolId, "로그인된 유저:", userEmail);
       console.log("한글 카테고리로 변환 완료된 데이터 목록:", mappedData);
       
       setPlaces(mappedData)
@@ -71,7 +76,10 @@ export const usePlaces = (idolId) => {
     }
     setIsLoading(true)
     try {
-      const data = await searchPlaces(searchQuery, idolId)
+      const savedUser = JSON.parse(localStorage.getItem("user") || "{}");
+      const userEmail = savedUser?.email || savedUser?.user_email || "";
+
+      const data = await searchPlaces(searchQuery, idolId, userEmail)
       const mappedSearchData = data.map(place => ({
         ...place,
         category: mapEngCategoryToKor(place.category)

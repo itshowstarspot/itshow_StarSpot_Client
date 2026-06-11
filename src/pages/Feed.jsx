@@ -169,7 +169,6 @@ const ErrorMsg = styled.p`
   color: #e85050;
 `;
 
-// 🌟 실제 DB 내 spots 테이블과 100% 동기화된 성지순례 명단 데이터베이스
 const PLACE_OPTIONS = [
   { id: "1", name: "우돈청 (정국 성지)" },
   { id: "5", name: "자연도소금빵 (지민 성지)" },
@@ -188,9 +187,7 @@ export default function Feed() {
   const [showModal, setShowModal] = useState(false);
   const [content, setContent] = useState("");
 
-  // 🌟 하드코딩 탈출: 유저가 직접 고를 장소 ID 상태값 (기본값 우돈청)
   const [selectedPlaceId, setSelectedPlaceId] = useState("1");
-
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [postError, setPostError] = useState(null);
@@ -218,17 +215,32 @@ export default function Feed() {
   const handleCloseModal = () => {
     setShowModal(false);
     setContent("");
-    setSelectedPlaceId("1"); // 초기화
+    setSelectedPlaceId("1");
     setImageFile(null);
     setImagePreview(null);
     setPostError(null);
   };
 
+  // 🌟 내 리뷰 글만 필터링하여 가져오도록 로직 보강
   const loadFeeds = useCallback(async () => {
     setIsLoading(true);
     try {
-      const data = await fetchFeeds({ sort });
-      setFeeds(data || []);
+      const savedUser = JSON.parse(localStorage.getItem("user") || "{}");
+      const currentUserEmail =
+        savedUser?.email || savedUser?.user_email || "test15@gmail.com";
+
+      // 1단계: API 요청 시 현재 유저 정보를 조건으로 함께 전달
+      const data = await fetchFeeds({ sort, userEmail: currentUserEmail });
+
+      // 2단계: 백엔드 스펙에 대비해, 반환된 목록 중 내 이메일과 일치하는 글만 한 번 더 검증 필터링
+      const myFeeds = (data || []).filter((feed) => {
+        const feedUserEmail =
+          feed.userEmail || feed.user_email || feed.writerEmail;
+        // 만약 백엔드에 이메일 정보가 누락되었거나 전체 오픈 데이터라면 필터를 유지하되, 유연하게 매핑하도록 설계
+        return !feedUserEmail || feedUserEmail === currentUserEmail;
+      });
+
+      setFeeds(myFeeds);
     } catch (err) {
       console.error("[Feed] 피드 로딩 실패:", err);
     } finally {
@@ -250,17 +262,17 @@ export default function Feed() {
 
     try {
       const savedUser = JSON.parse(localStorage.getItem("user") || "{}");
+      const currentUserEmail =
+        savedUser?.email || savedUser?.user_email || "test15@gmail.com";
 
-      // 🌟 유저가 셀렉트 박스에서 직접 선택한 진짜 장소 ID 전송
       await createFeed({
         placeId: selectedPlaceId,
         image: imagePreview ?? "",
         content,
-        userEmail:
-          savedUser?.email || savedUser?.user_email || "test15@gmail.com",
+        userEmail: currentUserEmail,
       });
 
-      await loadFeeds(); // 리스트 갱신
+      await loadFeeds();
       handleCloseModal();
       alert("성지순례 방문 후기가 성공적으로 등록되었습니다! ✨");
     } catch (err) {
@@ -316,7 +328,6 @@ export default function Feed() {
       </Content>
 
       <Modal isOpen={showModal} onClose={handleCloseModal}>
-        {/* 🌟 capture 속성을 제거하여 PC 브라우저 탐색기가 정상 가동되도록 수정 */}
         <HiddenFileInput
           ref={fileInputRef}
           type="file"
@@ -325,7 +336,6 @@ export default function Feed() {
         />
         <h2 style={{ color: "#2d2f36", marginBottom: 16 }}>방문 후기 작성</h2>
 
-        {/* 🌟 장소 선택 대화창 추가 (상식적인 시나리오 확보) */}
         <label
           style={{
             fontSize: "13px",
