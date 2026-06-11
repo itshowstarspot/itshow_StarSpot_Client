@@ -65,17 +65,14 @@ export const fetchPlacesByIdol = async (idolId) => {
 
     return allSpots.map((spot) => ({
       id: String(spot.id),
-      name: spot.placeName,          
+      name: spot.placeName || spot.place_name,          
       address: spot.address,
       category: spot.category || '기타',
       lat: Number(spot.latitude),    
       lng: Number(spot.longitude),   
       description: spot.description || '',
-      
-      // [★수정★] 상세 모달창 연동을 위해 image와 imageUrl을 모두 뚫어줍니다.
       image: spot.imageUrl || '',
       imageUrl: spot.imageUrl || '',
-      
       hours: spot.operatingHours || '',
       holiday: spot.holiday || ''
     }));
@@ -84,15 +81,38 @@ export const fetchPlacesByIdol = async (idolId) => {
 }
 
 /**
- * 장소 검색 (카카오 키워드 검색 우선, 없으면 mock)
+ * [🌟 최종 완성] 장소 검색 API 매핑 교정
  */
 export const searchPlaces = async (query, idolId) => {
   if (BASE_URL) {
-    const params = new URLSearchParams({ query })
-    if (idolId) params.append('idolId', idolId)
-    const res = await fetch(`${BASE_URL}/places/search?${params}`)
-    if (!res.ok) throw new Error('장소 검색 실패')
-    return res.json()
+    const params = new URLSearchParams();
+    
+    // 검색창 입력값(query)이 있으면 최우선으로 파라미터에 세팅하고, 없으면 선택된 idolId를 보냅니다.
+    if (query && query.trim() !== '') {
+      params.append('idolId', query.trim());
+    } else if (idolId) {
+      params.append('idolId', idolId);
+    }
+
+    const res = await fetch(`${BASE_URL}/places?${params}`);
+    if (!res.ok) throw new Error('장소 검색 실패');
+    
+    const spots = await res.json();
+    
+    return spots.map(spot => ({
+      id: String(spot.id),
+      name: spot.placeName || spot.name,
+      placeName: spot.placeName || spot.name,
+      address: spot.address,
+      category: spot.category || '기타',
+      lat: Number(spot.latitude || spot.lat),
+      lng: Number(spot.longitude || spot.lng),
+      description: spot.description || '',
+      image: spot.imageUrl || '',
+      imageUrl: spot.imageUrl || '',
+      hours: spot.operatingHours || '',
+      holiday: spot.holiday || ''
+    }));
   }
 
   if (KAKAO_REST_KEY) {
@@ -115,7 +135,6 @@ export const searchPlaces = async (query, idolId) => {
 export const fetchPlaceDetail = async (placeId) => {
   if (BASE_URL) {
     try {
-      // [★체크★] 중복되던 /api를 걷어내어 정상적인 백엔드 주소 라우팅 보장
       const res = await fetch(`${BASE_URL}/places/${placeId}`);
       if (!res.ok) throw new Error('장소 상세 정보 조회 실패');
       
@@ -129,11 +148,8 @@ export const fetchPlaceDetail = async (placeId) => {
         lat: Number(spot.latitude || spot.lat),
         lng: Number(spot.longitude || spot.lng),
         description: spot.description || '',
-        
-        // [★체크★] 모달창 상단 회색 영역을 채워줄 이미지 속성 매핑
         image: spot.imageUrl || '',
         imageUrl: spot.imageUrl || '',
-        
         hours: spot.operatingHours || spot.hours || '',
         holiday: spot.holiday || ''
       };
