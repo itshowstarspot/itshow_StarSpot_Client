@@ -1,156 +1,162 @@
+import { useEffect, useState } from "react";
 import styled from "styled-components";
+import { useNavigate } from "react-router-dom";
+import axios from "axios";
 
-const Overlay = styled.div`
-  position: fixed;
-  inset: 0;
-  background: rgba(40, 40, 40, 0.45);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 800;
-`;
-
-const ModalCard = styled.div`
-  background: #ffffff;
-  border-radius: 20px;
-  width: 500px;
-  max-width: 94vw;
-  max-height: 88vh;
-  overflow: hidden; /* 🌟 둥근 모서리 밖으로 컨텐츠가 삐져나가지 않도록 제어 */
-  display: flex;
-  flex-direction: column;
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.22);
-`;
-
-/* 헤더 및 그리드를 감싸는 영역 (내부 스크롤 보장) */
-const ScrollBody = styled.div`
-  padding: 24px 24px 16px;
-  overflow-y: auto;
-  flex: 1;
-`;
-
-const Title = styled.p`
-  color: #e8c664;
-  font-family: "YPairing", sans-serif;
-  font-size: 20px;
-  font-style: normal;
-  font-weight: 400;
-  line-height: normal;
-  margin-bottom: 18px;
-`;
-
-const IdolHighlight = styled.strong`
-  color: #e8b664;
-  font-family: "YPairing", sans-serif;
-  font-size: 32px;
-  font-style: normal;
-  font-weight: 400;
-  line-height: normal;
-`;
-
-const Grid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
-  margin-bottom: 8px;
-`;
-
-const Card = styled.button`
-  border: none;
-  border-radius: 12px;
-  overflow: hidden;
-  padding: 0;
-  cursor: pointer;
-  background: #f0f0f0;
-  aspect-ratio: 3 / 4;
-  display: block;
-  transition:
-    transform 0.18s,
-    box-shadow 0.18s;
-
-  &:hover {
-    transform: scale(1.04);
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
-  }
-
-  img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    object-position: top center;
-    display: block;
-  }
-`;
-
-/* 하단 닫기 버튼 바 추가 */
-const ModalFooter = styled.div`
-  padding: 12px 24px 20px;
-  background: #ffffff;
-  display: flex;
-  justify-content: flex-end;
-  border-top: 1px solid rgba(0, 0, 0, 0.05);
-`;
-
-const CloseButton = styled.button`
+const Page = styled.main`
+  min-height: 100vh;
   background: #f5f5f8;
   color: #2d2f36;
-  border: none;
-  padding: 10px 20px;
-  border-radius: 10px;
-  font-weight: 600;
-  cursor: pointer;
-  &:hover {
-    background: #e4e4e8;
-  }
 `;
 
-// 🌟 onClose prop을 추가로 받아와 매핑합니다.
-export default function IdolSelectModal({
-  isOpen,
-  idols = [],
-  onSelect,
-  onClose,
-}) {
-  if (!isOpen) return null;
+const TopBar = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  background: #ffffff;
+  border-bottom: 1px solid rgba(45, 47, 54, 0.1);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+`;
+
+const BackBtn = styled.button`
+  border: none;
+  background: transparent;
+  color: #e8d664;
+  font-size: 22px;
+  cursor: pointer;
+  line-height: 1;
+`;
+
+const PageTitle = styled.h1`
+  font-size: 16px;
+  font-weight: 700;
+  color: #2d2f36;
+  margin: 0;
+`;
+
+const Content = styled.div`
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 24px 20px 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+`;
+
+const SectionTitle = styled.h2`
+  font-size: 18px;
+  font-weight: 700;
+  margin: 0 0 4px 0;
+`;
+
+const EmptyCard = styled.div`
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 40px 20px;
+  text-align: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+`;
+
+const EmptyIcon = styled.div`
+  font-size: 40px;
+  margin-bottom: 12px;
+`;
+
+const EmptyText = styled.p`
+  font-size: 14px;
+  color: #7e838f;
+  margin: 0;
+  line-height: 1.5;
+`;
+
+const VisitList = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+`;
+
+const VisitCard = styled.div`
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 18px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+`;
+
+const PlaceName = styled.h3`
+  font-size: 16px;
+  font-weight: 700;
+  margin: 0;
+  color: #2d2f36;
+`;
+
+const VisitDate = styled.span`
+  font-size: 12px;
+  color: #a1a7b5;
+`;
+
+export default function VisitHistory() {
+  const navigate = useNavigate();
+  const [visits, setVisits] = useState([]);
+
+  useEffect(() => {
+    // 로컬스토리지나 백엔드에서 방문 기록 들고오기 (예외 방어)
+    const savedUser = localStorage.getItem("user");
+    if (!savedUser) return;
+
+    try {
+      const userObj = JSON.parse(savedUser);
+
+      // 🌟 [백엔드 연동부] 나중에 DB 테이블 완성되면 주석 해제해서 연동하세요!
+      /*
+      const userId = userObj.id || userObj.user_id;
+      axios.get(`http://localhost:5000/api/visits/${userId}`)
+        .then(res => setVisits(res.data))
+        .catch(err => console.error("방문기록 로드 실패:", err));
+      */
+
+      // 임시Mock 데이터 테스트용 (데이터가 들어왔을 때 UI 확인용)
+      // setVisits([{ id: 1, name: "서울시어린이대공원휴게소", date: "2026-06-11" }]);
+    } catch (e) {
+      console.error(e);
+    }
+  }, []);
 
   return (
-    /* 🌟 바깥 어두운 영역 누르면 모달 닫히도록 onClose 연결 */
-    <Overlay onClick={onClose}>
-      <ModalCard onClick={(e) => e.stopPropagation()}>
-        <ScrollBody>
-          <Title>
-            따라가고 싶은 <IdolHighlight>아이돌</IdolHighlight> 선택! ⭐
-          </Title>
+    <Page>
+      <TopBar>
+        <BackBtn onClick={() => navigate(-1)}>←</BackBtn>
+        <PageTitle>방문 기록</PageTitle>
+      </TopBar>
 
-          <Grid>
-            {idols.map((idol) => (
-              <Card
-                key={idol.id}
-                type="button"
-                onClick={() => onSelect(idol)}
-                title={`${idol.groupLabel || ""} ${idol.name || ""}`}
-              >
-                {/* 🌟 이미지 주소가 폭파되어도 하얀 화면으로 안 뻗도록 예외처리 */}
-                <img
-                  src={idol.image}
-                  alt={idol.name}
-                  onError={(e) => {
-                    e.target.onerror = null;
-                    e.target.src =
-                      "https://via.placeholder.com/150x200?text=No+Image";
-                  }}
-                />
-              </Card>
+      <Content>
+        <SectionTitle>📸 내가 다녀온 성지 순례</SectionTitle>
+
+        {visits.length === 0 ? (
+          <EmptyCard>
+            <EmptyIcon>🎒</EmptyIcon>
+            <EmptyText>
+              아직 방문 인증한 장소가 없어요.
+              <br />
+              지도를 보고 나만의 발자국을 남겨보세요!
+            </EmptyText>
+          </EmptyCard>
+        ) : (
+          <VisitList>
+            {visits.map((item) => (
+              <VisitCard key={item.id}>
+                <PlaceName>{item.name}</PlaceName>
+                <VisitDate>방문 일시: {item.date}</VisitDate>
+              </VisitCard>
             ))}
-          </Grid>
-        </ScrollBody>
-
-        <ModalFooter>
-          <CloseButton type="button" onClick={onClose}>
-            취소
-          </CloseButton>
-        </ModalFooter>
-      </ModalCard>
-    </Overlay>
+          </VisitList>
+        )}
+      </Content>
+    </Page>
   );
 }

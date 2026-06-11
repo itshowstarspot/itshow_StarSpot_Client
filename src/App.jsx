@@ -17,6 +17,7 @@ import PhotoFrame from "./pages/PhotoFrame";
 import PhotoSelect from "./pages/PhotoSelect";
 import RoutePage from "./pages/Route";
 import Course from "./pages/Course";
+import VisitHistory from "./pages/VisitHistory"; // 🌟 다시 외부 진짜 파일로 명확히 소급!
 import MyPage from "./pages/MyPage";
 import PostRegister from "./pages/PostRegister";
 import { useLocalStorage } from "./hooks/useLocalStorage";
@@ -44,43 +45,6 @@ function SelectPage({ onSelect }) {
         navigate("/home");
       }}
     />
-  );
-}
-
-// 🌟 [안전 격리] VisitHistory 컴포넌트를 App 함수 외부 독립된 영역에 선언합니다.
-// 이렇게 해야 BrowserRouter 내부 구역에서 안전하게 useNavigate를 호출할 수 있습니다.
-function VisitHistory() {
-  const navigate = useNavigate();
-  return (
-    <div
-      style={{
-        padding: "50px",
-        textAlign: "center",
-        fontSize: "20px",
-        color: "#2d2f36",
-        background: "#f5f5f8",
-        minHeight: "100vh",
-      }}
-    >
-      <button
-        onClick={() => navigate(-1)}
-        style={{
-          padding: "10px 20px",
-          marginBottom: "20px",
-          cursor: "pointer",
-          background: "#e8d664",
-          border: "none",
-          borderRadius: "8px",
-          fontWeight: "bold",
-        }}
-      >
-        ← 마이페이지로 돌아가기
-      </button>
-      <h1 style={{ marginTop: "40px" }}>🎒 방문 기록 페이지 테스트 성공!</h1>
-      <p style={{ color: "#666", fontSize: "16px" }}>
-        라우터와 네비게이트 연결이 아주 완벽하게 성공했습니다.
-      </p>
-    </div>
   );
 }
 
@@ -275,7 +239,7 @@ function App() {
           }
         />
 
-        {/* 🌟 내부 선언된 안전한 VisitHistory 컴포넌트로 연결 */}
+        {/* 🌟 외부 컴포넌트 파일과 철저하게 라우팅 연결 완료 */}
         <Route
           path="/visit"
           element={
