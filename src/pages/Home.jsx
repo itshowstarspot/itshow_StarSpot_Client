@@ -76,6 +76,7 @@ const FilterChip = styled.button`
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   transition: all 0.15s;
   white-space: nowrap;
+}
 `;
 
 const PanelOverlay = styled.div`
@@ -106,12 +107,11 @@ export default function Home({ selectedIdol, onIdolChange, skipIdolPrompt }) {
   const [mapCenter, setMapCenter] = useState(null);
   const [routeCoords, setRouteCoords] = useState(null);
 
-  /* ── ⭕ [수정 완료] 외부 링크 및 내부 길찾기 전환 파이프라인 정비 ── */
+  /* ── 외부 링크 및 내부 길찾기 전환 파이프라인 정비 ── */
   useEffect(() => {
     const mode = searchParams.get("mode");
     const placeId = searchParams.get("placeId");
 
-    // placeId가 없거나 문자열 "undefined" 이면 작동 자체를 차단
     if (!placeId || placeId === "undefined" || String(placeId).trim() === "") {
       return;
     }
@@ -126,7 +126,6 @@ export default function Home({ selectedIdol, onIdolChange, skipIdolPrompt }) {
             const finalLng = Number(place.lng || place.longitude);
             const finalName = place.name || place.placeName || "선택된 장소";
 
-            // 백엔드 명세에 맞춘 안전한 ID 검증 프로퍼티 오버로딩
             const parsedId =
               place.id || place._id || place.spotId || place.placeId || placeId;
 
@@ -141,7 +140,6 @@ export default function Home({ selectedIdol, onIdolChange, skipIdolPrompt }) {
               setRouteCoords(destinationData);
               setMapCenter({ lat: finalLat, lng: finalLng });
 
-              // 🛡️ 최종 추출된 ID가 "undefined" 문자열이 아닐 때만 스테이트 주입
               if (parsedId && String(parsedId) !== "undefined") {
                 setSelectedPlaceId(String(parsedId));
               }
@@ -218,36 +216,28 @@ export default function Home({ selectedIdol, onIdolChange, skipIdolPrompt }) {
     [filteredPlaces, categoryFilter],
   );
 
-  // ⭕ [수정] undefined 문자열 및 다양한 ID 프로퍼티 대응 방어 코드
-  const handlePlaceClick = useCallback(
-    (placeOrId) => {
-      if (!placeOrId) return;
+  // 🎯 [수정 완료] 이제 검색창이나 마커에서 장소를 클릭하면 외부 페이지로 튕기지 않고 화면 중앙에 원래 모달을 활성화합니다!
+  const handlePlaceClick = useCallback((placeOrId) => {
+    if (!placeOrId) return;
 
-      let id = "";
-      // 1. 인자가 객체로 넘어왔을 경우 (place)
-      if (typeof placeOrId === "object") {
-        id =
-          placeOrId.id ||
-          placeOrId.spotId ||
-          placeOrId._id ||
-          placeOrId.placeId;
-      } else {
-        // 2. 인자가 ID 값 단독으로 넘어왔을 경우
-        id = placeOrId;
-      }
+    let id = "";
+    if (typeof placeOrId === "object") {
+      id =
+        placeOrId.id || placeOrId.spotId || placeOrId._id || placeOrId.placeId;
+    } else {
+      id = placeOrId;
+    }
 
-      // 'undefined' 문자열이거나 값이 유효하지 않다면 라우팅 차단
-      if (id && String(id) !== "undefined" && String(id).trim() !== "") {
-        navigate(`/place/${id}`);
-      } else {
-        console.error(
-          "❌ 유효하지 않은 장소 ID가 포착되어 이동을 차단했습니다:",
-          placeOrId,
-        );
-      }
-    },
-    [navigate],
-  );
+    if (id && String(id) !== "undefined" && String(id).trim() !== "") {
+      // 💡 핵심 교체: 페이지 전환(navigate)을 완전히 걷어내고 모달 스테이트를 오픈합니다!
+      setSelectedPlaceId(String(id));
+    } else {
+      console.error(
+        "❌ 유효하지 않은 장소 ID가 포착되어 모달을 열 수 없습니다:",
+        placeOrId,
+      );
+    }
+  }, []);
 
   const handleCourseOpen = useCallback(
     (course) => setSelectedCourse(course),
