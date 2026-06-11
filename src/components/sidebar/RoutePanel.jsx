@@ -8,28 +8,30 @@ const PanelWrapper = styled.div`
   flex-direction: column;
   background: #ffffff;
   height: 100%;
+  overflow: hidden;
 `;
 
 const SearchHeader = styled.div`
-  padding: 24px 20px;
+  padding: 24px 20px 16px 20px;
   background: #ffffff;
   display: flex;
   flex-direction: column;
   gap: 16px;
   position: relative;
+  border-bottom: 1px solid #f1f3f5;
+  flex-shrink: 0;
 `;
 
 const PanelTitle = styled.h3`
   margin: 0 0 4px 0;
   font-size: 22px;
   font-weight: 700;
-  color: #c09d32; /* 기존 서비스 테마에 맞춘 메인 골드 브라운 */
+  color: #c09d32;
   display: flex;
   align-items: center;
   gap: 8px;
 `;
 
-/* ── 메인 화이트 박스 폼 컨테이너 (골드 테두리) ── */
 const FormContainer = styled.div`
   display: flex;
   align-items: center;
@@ -56,7 +58,6 @@ const InputBlock = styled.div`
   position: relative;
 `;
 
-/* 상단 라벨 레이어 (출발/도착 배지와 내위치 버튼 가로 정렬) */
 const BlockHeader = styled.div`
   display: flex;
   justify-content: space-between;
@@ -66,13 +67,9 @@ const BlockHeader = styled.div`
 const NodeBadge = styled.span`
   font-size: 13px;
   font-weight: 700;
-  padding: 4px 10px;
-  border-radius: 6px;
-  background: #fdfae7;
   color: #c09d32;
 `;
 
-/* 아이콘 없이 텍스트만 깔끔하게 떨어지는 내 위치 버튼 */
 const InlinePickButton = styled.button`
   background: #ffffff;
   border: 1.5px solid #e8d664;
@@ -80,8 +77,8 @@ const InlinePickButton = styled.button`
   font-size: 12px;
   font-weight: 700;
   cursor: pointer;
-  padding: 4px 10px;
-  border-radius: 8px;
+  padding: 3px 9px;
+  border-radius: 6px;
   transition: all 0.2s;
 
   &:hover {
@@ -101,7 +98,6 @@ const InputWrapper = styled.div`
 
   &:focus-within {
     border-color: #e8d664;
-    box-shadow: 0 0 0 1px rgba(232, 214, 100, 0.2);
   }
 `;
 
@@ -120,7 +116,6 @@ const StyledInput = styled.input`
   }
 `;
 
-/* 🔄 두 필드 사이에 걸쳐있는 라운드 스와프 버튼 */
 const SwapButton = styled.button`
   position: absolute;
   right: -16px;
@@ -136,12 +131,11 @@ const SwapButton = styled.button`
   justify-content: center;
   cursor: pointer;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-  transition: all 0.2s;
   z-index: 10;
+  transition: all 0.2s;
 
   &:hover {
     background: #fdfae7;
-    transform: translateY(-50%) rotate(180deg);
   }
 `;
 
@@ -155,8 +149,6 @@ const SearchButton = styled.button`
   font-size: 16px;
   font-weight: 700;
   cursor: pointer;
-  transition: background 0.2s;
-  text-align: center;
   box-shadow: 0 4px 12px rgba(232, 214, 100, 0.2);
 
   &:hover {
@@ -164,7 +156,140 @@ const SearchButton = styled.button`
   }
 `;
 
-/* 자동완성 추천 리스트 디자인 */
+const ResultContainer = styled.div`
+  padding: 0 20px 24px 20px;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  flex: 1;
+`;
+
+const SummaryBox = styled.div`
+  padding: 16px 0;
+  border-bottom: 1px solid #eee;
+`;
+
+const MainTimeInfo = styled.div`
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 12px;
+  font-size: 14px;
+  color: #555;
+
+  .accent-time {
+    font-size: 22px;
+    font-weight: 800;
+    color: #c09d32;
+  }
+  .arrival-time {
+    font-weight: 600;
+    color: #222;
+  }
+  .fee {
+    margin-left: auto;
+    font-weight: 700;
+    color: #333;
+  }
+`;
+
+const VehicleBadges = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+`;
+
+const SummaryBadge = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  background: ${({ $bg }) => $bg || "#f1f3f5"};
+  color: ${({ $color }) => $color || "#333333"};
+`;
+
+const TimelineContainer = styled.div`
+  margin-top: 20px;
+  position: relative;
+`;
+
+const TimelineItem = styled.div`
+  display: flex;
+  position: relative;
+  padding-bottom: 24px;
+
+  &:last-child {
+    padding-bottom: 0;
+  }
+`;
+
+const LineGraphic = styled.div`
+  position: absolute;
+  left: 10px;
+  top: 24px;
+  bottom: 0;
+  width: 3px;
+  background: ${({ $isTransit, $color }) =>
+    $isTransit ? $color || "#e8d664" : "transparent"};
+  border-left: ${({ $isTransit }) =>
+    !$isTransit ? "3px dashed #a6afba" : "none"};
+  z-index: 1;
+
+  ${TimelineItem}:last-child & {
+    display: none;
+  }
+`;
+
+const NodeIcon = styled.div`
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 3px solid ${({ $color }) => $color || "#e8d664"};
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+  font-size: 11px;
+  font-weight: 800;
+  color: ${({ $color }) => $color || "#e8d664"};
+`;
+
+const NodeContent = styled.div`
+  margin-left: 16px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+`;
+
+const NodeTitle = styled.div`
+  font-size: 15px;
+  font-weight: 700;
+  color: #111111;
+`;
+
+const NodeDetail = styled.div`
+  font-size: 13px;
+  color: #666666;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+`;
+
+const MiniVehicleBadge = styled.span`
+  font-size: 11px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: ${({ $bg }) => $bg || "#e8d664"};
+  color: #ffffff;
+`;
+
 const SuggestionList = styled.ul`
   position: absolute;
   top: calc(100% + 6px);
@@ -173,7 +298,7 @@ const SuggestionList = styled.ul`
   background: #ffffff;
   border: 1.5px solid #e8d664;
   border-radius: 8px;
-  max-height: 200px;
+  max-height: 180px;
   overflow-y: auto;
   z-index: 1000;
   padding: 0;
@@ -189,8 +314,6 @@ const SuggestionItem = styled.li`
   border-bottom: 1px solid #f1f3f5;
   display: flex;
   flex-direction: column;
-  gap: 2px;
-
   &:last-child {
     border-bottom: none;
   }
@@ -207,17 +330,24 @@ export default function RoutePanel({ onRouteSearch, mapCenter, myLocation }) {
   const [suggestions, setSuggestions] = useState([]);
   const [activeField, setActiveField] = useState(null);
 
+  // 🌟 동적 라우팅 결과 상태값 관리 변수들
+  const [hasRouteResult, setHasRouteResult] = useState(false);
+  const [routeSummary, setRouteSummary] = useState({
+    totalMinutes: 0,
+    arrivalTimeStr: "",
+    taxiFare: 0,
+    distanceKm: 0,
+  });
+
   const centerLng = mapCenter?.lng || 126.978;
   const centerLat = mapCenter?.lat || 37.5665;
 
-  // 장소 자동완성 기능 (Debounce 처리)
   useEffect(() => {
     const query = activeField === "start" ? startQuery : endQuery;
     if (!query || query.length < 2) {
       setSuggestions([]);
       return;
     }
-
     const delayDebounce = setTimeout(async () => {
       try {
         const res = await axios.get(
@@ -231,20 +361,17 @@ export default function RoutePanel({ onRouteSearch, mapCenter, myLocation }) {
         );
         setSuggestions(res.data.documents || []);
       } catch (err) {
-        console.error("자동완성 검색 실패:", err);
+        console.error(err);
       }
     }, 200);
-
     return () => clearTimeout(delayDebounce);
   }, [startQuery, endQuery, activeField, centerLng, centerLat]);
 
-  // 카카오 로컬 역지오코딩 API: GPS 좌표 -> 주소 및 텍스트 맵핑
   const handlePickMyLocation = async (field) => {
-    if (!myLocation || !myLocation.lat || !myLocation.lng) {
-      alert("GPS 위치를 가져오는 중입니다. 잠시 후 다시 시도해 주세요.");
+    if (!myLocation?.lat) {
+      alert("GPS 위치 정보를 받아오는 중입니다.");
       return;
     }
-
     try {
       const addrRes = await axios.get(
         `https://dapi.kakao.com/v2/local/geo/coord2address.json`,
@@ -255,25 +382,13 @@ export default function RoutePanel({ onRouteSearch, mapCenter, myLocation }) {
           params: { x: myLocation.lng, y: myLocation.lat },
         },
       );
+      const doc = addrRes.data.documents?.[0];
+      const finalName =
+        doc?.road_address?.address_name ||
+        doc?.address?.address_name ||
+        "내 현재 위치";
 
-      const document = addrRes.data.documents?.[0];
-      let finalName = "";
-
-      if (document) {
-        const roadAddr = document.road_address;
-        const regionAddr = document.address;
-        if (roadAddr) {
-          finalName = roadAddr.building_name
-            ? `${roadAddr.address_name} (${roadAddr.building_name})`
-            : roadAddr.address_name;
-        } else if (regionAddr) {
-          finalName = regionAddr.address_name;
-        } else {
-          finalName = "내 현재 위치";
-        }
-      } else {
-        finalName = "내 현재 위치";
-      }
+      setHasRouteResult(false);
 
       if (field === "start") {
         setStartQuery(finalName);
@@ -283,25 +398,24 @@ export default function RoutePanel({ onRouteSearch, mapCenter, myLocation }) {
         setEndCoord({ lat: myLocation.lat, lng: myLocation.lng });
       }
     } catch (err) {
-      console.error("내 위치 역지오코딩 오류:", err);
-      alert("현재 위치의 주소 변환에 실패했습니다.");
+      alert("주소 변환에 실패했습니다.");
     }
   };
 
-  // 🔄 출발지 ⇄ 목적지 데이터 전환 핸들러
   const handleSwapNodes = () => {
-    const tempQuery = startQuery;
-    const tempCoord = startCoord;
-
+    setHasRouteResult(false);
+    const tQ = startQuery;
+    const tC = startCoord;
     setStartQuery(endQuery);
     setStartCoord(endCoord);
-
-    setEndQuery(tempQuery);
-    setEndCoord(tempCoord);
+    setEndQuery(tQ);
+    setEndCoord(tC);
   };
 
   const handleSelectPlace = (place) => {
     const coord = { lat: parseFloat(place.y), lng: parseFloat(place.x) };
+    setHasRouteResult(false);
+
     if (activeField === "start") {
       setStartQuery(place.place_name);
       setStartCoord(coord);
@@ -313,13 +427,12 @@ export default function RoutePanel({ onRouteSearch, mapCenter, myLocation }) {
     setActiveField(null);
   };
 
-  // 카카오 내비게이션 다이렉션 API 연동 호출
+  // 🌟 카카오 모빌리티 실시간 데이터 파싱 및 연동 핸들러
   const handleFindRoute = async () => {
     if (!startCoord || !endCoord) {
       alert("출발지와 목적지를 모두 지정해 주세요.");
       return;
     }
-
     try {
       const res = await axios.get(
         "https://apis-navi.kakaomobility.com/v1/directions",
@@ -336,14 +449,14 @@ export default function RoutePanel({ onRouteSearch, mapCenter, myLocation }) {
       );
 
       const linePath = [];
-      const routes = res.data.routes?.[0];
-
-      if (!routes) {
-        alert("지원 가능한 경로가 존재하지 않습니다.");
+      const route = res.data.routes?.[0];
+      if (!route) {
+        alert("탐색된 경로가 없습니다.");
         return;
       }
 
-      routes.sections[0].roads.forEach((road) => {
+      // 지도 라인 드로잉용 데이터 파싱
+      route.sections[0].roads.forEach((road) => {
         road.vertexes.forEach((vertex, index) => {
           if (index % 2 === 0) {
             linePath.push({ lng: vertex, lat: road.vertexes[index + 1] });
@@ -351,22 +464,45 @@ export default function RoutePanel({ onRouteSearch, mapCenter, myLocation }) {
         });
       });
 
+      // 🌟 실시간 정보 변환 연산
+      const durationSec = route.summary.duration; // 총 소요시간 (초 단위)
+      const distanceMeter = route.summary.distance; // 총 거리 (미터 단위)
+      const taxiFare = route.summary.fare.taxi; // 예상 택시 요금 (원)
+
+      const totalMinutes = Math.ceil(durationSec / 60);
+      const distanceKm = (distanceMeter / 1000).toFixed(1);
+
+      // 도착 예정 시간 연산 (현재 시간 + 소요 분)
+      const now = new Date();
+      now.setMinutes(now.getMinutes() + totalMinutes);
+      let hours = now.getHours();
+      const ampm = hours >= 12 ? "오후" : "오전";
+      hours = hours % 12;
+      hours = hours ? hours : 12; // 0시는 12시로 표시
+      const minutesStr = now.getMinutes().toString().padStart(2, "0");
+      const arrivalTimeStr = `${ampm} ${hours}:${minutesStr} 도착`;
+
+      // 결과값 State 세팅
+      setRouteSummary({
+        totalMinutes,
+        arrivalTimeStr,
+        taxiFare,
+        distanceKm,
+      });
+
       onRouteSearch({ start: startCoord, end: endCoord, path: linePath });
+      setHasRouteResult(true);
     } catch (err) {
-      console.error("길찾기 연동 실패:", err);
-      alert("경로를 탐색하는 도중 에러가 발생했습니다.");
+      alert("경로 검색에 실패했습니다.");
     }
   };
 
   return (
     <PanelWrapper>
       <SearchHeader>
-        {/* 🗺️  */}
-        <PanelTitle>길찾기</PanelTitle>
-
+        <PanelTitle>🗺️ 길찾기</PanelTitle>
         <FormContainer>
           <InputGroupWrapper>
-            {/* 출발 영역 */}
             <InputBlock>
               <BlockHeader>
                 <NodeBadge>출발</NodeBadge>
@@ -381,11 +517,14 @@ export default function RoutePanel({ onRouteSearch, mapCenter, myLocation }) {
                   onChange={(e) => {
                     setStartQuery(e.target.value);
                     setActiveField("start");
+                    setHasRouteResult(false);
                   }}
-                  onFocus={() => setActiveField("start")}
+                  onFocus={() => {
+                    setActiveField("start");
+                    setHasRouteResult(false);
+                  }}
                 />
               </InputWrapper>
-
               {activeField === "start" && suggestions.length > 0 && (
                 <SuggestionList>
                   {suggestions.map((p, i) => (
@@ -393,9 +532,7 @@ export default function RoutePanel({ onRouteSearch, mapCenter, myLocation }) {
                       key={i}
                       onClick={() => handleSelectPlace(p)}
                     >
-                      <strong style={{ color: "#111111" }}>
-                        {p.place_name}
-                      </strong>
+                      <strong>{p.place_name}</strong>
                       <span style={{ fontSize: "11px", color: "#888888" }}>
                         {p.address_name}
                       </span>
@@ -405,7 +542,6 @@ export default function RoutePanel({ onRouteSearch, mapCenter, myLocation }) {
               )}
             </InputBlock>
 
-            {/* 도착 영역 */}
             <InputBlock>
               <BlockHeader>
                 <NodeBadge>도착</NodeBadge>
@@ -420,11 +556,14 @@ export default function RoutePanel({ onRouteSearch, mapCenter, myLocation }) {
                   onChange={(e) => {
                     setEndQuery(e.target.value);
                     setActiveField("end");
+                    setHasRouteResult(false);
                   }}
-                  onFocus={() => setActiveField("end")}
+                  onFocus={() => {
+                    setActiveField("end");
+                    setHasRouteResult(false);
+                  }}
                 />
               </InputWrapper>
-
               {activeField === "end" && suggestions.length > 0 && (
                 <SuggestionList>
                   {suggestions.map((p, i) => (
@@ -432,9 +571,7 @@ export default function RoutePanel({ onRouteSearch, mapCenter, myLocation }) {
                       key={i}
                       onClick={() => handleSelectPlace(p)}
                     >
-                      <strong style={{ color: "#111111" }}>
-                        {p.place_name}
-                      </strong>
+                      <strong>{p.place_name}</strong>
                       <span style={{ fontSize: "11px", color: "#888888" }}>
                         {p.address_name}
                       </span>
@@ -445,8 +582,7 @@ export default function RoutePanel({ onRouteSearch, mapCenter, myLocation }) {
             </InputBlock>
           </InputGroupWrapper>
 
-          {/* 🔄 우측 중앙에 걸쳐서 배치된 스와프(아이콘) 버튼 */}
-          <SwapButton onClick={handleSwapNodes} title="출발지/목적지 전환">
+          <SwapButton onClick={handleSwapNodes}>
             <svg
               width="18"
               height="18"
@@ -464,10 +600,67 @@ export default function RoutePanel({ onRouteSearch, mapCenter, myLocation }) {
             </svg>
           </SwapButton>
         </FormContainer>
-
-        {/* 경로 검색하기 버튼 */}
         <SearchButton onClick={handleFindRoute}>경로 검색하기</SearchButton>
       </SearchHeader>
+
+      {/* ── 🌟 실시간 데이터가 주입되어 연동되는 결과창 섹션 ── */}
+      {hasRouteResult && (
+        <ResultContainer>
+          <SummaryBox>
+            <MainTimeInfo>
+              <span className="accent-time">
+                추천 {routeSummary.totalMinutes}분
+              </span>
+              <span className="arrival-time">
+                {routeSummary.arrivalTimeStr}
+              </span>
+              <span className="fee">
+                {routeSummary.taxiFare.toLocaleString()}원 (택시비)
+              </span>
+            </MainTimeInfo>
+            <VehicleBadges>
+              <SummaryBadge $bg="#fdf3df" $color="#c09d32">
+                🚗 추천경로
+              </SummaryBadge>
+              <SummaryBadge $bg="#e8d664" $color="#ffffff">
+                {routeSummary.distanceKm} km
+              </SummaryBadge>
+            </VehicleBadges>
+          </SummaryBox>
+
+          <TimelineContainer>
+            {/* 출발 노드 - 실시간 반영 */}
+            <TimelineItem>
+              <LineGraphic $isTransit={true} $color="#e8d664" />
+              <NodeIcon $color="#c09d32">출</NodeIcon>
+              <NodeContent>
+                <NodeTitle>{startQuery || "출발지"}</NodeTitle>
+                <NodeDetail>여기서부터 차량 이동을 시작합니다.</NodeDetail>
+              </NodeContent>
+            </TimelineItem>
+
+            {/* 안내 노드 */}
+            <TimelineItem>
+              <LineGraphic $isTransit={true} $color="#e8d664" />
+              <NodeIcon $color="#e8d664">🚗</NodeIcon>
+              <NodeContent>
+                <NodeTitle>내비게이션 최적 경로 주행</NodeTitle>
+                <NodeDetail>실시간 교통 상황 반영 완료</NodeDetail>
+              </NodeContent>
+            </TimelineItem>
+
+            {/* 도착 노드 - 실시간 반영 */}
+            <TimelineItem>
+              <LineGraphic $isTransit={false} />
+              <NodeIcon $color="#c09d32">도</NodeIcon>
+              <NodeContent>
+                <NodeTitle>{endQuery || "목적지"}</NodeTitle>
+                <NodeDetail>안전하게 목적지에 도착했습니다.</NodeDetail>
+              </NodeContent>
+            </TimelineItem>
+          </TimelineContainer>
+        </ResultContainer>
+      )}
     </PanelWrapper>
   );
 }
