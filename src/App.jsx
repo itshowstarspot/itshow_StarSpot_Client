@@ -15,7 +15,7 @@ import Feed from "./pages/Feed";
 import Photo from "./pages/Photo";
 import PhotoFrame from "./pages/PhotoFrame";
 import PhotoSelect from "./pages/PhotoSelect";
-import RoutePage from "./pages/Route"; // 👈 여기서 사용됩니다!
+import RoutePage from "./pages/Route";
 import Course from "./pages/Course";
 import VisitHistory from "./pages/VisitHistory";
 import MyPage from "./pages/MyPage";
@@ -60,8 +60,7 @@ function App() {
   const [nickname, setNickname] = useLocalStorage(STORAGE_KEY_NICKNAME, "");
   const [skipHomeIdolPrompt, setSkipHomeIdolPrompt] = useState(false);
 
-  // 🌟 [추가 포인트] 타임아웃 에러를 박멸하기 위해 앱 전체에서 공유할 지도 중심 좌표 상태 선언!
-  // 기본값은 사용자분의 현재 위치인 미림마이스터고 좌표로 세팅해 둡니다.
+  // 🌟 앱 전체 및 독립형 길찾기 페이지(/route)에서 공유할 지도 중심 좌표 상태 선언!
   const [mapCenter, setMapCenter] = useState({ lat: 37.4741, lng: 126.9329 });
 
   const handleLogin = () => {
@@ -216,7 +215,7 @@ function App() {
           }
         />
 
-        {/* 🌟 [수정 완료] 길찾기 라우트에 mapCenter와 값을 갱신할 setMapCenter 핸들러를 바인딩합니다 */}
+        {/* 독립형 길찾기 페이지 컴포넌트 연동 */}
         <Route
           path="/route"
           element={

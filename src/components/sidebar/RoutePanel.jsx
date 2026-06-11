@@ -3,116 +3,214 @@ import styled from "styled-components";
 import axios from "axios";
 
 const PanelWrapper = styled.div`
-  padding: 20px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+  height: 100%;
+`;
+
+const SearchHeader = styled.div`
+  padding: 24px 20px;
+  background: #ffffff;
   display: flex;
   flex-direction: column;
   gap: 16px;
-  h3 {
-    margin: 0;
-    font-size: 18px;
-    color: #2d2f36;
-  }
-`;
-
-const InputGroup = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
   position: relative;
 `;
 
-const InputRow = styled.div`
+const PanelTitle = styled.h3`
+  margin: 0 0 4px 0;
+  font-size: 22px;
+  font-weight: 700;
+  color: #c09d32; /* 기존 서비스 테마에 맞춘 메인 골드 브라운 */
   display: flex;
-  gap: 6px;
   align-items: center;
+  gap: 8px;
+`;
+
+/* ── 메인 화이트 박스 폼 컨테이너 (골드 테두리) ── */
+const FormContainer = styled.div`
+  display: flex;
+  align-items: center;
+  position: relative;
+  background: #ffffff;
+  border: 2px solid #e8d664;
+  border-radius: 12px;
+  padding: 16px 14px;
+  gap: 12px;
+  box-shadow: 0 4px 12px rgba(232, 214, 100, 0.1);
+`;
+
+const InputGroupWrapper = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  flex: 1;
+`;
+
+const InputBlock = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  position: relative;
+`;
+
+/* 상단 라벨 레이어 (출발/도착 배지와 내위치 버튼 가로 정렬) */
+const BlockHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+`;
+
+const NodeBadge = styled.span`
+  font-size: 13px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: #fdfae7;
+  color: #c09d32;
+`;
+
+/* 아이콘 없이 텍스트만 깔끔하게 떨어지는 내 위치 버튼 */
+const InlinePickButton = styled.button`
+  background: #ffffff;
+  border: 1.5px solid #e8d664;
+  color: #c09d32;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 4px 10px;
+  border-radius: 8px;
+  transition: all 0.2s;
+
+  &:hover {
+    background: #e8d664;
+    color: #ffffff;
+  }
+`;
+
+const InputWrapper = styled.div`
+  display: flex;
+  align-items: center;
+  background: #ffffff;
+  border: 1.5px solid #dcdfe4;
+  border-radius: 8px;
+  padding: 4px 10px;
+  transition: border-color 0.2s;
+
+  &:focus-within {
+    border-color: #e8d664;
+    box-shadow: 0 0 0 1px rgba(232, 214, 100, 0.2);
+  }
 `;
 
 const StyledInput = styled.input`
   flex: 1;
-  padding: 10px 12px;
-  border: 1.5px solid #e2e4ea;
-  border-radius: 8px;
-  font-size: 14px;
+  padding: 8px 2px;
+  border: none;
+  font-size: 15px;
+  font-weight: 500;
+  color: #1a1a1a;
   outline: none;
-  &:focus {
-    border-color: #e8d664;
+  background: transparent;
+
+  &::placeholder {
+    color: #a6afba;
   }
 `;
 
-const MapPickButton = styled.button`
-  padding: 10px 12px;
-  background: #f1f3f7;
-  border: none;
-  border-radius: 8px;
-  font-size: 12px;
-  font-weight: 600;
+/* 🔄 두 필드 사이에 걸쳐있는 라운드 스와프 버튼 */
+const SwapButton = styled.button`
+  position: absolute;
+  right: -16px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 2px solid #e8d664;
+  background: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
-  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  transition: all 0.2s;
+  z-index: 10;
+
   &:hover {
-    background: #e2e4ea;
+    background: #fdfae7;
+    transform: translateY(-50%) rotate(180deg);
   }
 `;
 
 const SearchButton = styled.button`
   width: 100%;
-  padding: 12px;
+  padding: 14px;
   background: #e8d664;
-  color: #1a1a1a;
+  color: #ffffff;
   border: none;
   border-radius: 8px;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 700;
   cursor: pointer;
+  transition: background 0.2s;
+  text-align: center;
   box-shadow: 0 4px 12px rgba(232, 214, 100, 0.2);
-  margin-top: 10px;
+
   &:hover {
-    background: #d7c453;
+    background: #d4c255;
   }
 `;
 
+/* 자동완성 추천 리스트 디자인 */
 const SuggestionList = styled.ul`
   position: absolute;
-  top: 64px;
+  top: calc(100% + 6px);
   left: 0;
   right: 0;
-  background: white;
-  border: 1px solid #e2e4ea;
+  background: #ffffff;
+  border: 1.5px solid #e8d664;
   border-radius: 8px;
-  max-height: 160px;
+  max-height: 200px;
   overflow-y: auto;
-  z-index: 10;
+  z-index: 1000;
   padding: 0;
   margin: 0;
   list-style: none;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
 `;
 
 const SuggestionItem = styled.li`
-  padding: 10px 12px;
-  font-size: 13px;
+  padding: 12px 14px;
+  font-size: 14px;
   cursor: pointer;
+  border-bottom: 1px solid #f1f3f5;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+
+  &:last-child {
+    border-bottom: none;
+  }
   &:hover {
-    background: #f9fafb;
+    background: #fdfae7;
   }
 `;
 
-// 🌟 [수정] mapCenter가 없을 경우를 대비해 기본값(서울시청)을 안전하게 지정합니다.
-export default function RoutePanel({
-  onRouteSearch,
-  mapCenter = { lat: 37.5665, lng: 126.978 },
-}) {
+export default function RoutePanel({ onRouteSearch, mapCenter, myLocation }) {
   const [startQuery, setStartQuery] = useState("");
   const [endQuery, setEndQuery] = useState("");
   const [startCoord, setStartCoord] = useState(null);
   const [endCoord, setEndCoord] = useState(null);
   const [suggestions, setSuggestions] = useState([]);
-  const [activeField, setActiveField] = useState(null); // 'start' | 'end'
+  const [activeField, setActiveField] = useState(null);
 
-  // 안전하게 위경도 값을 추출하는 헬퍼 변수
-  const centerLng = mapCenter?.lng || mapCenter?.longitude || 126.978;
-  const centerLat = mapCenter?.lat || mapCenter?.latitude || 37.5665;
+  const centerLng = mapCenter?.lng || 126.978;
+  const centerLat = mapCenter?.lat || 37.5665;
 
-  // 주소 입력 자동완성 (카카오 로컬 API 활용)
+  // 장소 자동완성 기능 (Debounce 처리)
   useEffect(() => {
     const query = activeField === "start" ? startQuery : endQuery;
     if (!query || query.length < 2) {
@@ -128,56 +226,78 @@ export default function RoutePanel({
             headers: {
               Authorization: `KakaoAK ${import.meta.env.VITE_KAKAO_REST_KEY}`,
             },
-            params: {
-              query,
-              x: centerLng,
-              y: centerLat,
-              radius: 20000,
-            },
+            params: { query, x: centerLng, y: centerLat, radius: 20000 },
           },
         );
         setSuggestions(res.data.documents || []);
       } catch (err) {
         console.error("자동완성 검색 실패:", err);
       }
-    }, 300);
+    }, 200);
 
     return () => clearTimeout(delayDebounce);
   }, [startQuery, endQuery, activeField, centerLng, centerLat]);
 
-  // "지도 중심" 클릭 시 해당 화면 가운데 좌표를 주소로 역변환하여 주입
-  const handlePickCenter = async (field) => {
-    try {
-      // 🌟 옵셔널 체이닝 및 디버깅 로그 추가하여 데이터 트래킹 확보
-      console.log("현재 요청 시점의 지도 중심 좌표:", {
-        x: centerLng,
-        y: centerLat,
-      });
+  // 카카오 로컬 역지오코딩 API: GPS 좌표 -> 주소 및 텍스트 맵핑
+  const handlePickMyLocation = async (field) => {
+    if (!myLocation || !myLocation.lat || !myLocation.lng) {
+      alert("GPS 위치를 가져오는 중입니다. 잠시 후 다시 시도해 주세요.");
+      return;
+    }
 
-      const res = await axios.get(
+    try {
+      const addrRes = await axios.get(
         `https://dapi.kakao.com/v2/local/geo/coord2address.json`,
         {
           headers: {
             Authorization: `KakaoAK ${import.meta.env.VITE_KAKAO_REST_KEY}`,
           },
-          params: { x: centerLng, y: centerLat },
+          params: { x: myLocation.lng, y: myLocation.lat },
         },
       );
 
-      const addrName =
-        res.data.documents?.[0]?.address?.address_name || "지도 중심 지점";
+      const document = addrRes.data.documents?.[0];
+      let finalName = "";
+
+      if (document) {
+        const roadAddr = document.road_address;
+        const regionAddr = document.address;
+        if (roadAddr) {
+          finalName = roadAddr.building_name
+            ? `${roadAddr.address_name} (${roadAddr.building_name})`
+            : roadAddr.address_name;
+        } else if (regionAddr) {
+          finalName = regionAddr.address_name;
+        } else {
+          finalName = "내 현재 위치";
+        }
+      } else {
+        finalName = "내 현재 위치";
+      }
 
       if (field === "start") {
-        setStartQuery(addrName);
-        setStartCoord({ lat: centerLat, lng: centerLng });
+        setStartQuery(finalName);
+        setStartCoord({ lat: myLocation.lat, lng: myLocation.lng });
       } else {
-        setEndQuery(addrName);
-        setEndCoord({ lat: centerLat, lng: centerLng });
+        setEndQuery(finalName);
+        setEndCoord({ lat: myLocation.lat, lng: myLocation.lng });
       }
     } catch (err) {
-      console.error("역지오코딩 실패:", err);
-      alert("현재 지도 중심의 주소를 판별할 수 없습니다.");
+      console.error("내 위치 역지오코딩 오류:", err);
+      alert("현재 위치의 주소 변환에 실패했습니다.");
     }
+  };
+
+  // 🔄 출발지 ⇄ 목적지 데이터 전환 핸들러
+  const handleSwapNodes = () => {
+    const tempQuery = startQuery;
+    const tempCoord = startCoord;
+
+    setStartQuery(endQuery);
+    setStartCoord(endCoord);
+
+    setEndQuery(tempQuery);
+    setEndCoord(tempCoord);
   };
 
   const handleSelectPlace = (place) => {
@@ -193,10 +313,10 @@ export default function RoutePanel({
     setActiveField(null);
   };
 
-  // 카카오 모빌리티 자동차 길찾기 경로 획득 함수
+  // 카카오 내비게이션 다이렉션 API 연동 호출
   const handleFindRoute = async () => {
     if (!startCoord || !endCoord) {
-      alert("출발지와 목적지를 정확히 지정해 주세요.");
+      alert("출발지와 목적지를 모두 지정해 주세요.");
       return;
     }
 
@@ -219,100 +339,135 @@ export default function RoutePanel({
       const routes = res.data.routes?.[0];
 
       if (!routes) {
-        alert("탐색된 경로가 없습니다.");
+        alert("지원 가능한 경로가 존재하지 않습니다.");
         return;
       }
 
       routes.sections[0].roads.forEach((road) => {
         road.vertexes.forEach((vertex, index) => {
           if (index % 2 === 0) {
-            linePath.push({
-              lng: vertex,
-              lat: road.vertexes[index + 1],
-            });
+            linePath.push({ lng: vertex, lat: road.vertexes[index + 1] });
           }
         });
       });
 
-      // 부모인 Home으로 경로 데이터 위임하여 지도에 푸른 선 표기
-      onRouteSearch({
-        start: startCoord,
-        end: endCoord,
-        path: linePath,
-      });
+      onRouteSearch({ start: startCoord, end: endCoord, path: linePath });
     } catch (err) {
-      console.error("길찾기 API 호출 실패:", err);
-      alert(
-        "경로를 탐색할 수 없습니다. (좌표 간 거리가 너무 가깝거나 도로가 없을 수 있습니다.)",
-      );
+      console.error("길찾기 연동 실패:", err);
+      alert("경로를 탐색하는 도중 에러가 발생했습니다.");
     }
   };
 
   return (
     <PanelWrapper>
-      <h3>📍 길찾기</h3>
+      <SearchHeader>
+        {/* 🗺️  */}
+        <PanelTitle>길찾기</PanelTitle>
 
-      <InputGroup>
-        <label style={{ fontSize: "12px", color: "#666" }}>출발지</label>
-        <InputRow>
-          <StyledInput
-            placeholder="출발지 검색 또는 지도 지정"
-            value={startQuery}
-            onChange={(e) => {
-              setStartQuery(e.target.value);
-              setActiveField("start");
-            }}
-            onFocus={() => setActiveField("start")}
-          />
-          <MapPickButton onClick={() => handlePickCenter("start")}>
-            지도중심
-          </MapPickButton>
-        </InputRow>
-        {activeField === "start" && suggestions.length > 0 && (
-          <SuggestionList>
-            {suggestions.map((p, i) => (
-              <SuggestionItem key={i} onClick={() => handleSelectPlace(p)}>
-                <strong>{p.place_name}</strong>{" "}
-                <span style={{ fontSize: "11px", color: "#99px" }}>
-                  {p.address_name}
-                </span>
-              </SuggestionItem>
-            ))}
-          </SuggestionList>
-        )}
-      </InputGroup>
+        <FormContainer>
+          <InputGroupWrapper>
+            {/* 출발 영역 */}
+            <InputBlock>
+              <BlockHeader>
+                <NodeBadge>출발</NodeBadge>
+                <InlinePickButton onClick={() => handlePickMyLocation("start")}>
+                  내위치
+                </InlinePickButton>
+              </BlockHeader>
+              <InputWrapper>
+                <StyledInput
+                  placeholder="출발지를 입력하세요"
+                  value={startQuery}
+                  onChange={(e) => {
+                    setStartQuery(e.target.value);
+                    setActiveField("start");
+                  }}
+                  onFocus={() => setActiveField("start")}
+                />
+              </InputWrapper>
 
-      <InputGroup>
-        <label style={{ fontSize: "12px", color: "#666" }}>목적지</label>
-        <InputRow>
-          <StyledInput
-            placeholder="목적지 검색 또는 지도 지정"
-            value={endQuery}
-            onChange={(e) => {
-              setEndQuery(e.target.value);
-              setActiveField("end");
-            }}
-            onFocus={() => setActiveField("end")}
-          />
-          <MapPickButton onClick={() => handlePickCenter("end")}>
-            지도중심
-          </MapPickButton>
-        </InputRow>
-        {activeField === "end" && suggestions.length > 0 && (
-          <SuggestionList>
-            {suggestions.map((p, i) => (
-              <SuggestionItem key={i} onClick={() => handleSelectPlace(p)}>
-                <strong>{p.place_name}</strong>{" "}
-                <span style={{ fontSize: "11px", color: "#99px" }}>
-                  {p.address_name}
-                </span>
-              </SuggestionItem>
-            ))}
-          </SuggestionList>
-        )}
-      </InputGroup>
+              {activeField === "start" && suggestions.length > 0 && (
+                <SuggestionList>
+                  {suggestions.map((p, i) => (
+                    <SuggestionItem
+                      key={i}
+                      onClick={() => handleSelectPlace(p)}
+                    >
+                      <strong style={{ color: "#111111" }}>
+                        {p.place_name}
+                      </strong>
+                      <span style={{ fontSize: "11px", color: "#888888" }}>
+                        {p.address_name}
+                      </span>
+                    </SuggestionItem>
+                  ))}
+                </SuggestionList>
+              )}
+            </InputBlock>
 
-      <SearchButton onClick={handleFindRoute}>경로 검색하기</SearchButton>
+            {/* 도착 영역 */}
+            <InputBlock>
+              <BlockHeader>
+                <NodeBadge>도착</NodeBadge>
+                <InlinePickButton onClick={() => handlePickMyLocation("end")}>
+                  내위치
+                </InlinePickButton>
+              </BlockHeader>
+              <InputWrapper>
+                <StyledInput
+                  placeholder="도착지를 입력하세요"
+                  value={endQuery}
+                  onChange={(e) => {
+                    setEndQuery(e.target.value);
+                    setActiveField("end");
+                  }}
+                  onFocus={() => setActiveField("end")}
+                />
+              </InputWrapper>
+
+              {activeField === "end" && suggestions.length > 0 && (
+                <SuggestionList>
+                  {suggestions.map((p, i) => (
+                    <SuggestionItem
+                      key={i}
+                      onClick={() => handleSelectPlace(p)}
+                    >
+                      <strong style={{ color: "#111111" }}>
+                        {p.place_name}
+                      </strong>
+                      <span style={{ fontSize: "11px", color: "#888888" }}>
+                        {p.address_name}
+                      </span>
+                    </SuggestionItem>
+                  ))}
+                </SuggestionList>
+              )}
+            </InputBlock>
+          </InputGroupWrapper>
+
+          {/* 🔄 우측 중앙에 걸쳐서 배치된 스와프(아이콘) 버튼 */}
+          <SwapButton onClick={handleSwapNodes} title="출발지/목적지 전환">
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="#c09d32"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <polyline points="17 1 21 5 17 9"></polyline>
+              <path d="M3 11V9a4 4 0 0 1 4-4h14"></path>
+              <polyline points="7 23 3 19 7 15"></polyline>
+              <path d="M21 13v2a4 4 0 0 1-4 4H3"></path>
+            </svg>
+          </SwapButton>
+        </FormContainer>
+
+        {/* 경로 검색하기 버튼 */}
+        <SearchButton onClick={handleFindRoute}>경로 검색하기</SearchButton>
+      </SearchHeader>
     </PanelWrapper>
   );
 }

@@ -79,7 +79,7 @@ const FilterChip = styled.button`
 const PanelOverlay = styled.div`
   display: none;
   @media (max-width: 768px) {
-    display: ${({ $open }) => ($open ? "block" : "none")};
+    display: block;
     position: fixed;
     inset: 0;
     background: rgba(0, 0, 0, 0.35);
@@ -96,11 +96,14 @@ export default function Home({ selectedIdol, onIdolChange, skipIdolPrompt }) {
   const [categoryFilter, setCategoryFilter] = useState(null);
   const [selectedCourse, setSelectedCourse] = useState(null);
 
-  /* ── 길찾기 상태 관리 ── */
-  const [routeCoords, setRouteCoords] = useState(null);
-  const [mapCenter, setMapCenter] = useState({ lat: 37.5665, lng: 126.978 }); // 초기값: 서울시청
+  /* ── 길찾기 및 위치 상태 관리 ── */
+  const [myLocation, setMyLocation] = useState(null); // 실시간 GPS 좌표 저장소
+  const [mapCenter, setMapCenter] = useState(null);
 
-  // 다른 탭으로 이동 시 그려져 있던 길찾기 경로 리셋
+  // 🌟 [버그 해결] 누락되어 있던 routeCoords 상태 변수 선언 추가!
+  const [routeCoords, setRouteCoords] = useState(null);
+
+  // 길찾기 탭을 벗어나면 지도 상의 경로선 데이터를 초기화합니다.
   useEffect(() => {
     if (activeNav !== "route") {
       setRouteCoords(null);
@@ -201,7 +204,6 @@ export default function Home({ selectedIdol, onIdolChange, skipIdolPrompt }) {
 
   return (
     <Page>
-      {/* ─── 사이드바 영역 ─── */}
       <Sidebar
         activeNav={activeNav}
         onNavSelect={setActiveNav}
@@ -215,16 +217,17 @@ export default function Home({ selectedIdol, onIdolChange, skipIdolPrompt }) {
           onCourseOpen={handleCourseOpen}
           onRouteSearch={setRouteCoords}
           mapCenter={mapCenter}
+          myLocation={myLocation}
         />
       </Sidebar>
 
-      {/* ─── 지도 영역 ─── */}
       <MapArea>
         <MapView
           places={displayPlaces}
           onPlaceClick={handlePlaceClick}
           routeCoords={routeCoords}
           onMapCenterChange={setMapCenter}
+          onMyLocationChange={setMyLocation}
         />
 
         <FilterBar>
