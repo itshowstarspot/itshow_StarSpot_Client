@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
-import styled from 'styled-components'
-import { loadKakaoMapSdk } from '../../services/kakaoMap'
+import { useEffect, useRef, useState } from "react";
+import styled from "styled-components";
+import { loadKakaoMapSdk } from "../../services/kakaoMap";
 
 const MapWrap = styled.div`
   position: relative;
@@ -8,12 +8,12 @@ const MapWrap = styled.div`
   height: 100%;
   min-height: 0;
   flex: 1;
-`
+`;
 
 const MapContainer = styled.div`
   width: 100%;
   height: 100%;
-`
+`;
 
 const ErrorMsg = styled.div`
   position: absolute;
@@ -22,11 +22,12 @@ const ErrorMsg = styled.div`
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  color: rgba(45,47,54,0.5);
+  color: rgba(45, 47, 54, 0.5);
   font-size: 14px;
   gap: 8px;
   background: #f5f5f8;
-`
+  z-index: 20;
+`;
 
 const MyLocationBtn = styled.button`
   position: absolute;
@@ -38,331 +39,407 @@ const MyLocationBtn = styled.button`
   border-radius: 50%;
   border: none;
   background: #ffffff;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.18);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.18);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: background 0.15s, transform 0.1s;
-
-  &:hover { background: #f5f5f8; }
-  &:active { transform: scale(0.93); }
-
+  transition:
+    background 0.15s,
+    transform 0.1s;
+  &:hover {
+    background: #f5f5f8;
+  }
+  &:active {
+    transform: scale(0.93);
+  }
   svg {
     width: 22px;
     height: 22px;
   }
-`
+`;
 
-/** 카테고리별 핀 색상 */
 const CATEGORY_COLOR = {
-  카페:   { bg: '#e8d664', border: '#b8962a', text: '#7a6210' },
-  음식점: { bg: '#ff8c66', border: '#c45c36', text: '#fff' },
-  관광지: { bg: '#66b8ff', border: '#3680c4', text: '#fff' },
-  기타:   { bg: '#b08cff', border: '#7050c0', text: '#fff' },
-}
+  카페: { bg: "#e8d664", border: "#b8962a", text: "#7a6210" },
+  음식점: { bg: "#ff8c66", border: "#c45c36", text: "#fff" },
+  관광지: { bg: "#66b8ff", border: "#3680c4", text: "#fff" },
+  기타: { bg: "#b08cff", border: "#7050c0", text: "#fff" },
+};
 
 function getColor(category) {
-  return CATEGORY_COLOR[category] ?? CATEGORY_COLOR['기타']
+  return CATEGORY_COLOR[category] ?? CATEGORY_COLOR["기타"];
 }
 
-/** 핀 HTML 생성 */
 function createPinEl(place, onClick) {
-  const { bg, border, text } = getColor(place.category)
+  const { bg, border, text } = getColor(place.category);
+  const wrap = document.createElement("div");
+  wrap.style.cssText = `position: relative; display: flex; flex-direction: column; align-items: center; cursor: pointer; user-select: none;`;
 
-  const wrap = document.createElement('div')
-  wrap.style.cssText = `
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    cursor: pointer;
-    user-select: none;
-  `
+  const label = document.createElement("div");
+  label.textContent = place.name;
+  label.style.cssText = `max-width: 100px; padding: 4px 8px; border-radius: 999px; background: ${bg}; border: 1.5px solid ${border}; color: ${text}; font-size: 11px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; box-shadow: 0 2px 8px rgba(0,0,0,0.18); margin-bottom: 2px;`;
 
-  // 라벨
-  const label = document.createElement('div')
-  label.textContent = place.name
-  label.style.cssText = `
-    max-width: 100px;
-    padding: 4px 8px;
-    border-radius: 999px;
-    background: ${bg};
-    border: 1.5px solid ${border};
-    color: ${text};
-    font-size: 11px;
-    font-weight: 700;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.18);
-    margin-bottom: 2px;
-  `
+  const tail = document.createElement("div");
+  tail.style.cssText = `width: 0; height: 0; border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 8px solid ${border};`;
 
-  // 핀 꼬리 (삼각형)
-  const tail = document.createElement('div')
-  tail.style.cssText = `
-    width: 0;
-    height: 0;
-    border-left: 5px solid transparent;
-    border-right: 5px solid transparent;
-    border-top: 8px solid ${border};
-  `
-
-  wrap.appendChild(label)
-  wrap.appendChild(tail)
-  wrap.addEventListener('click', () => onClick(place))
-
-  return wrap
+  wrap.appendChild(label);
+  wrap.appendChild(tail);
+  wrap.addEventListener("click", () => onClick(place));
+  return wrap;
 }
 
-/** 현재 위치 마커 */
 function createMyLocationEl() {
-  const wrap = document.createElement('div')
-  wrap.style.cssText = `
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  `
-
-  const outer = document.createElement('div')
-  outer.style.cssText = `
-    width: 20px; height: 20px;
-    border-radius: 50%;
-    background: rgba(66, 133, 244, 0.2);
-    display: flex; align-items: center; justify-content: center;
-  `
-
-  const inner = document.createElement('div')
-  inner.style.cssText = `
-    width: 12px; height: 12px;
-    border-radius: 50%;
-    background: #4285F4;
-    border: 2px solid #fff;
-    box-shadow: 0 2px 6px rgba(66,133,244,0.5);
-  `
-
-  outer.appendChild(inner)
-  wrap.appendChild(outer)
-  return wrap
+  const wrap = document.createElement("div");
+  wrap.style.cssText = `position: relative; display: flex; align-items: center; justify-content: center;`;
+  const outer = document.createElement("div");
+  outer.style.cssText = `width: 20px; height: 20px; border-radius: 50%; background: rgba(66, 133, 244, 0.2); display: flex; align-items: center; justify-content: center;`;
+  const inner = document.createElement("div");
+  inner.style.cssText = `width: 12px; height: 12px; border-radius: 50%; background: #4285F4; border: 2px solid #fff; box-shadow: 0 2px 6px rgba(66,133,244,0.5);`;
+  outer.appendChild(inner);
+  wrap.appendChild(outer);
+  return wrap;
 }
 
-export default function MapView({ places = [], onPlaceClick }) {
-  const containerRef = useRef(null)
-  const mapRef = useRef(null)
-  const markersRef = useRef([])
-  const myLocationRef = useRef(null)
-  const infoOverlayRef = useRef(null)
-  const currentPosRef = useRef(null)   // 최신 내 위치 좌표 보관
-  const [isReady, setIsReady] = useState(false)
-  const [error, setError] = useState(null)
-  const [locating, setLocating] = useState(false)
+export default function MapView({
+  places = [],
+  onPlaceClick,
+  routeCoords,
+  onMapCenterChange,
+  onMyLocationChange,
+}) {
+  const containerRef = useRef(null);
+  const mapRef = useRef(null);
+  const markersRef = useRef([]);
+  const myLocationRef = useRef(null);
+  const infoOverlayRef = useRef(null);
+  const currentPosRef = useRef(null);
 
-  /* 지도 초기화 */
+  const routeElementsRef = useRef({
+    startMarker: null,
+    endMarker: null,
+    polyline: null,
+  });
+
+  const [isReady, setIsReady] = useState(false);
+  const [error, setError] = useState(null);
+  const [locating, setLocating] = useState(false);
+
+  // 리렌더링마다 함수가 새로 생성되어 useEffect를 오염시키는 것을 막기 위한 Ref 보관 기법
+  const onMapCenterChangeRef = useRef(onMapCenterChange);
+  const onMyLocationChangeRef = useRef(onMyLocationChange);
+
   useEffect(() => {
-    let watchId = null
+    onMapCenterChangeRef.current = onMapCenterChange;
+    onMyLocationChangeRef.current = onMyLocationChange;
+  }, [onMapCenterChange, onMyLocationChange]);
+
+  /* 지도 초기화 및 위치 추적 */
+  useEffect(() => {
+    let watchId = null;
 
     loadKakaoMapSdk()
       .then(() => {
-        if (!containerRef.current || mapRef.current) return
-        mapRef.current = new window.kakao.maps.Map(containerRef.current, {
+        if (!containerRef.current || mapRef.current) return;
+
+        const map = new window.kakao.maps.Map(containerRef.current, {
           center: new window.kakao.maps.LatLng(37.5665, 126.978),
           level: 5,
-        })
-        setIsReady(true)
+        });
+        mapRef.current = map;
+        setIsReady(true);
 
-        if (!navigator.geolocation) return
+        window.kakao.maps.event.addListener(map, "idle", () => {
+          const center = map.getCenter();
+          if (onMapCenterChangeRef.current) {
+            onMapCenterChangeRef.current({
+              lat: center.getLat(),
+              lng: center.getLng(),
+            });
+          }
+        });
 
-        let isCentered = false
-        let bestAccuracy = Infinity  // 가장 정확한 수신값 추적
+        if (!navigator.geolocation) return;
+
+        let isCentered = false;
+        let bestAccuracy = Infinity;
 
         watchId = navigator.geolocation.watchPosition(
           ({ coords }) => {
-            const { latitude, longitude, accuracy } = coords
+            const { latitude, longitude, accuracy } = coords;
 
-            // 정확도 50m 초과 시 무시 (WiFi/기지국 기반 오차 제거)
-            // 단, 첫 수신은 200m 이하면 허용 (빠른 초기 표시)
-            const threshold = isCentered ? 50 : 200
-            if (accuracy > threshold) return
+            const threshold = isCentered ? 50 : 200;
+            if (accuracy > threshold) return;
+            if (accuracy > bestAccuracy) return;
+            bestAccuracy = accuracy;
 
-            // 이전보다 나쁜 정확도는 무시
-            if (accuracy > bestAccuracy) return
-            bestAccuracy = accuracy
+            const pos = new window.kakao.maps.LatLng(latitude, longitude);
+            currentPosRef.current = pos;
 
-            const pos = new window.kakao.maps.LatLng(latitude, longitude)
-            currentPosRef.current = pos  // 최신 위치 보관
-
-            // 파란 점 위치 갱신
-            if (myLocationRef.current) {
-              myLocationRef.current.setPosition(pos)
-            } else {
-              const el = createMyLocationEl()
-              const overlay = new window.kakao.maps.CustomOverlay({ position: pos, content: el, yAnchor: 0.5 })
-              overlay.setMap(mapRef.current)
-              myLocationRef.current = overlay
+            if (onMyLocationChangeRef.current) {
+              onMyLocationChangeRef.current({ lat: latitude, lng: longitude });
             }
 
-            // 처음 위치 받을 때만 지도 중심 이동
+            if (myLocationRef.current) {
+              myLocationRef.current.setPosition(pos);
+            } else {
+              const el = createMyLocationEl();
+              const overlay = new window.kakao.maps.CustomOverlay({
+                position: pos,
+                content: el,
+                yAnchor: 0.5,
+                xAnchor: 0.5,
+              });
+              overlay.setMap(mapRef.current);
+              myLocationRef.current = overlay;
+            }
+
             if (!isCentered) {
-              mapRef.current.setCenter(pos)
-              isCentered = true
+              mapRef.current.setCenter(pos);
+              isCentered = true;
             }
           },
           (err) => {
-            // 위치 권한 거부 또는 타임아웃 — 지도는 서울 기본 좌표로 유지
-            console.warn('[MapView] 위치 정보를 가져올 수 없습니다:', err.message)
+            console.warn(
+              "[MapView] 위치 정보를 가져올 수 없습니다:",
+              err.message,
+            );
           },
-          { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 }
-        )
+          { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 },
+        );
       })
-      .catch((err) => setError(err.message))
+      .catch((err) => setError(err.message));
 
     return () => {
-      if (watchId !== null) navigator.geolocation.clearWatch(watchId)
-    }
-  }, [])
+      if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+    };
+  }, []); // 지도 초기 로드 시 딱 한 번만 바인딩되도록 비워줍니다.
 
   /* 장소 핀 마커 */
   useEffect(() => {
-    if (!isReady || !mapRef.current) return
-    const map = mapRef.current
-    const kakao = window.kakao.maps
+    if (!isReady || !mapRef.current) return;
+    const map = mapRef.current;
+    const kakao = window.kakao.maps;
 
-    // 기존 마커 제거
-    markersRef.current.forEach((m) => m.setMap(null))
-    markersRef.current = []
-
-    // 기존 인포 오버레이 제거
-    infoOverlayRef.current?.setMap(null)
-    infoOverlayRef.current = null
+    markersRef.current.forEach((m) => m.setMap(null));
+    markersRef.current = [];
+    infoOverlayRef.current?.setMap(null);
+    infoOverlayRef.current = null;
 
     places.forEach((place) => {
-      if (!place.lat || !place.lng) return
-
-      const position = new kakao.LatLng(place.lat, place.lng)
+      if (!place.lat || !place.lng) return;
+      const position = new kakao.LatLng(place.lat, place.lng);
 
       const handlePinClick = (clickedPlace) => {
-        // 기존 인포 오버레이 닫기
-        infoOverlayRef.current?.setMap(null)
+        infoOverlayRef.current?.setMap(null);
+        const infoEl = document.createElement("div");
+        infoEl.style.cssText = `background: #fff; border: 1.5px solid #e8d664; border-radius: 10px; padding: 10px 14px; box-shadow: 0 4px 16px rgba(0,0,0,0.15); display: flex; flex-direction: column; gap: 4px; min-width: 140px; position: relative; cursor: pointer;`;
 
-        // 인포 팝업 생성
-        const infoEl = document.createElement('div')
-        infoEl.style.cssText = `
-          background: #fff;
-          border: 1.5px solid #e8d664;
-          border-radius: 10px;
-          padding: 10px 14px;
-          box-shadow: 0 4px 16px rgba(0,0,0,0.15);
-          display: flex;
-          flex-direction: column;
-          gap: 4px;
-          min-width: 140px;
-          position: relative;
-          cursor: pointer;
-        `
+        const nameEl = document.createElement("div");
+        nameEl.textContent = clickedPlace.name;
+        nameEl.style.cssText = `font-size: 13px; font-weight: 700; color: #2d2f36;`;
 
-        const nameEl = document.createElement('div')
-        nameEl.textContent = clickedPlace.name
-        nameEl.style.cssText = `font-size: 13px; font-weight: 700; color: #2d2f36;`
+        const addrEl = document.createElement("div");
+        addrEl.textContent = clickedPlace.address || "";
+        addrEl.style.cssText = `font-size: 11px; color: rgba(45,47,54,0.5);`;
 
-        const addrEl = document.createElement('div')
-        addrEl.textContent = clickedPlace.address || ''
-        addrEl.style.cssText = `font-size: 11px; color: rgba(45,47,54,0.5);`
+        const closeEl = document.createElement("button");
+        closeEl.textContent = "✕";
+        closeEl.style.cssText = `position: absolute; top: 6px; right: 8px; background: none; border: none; font-size: 12px; color: rgba(45,47,54,0.4); cursor: pointer; padding: 0;`;
+        closeEl.addEventListener("click", (e) => {
+          e.stopPropagation();
+          infoOverlayRef.current?.setMap(null);
+          infoOverlayRef.current = null;
+        });
 
-        const closeEl = document.createElement('button')
-        closeEl.textContent = '✕'
-        closeEl.style.cssText = `
-          position: absolute; top: 6px; right: 8px;
-          background: none; border: none;
-          font-size: 12px; color: rgba(45,47,54,0.4);
-          cursor: pointer; padding: 0;
-        `
-        closeEl.addEventListener('click', (e) => {
-          e.stopPropagation()
-          infoOverlayRef.current?.setMap(null)
-          infoOverlayRef.current = null
-        })
+        infoEl.appendChild(nameEl);
+        if (clickedPlace.address) infoEl.appendChild(addrEl);
+        infoEl.appendChild(closeEl);
+        // ⭕ [수정 완료] 다양한 ID 속성을 지원하고, 최종 검증을 거쳐 부모에게 전달합니다.
+        infoEl.addEventListener("click", () => {
+          if (!clickedPlace) return;
 
-        infoEl.appendChild(nameEl)
-        if (clickedPlace.address) infoEl.appendChild(addrEl)
-        infoEl.appendChild(closeEl)
-        infoEl.addEventListener('click', () => onPlaceClick?.(clickedPlace.id))
+          // 데이터의 고유 ID 값을 다각도로 찾아내기 (id, spotId, _id 등)
+          const finalId =
+            clickedPlace.id ||
+            clickedPlace.spotId ||
+            clickedPlace._id ||
+            clickedPlace.placeId;
+
+          if (finalId && String(finalId) !== "undefined") {
+            onPlaceClick?.(finalId);
+          } else {
+            console.error(
+              "❌ 클릭한 장소의 고유 ID를 찾을 수 없습니다. 데이터 구조를 확인하세요:",
+              clickedPlace,
+            );
+            alert("장소 정보가 올바르지 않습니다.");
+          }
+        });
 
         const infoOverlay = new kakao.CustomOverlay({
           position,
           content: infoEl,
           yAnchor: 1.6,
-        })
-        infoOverlay.setMap(map)
-        infoOverlayRef.current = infoOverlay
+        });
+        infoOverlay.setMap(map);
+        infoOverlayRef.current = infoOverlay;
+        map.panTo(position);
+      };
 
-        map.panTo(position)
-      }
+      const pinEl = createPinEl(place, handlePinClick);
+      const overlay = new kakao.CustomOverlay({
+        position,
+        content: pinEl,
+        yAnchor: 1.0,
+      });
+      overlay.setMap(map);
+      markersRef.current.push(overlay);
+    });
 
-      const pinEl = createPinEl(place, handlePinClick)
-      const overlay = new kakao.CustomOverlay({ position, content: pinEl, yAnchor: 1.0 })
-      overlay.setMap(map)
-      markersRef.current.push(overlay)
-    })
-
-    // 장소들이 모두 보이도록 지도 범위 조정
-    if (places.length > 0 && places.some((p) => p.lat && p.lng)) {
-      const bounds = new kakao.LatLngBounds()
-      places.forEach((p) => { if (p.lat && p.lng) bounds.extend(new kakao.LatLng(p.lat, p.lng)) })
-      map.setBounds(bounds)
+    if (
+      !routeCoords &&
+      places.length > 0 &&
+      places.some((p) => p.lat && p.lng)
+    ) {
+      const bounds = new kakao.LatLngBounds();
+      places.forEach((p) => {
+        if (p.lat && p.lng) bounds.extend(new kakao.LatLng(p.lat, p.lng));
+      });
+      map.setBounds(bounds);
     }
-  // onPlaceClick을 deps에 포함시켜 stale closure 방지
-  }, [isReady, places, onPlaceClick])
+  }, [isReady, places, onPlaceClick, routeCoords]);
+
+  /* 실시간 경로선 렌더링 훅 */
+  useEffect(() => {
+    if (!isReady || !mapRef.current) return;
+    const map = mapRef.current;
+    const kakao = window.kakao.maps;
+
+    if (routeElementsRef.current.startMarker)
+      routeElementsRef.current.startMarker.setMap(null);
+    if (routeElementsRef.current.endMarker)
+      routeElementsRef.current.endMarker.setMap(null);
+    if (routeElementsRef.current.polyline)
+      routeElementsRef.current.polyline.setMap(null);
+
+    routeElementsRef.current = {
+      startMarker: null,
+      endMarker: null,
+      polyline: null,
+    };
+    if (!routeCoords || !routeCoords.start || !routeCoords.end) return;
+
+    const bounds = new kakao.LatLngBounds();
+    const startPos = new kakao.LatLng(
+      routeCoords.start.lat,
+      routeCoords.start.lng,
+    );
+    const startMarker = new kakao.Marker({
+      position: startPos,
+      map: map,
+      title: "출발지",
+    });
+    bounds.extend(startPos);
+
+    const endPos = new kakao.LatLng(routeCoords.end.lat, routeCoords.end.lng);
+    const endMarker = new kakao.Marker({
+      position: endPos,
+      map: map,
+      title: "목적지",
+    });
+    bounds.extend(endPos);
+
+    let polylinePath = [];
+    if (routeCoords.path && routeCoords.path.length > 0) {
+      polylinePath = routeCoords.path.map((pt) => {
+        const latLng = new kakao.LatLng(pt.lat, pt.lng);
+        bounds.extend(latLng);
+        return latLng;
+      });
+    } else {
+      polylinePath = [startPos, endPos];
+    }
+
+    const polyline = new kakao.Polyline({
+      path: polylinePath,
+      strokeWeight: 6,
+      strokeColor: "#4285F4",
+      strokeOpacity: 0.85,
+      strokeStyle: "solid",
+    });
+    polyline.setMap(map);
+
+    routeElementsRef.current = { startMarker, endMarker, polyline };
+    map.setBounds(bounds);
+  }, [isReady, routeCoords]);
 
   const handleGoToMyLocation = () => {
-    if (!mapRef.current) return
-
-    // 이미 받아둔 위치가 있으면 즉시 이동
+    if (!mapRef.current) return;
     if (currentPosRef.current) {
-      mapRef.current.setCenter(currentPosRef.current)
-      mapRef.current.setLevel(3)
-      return
+      mapRef.current.setCenter(currentPosRef.current);
+      mapRef.current.setLevel(3);
+      return;
     }
-
-    // 없으면 한 번만 getCurrentPosition 호출
-    if (!navigator.geolocation) return
-    setLocating(true)
+    if (!navigator.geolocation) return;
+    setLocating(true);
     navigator.geolocation.getCurrentPosition(
       ({ coords }) => {
-        const pos = new window.kakao.maps.LatLng(coords.latitude, coords.longitude)
-        currentPosRef.current = pos
-        mapRef.current.setCenter(pos)
-        mapRef.current.setLevel(3)
-        setLocating(false)
+        const pos = new window.kakao.maps.LatLng(
+          coords.latitude,
+          coords.longitude,
+        );
+        currentPosRef.current = pos;
+        if (onMyLocationChangeRef.current)
+          onMyLocationChangeRef.current({
+            lat: coords.latitude,
+            lng: coords.longitude,
+          });
+        mapRef.current.setCenter(pos);
+        mapRef.current.setLevel(3);
+        setLocating(false);
       },
       (err) => {
-        console.warn('[MapView] 위치 가져오기 실패:', err.message)
-        setLocating(false)
+        console.warn("[MapView] 위치 가져오기 실패:", err.message);
+        setLocating(false);
       },
-      { enableHighAccuracy: true, timeout: 8000 }
-    )
-  }
+      { enableHighAccuracy: true, timeout: 8000 },
+    );
+  };
 
   return (
     <MapWrap>
       <MapContainer ref={containerRef} />
-      {error && <ErrorMsg><span>🗺</span><span>{error}</span></ErrorMsg>}
+      {error && (
+        <ErrorMsg>
+          <span>🗺</span>
+          <span>{error}</span>
+        </ErrorMsg>
+      )}
       <MyLocationBtn
         onClick={handleGoToMyLocation}
         title="내 위치로 이동"
-        aria-label="내 위치로 이동"
         style={{ opacity: locating ? 0.5 : 1 }}
       >
         {locating ? (
-          // 로딩 중 스피너
-          <svg viewBox="0 0 24 24" fill="none" stroke="#4285F4" strokeWidth="2.2" strokeLinecap="round">
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="#4285F4"
+            strokeWidth="2.2"
+            strokeLinecap="round"
+          >
             <path d="M12 2a10 10 0 1 0 10 10" />
           </svg>
         ) : (
-          // 내 위치 아이콘
-          <svg viewBox="0 0 24 24" fill="none" stroke="#4285F4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="12" r="3" fill="#4285F4" stroke="none"/>
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="#4285F4"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <circle cx="12" cy="12" r="3" fill="#4285F4" stroke="none" />
             <circle cx="12" cy="12" r="8" />
             <line x1="12" y1="2" x2="12" y2="4" />
             <line x1="12" y1="20" x2="12" y2="22" />
@@ -372,5 +449,5 @@ export default function MapView({ places = [], onPlaceClick }) {
         )}
       </MyLocationBtn>
     </MapWrap>
-  )
+  );
 }

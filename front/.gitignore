@@ -35,3 +35,7 @@ dist-ssr
 .claude/
 "node_modules/" 
 ".env" 
+
+# SSH 키
+*.pem
+*.key

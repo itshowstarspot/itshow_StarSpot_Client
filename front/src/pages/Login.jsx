@@ -213,7 +213,7 @@ function LoginForm({ onLogin }) {
     setIsLoading(true);
     try {
       const response = await axios.post(
-        "http://localhost:5000/api/users/login",
+        "/api/users/login",
         { email, password },
       );
 
@@ -353,7 +353,7 @@ function SignupForm({ onSignupDone }) {
     setIsLoading(true);
     try {
       const response = await axios.post(
-        "http://localhost:5000/api/users/signup",
+        "/api/users/signup",
         {
           email: form.email,
           nickname: form.nickname,

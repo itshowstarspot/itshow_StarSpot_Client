@@ -17,7 +17,7 @@ import PhotoFrame from "./pages/PhotoFrame";
 import PhotoSelect from "./pages/PhotoSelect";
 import RoutePage from "./pages/Route";
 import Course from "./pages/Course";
-import VisitHistory from "./pages/VisitHistory";
+import VisitHistory from "./pages/VisitHistory"; // 🌟 다시 외부 진짜 파일로 명확히 소급!
 import MyPage from "./pages/MyPage";
 import PostRegister from "./pages/PostRegister";
 import { useLocalStorage } from "./hooks/useLocalStorage";
@@ -59,14 +59,13 @@ function App() {
   );
   const [nickname, setNickname] = useLocalStorage(STORAGE_KEY_NICKNAME, "");
   const [skipHomeIdolPrompt, setSkipHomeIdolPrompt] = useState(false);
+  const [mapCenter, setMapCenter] = useState({ lat: 37.4741, lng: 126.9329 });
 
   const handleLogin = () => {
     setIsLoggedIn(true);
   };
 
-  // 🌟 [수정 포인트] 로그아웃 시 이전 회원의 로컬스토리지 데이터를 완벽히 청소합니다.
   const handleLogout = () => {
-    // 1. 브라우저 로컬스토리지에 들어있는 유저 개인 데이터 일괄 삭제
     const keysToRemove = [
       STORAGE_KEY_IDOL,
       STORAGE_KEY_LOGGED_IN,
@@ -75,24 +74,19 @@ function App() {
       STORAGE_KEY_FAVORITES,
       STORAGE_KEY_VISITS,
       STORAGE_KEY_LATEST_POST,
-      "user", // 백엔드 세션용 유저 키 데이터 청소
-      "selected_idol", // 백엔드 캐시용 아이돌 키 데이터 청소
+      "user",
+      "selected_idol",
     ];
-
     keysToRemove.forEach((key) => localStorage.removeItem(key));
     sessionStorage.clear();
-
-    // 2. 리액트 App State도 완벽하게 초기화하여 잔상 제거
     setSelectedIdol(null);
     setNickname("");
     setIsLoggedIn(false);
     setSkipHomeIdolPrompt(false);
-
     console.log("🧼 로그아웃 완료: 이전 세션 및 스토리지 데이터 청소 성공!");
   };
 
   const handleDeleteAccount = () => {
-    // 모든 앱 데이터 삭제
     [
       STORAGE_KEY_IDOL,
       STORAGE_KEY_LOGGED_IN,
@@ -113,7 +107,6 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* 시작하기 → 로그인 → 최애선택 → 홈 */}
         <Route
           path="/"
           element={<Navigate to={isLoggedIn ? "/home" : "/login"} replace />}
@@ -216,14 +209,14 @@ function App() {
             </PrivateRoute>
           }
         />
+
         <Route
           path="/route"
           element={
-            <PrivateRoute isLoggedIn={isLoggedIn}>
-              <RoutePage />
-            </PrivateRoute>
-          }
+            <RoutePage />
+          } 
         />
+
         <Route
           path="/post"
           element={
@@ -240,14 +233,13 @@ function App() {
             </PrivateRoute>
           }
         />
+
+        {/* 🌟 외부 컴포넌트 파일과 철저하게 라우팅 연결 완료 */}
         <Route
           path="/visit"
           element={
             <PrivateRoute isLoggedIn={isLoggedIn}>
-              <VisitHistory
-                selectedIdol={selectedIdol}
-                onIdolChange={setSelectedIdol}
-              />
+              <VisitHistory />
             </PrivateRoute>
           }
         />

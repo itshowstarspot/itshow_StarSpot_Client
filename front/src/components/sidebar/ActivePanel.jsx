@@ -1,21 +1,43 @@
-/**
- * 활성 네비게이션 ID에 따라 사이드바 패널을 전환하는 컴포넌트.
- * Home, PhotoSelect, PostRegister에 동일하게 중복되어 있던 switch 로직을 통합합니다.
- */
-import RoutePanel from './RoutePanel'
-import FavoritesPanel from './FavoritesPanel'
-import CoursePanel from './CoursePanel'
-import SearchPanel from './SearchPanel'
+import RoutePanel from "./RoutePanel";
+import FavoritesPanel from "./FavoritesPanel";
+import CoursePanel from "./CoursePanel";
+import SearchPanel from "./SearchPanel";
 
-export default function ActivePanel({ navId, selectedIdol, onPlaceClick, onCourseOpen }) {
+export default function ActivePanel({
+  navId,
+  selectedIdol,
+  onPlaceClick,
+  onCourseOpen,
+  onRouteSearch,
+  mapCenter,
+  myLocation,
+  routeCoords,
+  courseRoute,
+  onCourseRouteClear,
+}) {
   switch (navId) {
-    case 'route':
-      return <RoutePanel />
-    case 'favorite':
-      return <FavoritesPanel idolId={selectedIdol?.id} onPlaceClick={onPlaceClick} />
-    case 'course':
-      return <CoursePanel onCourseOpen={onCourseOpen} idolId={selectedIdol?.id} />
+    case "route":
+      return (
+        <RoutePanel
+          onRouteSearch={onRouteSearch}
+          mapCenter={mapCenter}
+          myLocation={myLocation}
+          routeCoords={routeCoords}
+          courseRoute={courseRoute}
+          onCourseRouteClear={onCourseRouteClear}
+        />
+      );
+    case "favorite":
+      return (
+        <FavoritesPanel idolId={selectedIdol?.id} onPlaceClick={onPlaceClick} />
+      );
+    case "course":
+      return (
+        <CoursePanel onCourseOpen={onCourseOpen} idolId={selectedIdol?.id} />
+      );
     default:
-      return <SearchPanel idolId={selectedIdol?.id} onPlaceClick={onPlaceClick} />
+      return (
+        <SearchPanel idolId={selectedIdol?.id} onPlaceClick={onPlaceClick} />
+      );
   }
 }

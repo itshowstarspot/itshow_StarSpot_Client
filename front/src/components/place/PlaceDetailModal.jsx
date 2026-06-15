@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { fetchPlaceDetail } from "../../services/placeService";
 import { createFeed, fetchFeeds } from "../../services/feedService";
 import { useFavorites } from "../../hooks/useFavorites";
-import LoadingSpinner from "../common/LoadingSpinner";
+import LoadingSpinner from "../common/LoadingSpinner"; // 👈 경로 교정 완료
 import { getPendingReview, clearPendingReview } from "../../stores/reviewStore";
 import { readCapturedPhotos } from "../../utils/photoStorage";
 import { SESSION_KEY_REVIEW_PLACE } from "../../constants/storageKeys";
@@ -112,6 +112,30 @@ const TitleRow = styled.div`
   }
 `;
 
+const ActionRow = styled.div`
+  display: flex;
+  gap: 6px;
+  margin: 6px 0 10px 0;
+`;
+
+const ActionBtn = styled.button`
+  flex: 1;
+  border: 1px solid rgba(45, 47, 54, 0.15);
+  background: #fff;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 5px 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  &:hover {
+    background: #f9f9fa;
+  }
+`;
+
 const StarBtn = styled.button`
   background: transparent;
   border: none;
@@ -130,7 +154,6 @@ const Section = styled.div`
   padding: 14px 14px 0;
 `;
 
-/** SectionTitle / SectionHeader를 하나의 컴포넌트로 통합 */
 const SectionTitle = styled.div`
   font-size: 12px;
   font-weight: 700;
@@ -204,8 +227,6 @@ const BottomPad = styled.div`
   height: 16px;
 `;
 
-// SectionHeader는 SectionTitle로 통합됨 (중복 제거)
-
 const WriteBtn = styled.button`
   font-size: 11px;
   font-weight: 700;
@@ -220,11 +241,7 @@ const WriteBtn = styled.button`
   }
 `;
 
-/* ── 바텀시트 ── */
-const slideUp = keyframes`
-  from { transform: translateY(100%); }
-  to   { transform: translateY(0); }
-`;
+/* 바텀시트 구성 요소 스타일 */
 const SheetDim = styled.div`
   position: fixed;
   inset: 0;
@@ -241,7 +258,8 @@ const Sheet = styled.div`
   display: flex;
   flex-direction: column;
   gap: 14px;
-  animation: ${slideUp} 0.28s ease;
+  animation: ${keyframes`from { transform: translateY(100%); } to { transform: translateY(0); }`}
+    0.28s ease;
 `;
 const SheetHandle = styled.div`
   width: 40px;
@@ -274,13 +292,6 @@ const PhotoArea = styled.div`
   justify-content: center;
   position: relative;
   overflow: hidden;
-  transition:
-    border-color 0.15s,
-    background 0.15s;
-  &:hover {
-    border-color: #e8d664;
-    background: #fafaf0;
-  }
   img {
     width: 100%;
     height: 100%;
@@ -294,7 +305,6 @@ const PhotoPlaceholder = styled.div`
   gap: 10px;
   color: rgba(45, 47, 54, 0.35);
   font-size: 13px;
-  pointer-events: none;
 `;
 const RemovePhotoBtn = styled.button`
   position: absolute;
@@ -306,7 +316,6 @@ const RemovePhotoBtn = styled.button`
   background: rgba(0, 0, 0, 0.55);
   border: none;
   color: #fff;
-  font-size: 14px;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -329,12 +338,10 @@ const ThumbBtn = styled.button`
   border: 2.5px solid
     ${({ $selected }) => ($selected ? "#e8d664" : "rgba(45,47,54,0.12)")};
   background: #f0f0f4;
-  transition: border-color 0.15s;
   img {
     width: 100%;
     height: 100%;
     object-fit: cover;
-    display: block;
   }
 `;
 const ReviewTextarea = styled.textarea`
@@ -348,12 +355,6 @@ const ReviewTextarea = styled.textarea`
   resize: none;
   outline: none;
   box-sizing: border-box;
-  &:focus {
-    border-color: #e8d664;
-  }
-  &::placeholder {
-    color: rgba(45, 47, 54, 0.3);
-  }
 `;
 const SheetActions = styled.div`
   display: flex;
@@ -383,7 +384,6 @@ const SubmitBtn = styled.button`
   &:disabled {
     background: rgba(232, 214, 100, 0.3);
     color: rgba(45, 47, 54, 0.3);
-    cursor: default;
   }
 `;
 const ErrorMsg = styled.p`
@@ -404,10 +404,7 @@ const Toast = styled.div`
   padding: 12px 24px;
   border-radius: 999px;
   z-index: 9999;
-  pointer-events: none;
-  white-space: nowrap;
 `;
-
 const ReviewCard = styled.div`
   margin-bottom: 8px;
   border-radius: 8px;
@@ -428,11 +425,6 @@ const ReviewText = styled.p`
   line-height: 1.5;
 `;
 
-/* 리뷰 작성 바텀시트 */
-/**
- * 리뷰 작성 바텀시트
- * 사진 선택·텍스트 입력 상태를 내부에서 관리하여 props 수를 최소화합니다.
- */
 function ReviewSheet({
   place,
   onClose,
@@ -443,7 +435,6 @@ function ReviewSheet({
   const capturedPhotos = readCapturedPhotos();
   const [selectedId, setSelectedId] = useState(capturedPhotos[0]?.id ?? null);
   const [reviewText, setReviewText] = useState("");
-  // initialPhoto: 카메라로 찍고 선택한 사진 — 없으면 null
   const [photoPreview, setPhotoPreview] = useState(initialPhoto ?? null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
@@ -479,7 +470,6 @@ function ReviewSheet({
         <SheetHandle />
         <SheetTitle>리뷰 작성</SheetTitle>
         <SheetPlace>{place?.name}</SheetPlace>
-
         {capturedPhotos.length > 0 && (
           <ThumbRow>
             {capturedPhotos.map((photo) => (
@@ -497,7 +487,6 @@ function ReviewSheet({
             ))}
           </ThumbRow>
         )}
-
         <PhotoArea onClick={() => !selectedSrc && onFrameCapture()}>
           {selectedSrc ? (
             <>
@@ -516,13 +505,9 @@ function ReviewSheet({
             <PhotoPlaceholder>
               <span style={{ fontSize: 40 }}>📷</span>
               <span>탭해서 사진 선택</span>
-              <span style={{ fontSize: 11, opacity: 0.6 }}>
-                프레임 카메라로 찍은 사진이 표시돼요
-              </span>
             </PhotoPlaceholder>
           )}
         </PhotoArea>
-
         <ReviewTextarea
           placeholder={`${place?.name ?? "이 장소"}에 대한 후기를 남겨주세요`}
           value={reviewText}
@@ -532,9 +517,7 @@ function ReviewSheet({
           }}
           maxLength={500}
         />
-
         {submitError && <ErrorMsg>{submitError}</ErrorMsg>}
-
         <SheetActions>
           <CancelBtn onClick={onClose}>취소</CancelBtn>
           <SubmitBtn
@@ -556,13 +539,12 @@ export default function PlaceDetailModal({ placeId, onClose, initialReview }) {
   const { favorites, toggleFavorite } = useFavorites();
   const [reviews, setReviews] = useState([]);
   const [showSheet, setShowSheet] = useState(false);
-  const [pendingPhoto, setPendingPhoto] = useState(null); // 카메라에서 돌아온 선택 사진
+  const [pendingPhoto, setPendingPhoto] = useState(null);
   const [toast, setToast] = useState("");
   const toastTimerRef = useRef(null);
 
-  // placeId 변경 시 데이터 로드 + pending 리뷰 확인을 하나의 effect로 통합
   useEffect(() => {
-    if (!placeId) return;
+    if (!placeId || placeId === "undefined") return;
 
     setIsLoading(true);
     setPlace(null);
@@ -575,12 +557,15 @@ export default function PlaceDetailModal({ placeId, onClose, initialReview }) {
       .catch((err) => console.error("[PlaceDetailModal] 장소 조회 실패:", err))
       .finally(() => setIsLoading(false));
 
-    fetchFeeds({ placeId })
-      .then(setReviews)
+    fetchFeeds({ placeId: String(placeId) })
+      .then((data) => {
+        const filteredReviews = data.filter(
+          (r) => String(r.placeId) === String(placeId),
+        );
+        setReviews(filteredReviews);
+      })
       .catch((err) => console.warn("[PlaceDetailModal] 리뷰 조회 실패:", err));
 
-    // pending 리뷰 (카메라 촬영 후 돌아온 경우) 처리
-    // photoSrc를 state에 저장한 뒤 ReviewSheet로 전달
     const pending = getPendingReview();
     if (pending?.placeId === placeId) {
       clearPendingReview();
@@ -589,7 +574,6 @@ export default function PlaceDetailModal({ placeId, onClose, initialReview }) {
     }
   }, [placeId]);
 
-  // 외부에서 새 리뷰가 전달된 경우 목록에 추가
   useEffect(() => {
     if (!initialReview || initialReview.placeId !== placeId) return;
     setReviews((prev) => {
@@ -598,7 +582,6 @@ export default function PlaceDetailModal({ placeId, onClose, initialReview }) {
     });
   }, [initialReview, placeId]);
 
-  // 컴포넌트 언마운트 시 toast 타이머 정리
   useEffect(() => () => clearTimeout(toastTimerRef.current), []);
 
   const isFavorite = favorites.includes(placeId);
@@ -620,7 +603,6 @@ export default function PlaceDetailModal({ placeId, onClose, initialReview }) {
 
   const handleReviewSubmit = async ({ reviewText, photoSrc }) => {
     try {
-      // 🌟 로컬 스토리지에서 로그인된 유저 세션 정보 획득
       const savedUser = localStorage.getItem("user");
       let userEmail = "";
       let nickname = "익명";
@@ -631,14 +613,13 @@ export default function PlaceDetailModal({ placeId, onClose, initialReview }) {
         nickname = userObj.nickname || "익명";
       }
 
-      // 백엔드가 요구하는 유저 식별 데이터까지 한꺼번에 동봉하여 요청
       const newReview = await createFeed({
         placeId,
         placeName: place?.name ?? "",
         image: photoSrc ?? "",
         content: reviewText.trim(),
-        userEmail, // 추가
-        nickname, // 추가
+        userEmail,
+        nickname,
       });
 
       setReviews((prev) => [newReview, ...prev]);
@@ -672,6 +653,14 @@ export default function PlaceDetailModal({ placeId, onClose, initialReview }) {
                     {isFavorite ? "★" : "☆"}
                   </StarBtn>
                 </TitleRow>
+
+                <ActionRow>
+                  <ActionBtn
+                    onClick={() => navigate(`/home?mode=route&placeId=${placeId}`)}
+                  >
+                    🗺️ 길찾기
+                  </ActionBtn>
+                </ActionRow>
               </TopInfo>
 
               {/* 소개 */}
@@ -682,12 +671,6 @@ export default function PlaceDetailModal({ placeId, onClose, initialReview }) {
                 ) : (
                   <EmptyText>소개 정보가 없어요.</EmptyText>
                 )}
-              </Section>
-
-              {/* 메뉴 */}
-              <Section>
-                <SectionTitle>메뉴</SectionTitle>
-                <EmptyText>메뉴 정보가 없어요.</EmptyText>
               </Section>
 
               {/* 리뷰 */}
@@ -726,32 +709,14 @@ export default function PlaceDetailModal({ placeId, onClose, initialReview }) {
                       <InfoValue>{place.address}</InfoValue>
                     </InfoRow>
                   )}
-                  {place?.hours && (
-                    <InfoRow>
-                      <InfoLabel>운영시간</InfoLabel>
-                      <InfoValue>{place.hours}</InfoValue>
-                    </InfoRow>
-                  )}
-                  {place?.phone && (
-                    <InfoRow>
-                      <InfoLabel>전화</InfoLabel>
-                      <InfoValue>{place.phone}</InfoValue>
-                    </InfoRow>
-                  )}
-                  {!place?.category &&
-                    !place?.address &&
-                    !place?.hours &&
-                    !place?.phone && <EmptyText>정보가 없어요.</EmptyText>}
                 </InfoTable>
               </Section>
-
               <BottomPad />
             </ScrollBody>
           )}
         </Modal>
       </Overlay>
 
-      {/* 리뷰 작성 바텀시트 */}
       {showSheet && (
         <ReviewSheet
           place={place}
