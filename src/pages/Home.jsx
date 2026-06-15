@@ -199,9 +199,12 @@ export default function Home({ selectedIdol, onIdolChange, skipIdolPrompt }) {
     }
   }, []);
 
-  // ⭐ [핵심 수리] 하드코딩 탈출 및 대소문자 예외 단절
+  // ⭐ [교정 위치 1] bangjeemin 억까 방지 및 정석 매핑 규격화 보장
   const currentIdolId = useMemo(() => {
-    if (selectedIdol?.id) return selectedIdol.id;
+    if (selectedIdol?.id) {
+      // 혹시라도 예전 데이터로 bangjeemin이 넘어오면 강제로 jimin_bang 처리
+      return selectedIdol.id === 'bangjeemin' ? 'jimin_bang' : selectedIdol.id;
+    }
     
     if (hasIdolInStorage) {
       const lowerIdol = hasIdolInStorage.toLowerCase().trim();
@@ -209,8 +212,9 @@ export default function Home({ selectedIdol, onIdolChange, skipIdolPrompt }) {
       if (lowerIdol.includes("youngji") || lowerIdol.includes("영지")) {
         return "leeyoungji";
       }
-      if (lowerIdol.includes("jimin") || lowerIdol.includes("지민") || lowerIdol.includes("izna")) {
-        return "jimin_bang"; // 👈 무조건 방지민 전용 키 바인딩 보장
+      // 지민, izna, bangjeemin, jimin 등 어떤 찌꺼기가 들어와도 jimin_bang 바인딩 보장
+      if (lowerIdol.includes("jimin") || lowerIdol.includes("지민") || lowerIdol.includes("izna") || lowerIdol.includes("jeemin")) {
+        return "jimin_bang";
       }
       if (lowerIdol.includes("jungkook") || lowerIdol.includes("정국")) {
         return "jungkook";
@@ -223,7 +227,7 @@ export default function Home({ selectedIdol, onIdolChange, skipIdolPrompt }) {
       }
 
       const matched = idols.find(
-        (i) => i.name === hasIdolInStorage || i.id === hasIdolInStorage || i.id?.includes(lowerIdol)
+        (i) => i.name.toLowerCase() === lowerIdol || i.id === lowerIdol || i.id?.includes(lowerIdol)
       );
       return matched?.id || hasIdolInStorage;
     }
@@ -234,18 +238,27 @@ export default function Home({ selectedIdol, onIdolChange, skipIdolPrompt }) {
   const { filteredPlaces } = usePlaces(currentIdolId, currentUserEmail);
   const { removeCourse } = useCourse();
 
-  // ⭐ [긴급 초기화 세션 동기화] 로컬스토리지에 예전 데이터 묶여있으면 강제 업데이트
+  // ⭐ [교정 위치 2] 긴급 초기화 세션 동기화 로직 전면 튜닝 (프로필 유실 차단)
   useEffect(() => {
     if (hasIdolInStorage) {
-      const lower = hasIdolInStorage.toLowerCase();
-      let searchKey = hasIdolInStorage;
-      if (lower.includes("지민") || lower.includes("jimin") || lower.includes("izna")) {
-        searchKey = "방지민";
-      }
-
-      const matchedIdol = idols.find(
-        (i) => i.name === searchKey || i.id?.toLowerCase().includes("jimin")
-      );
+      const lower = hasIdolInStorage.toLowerCase().trim();
+      
+      const matchedIdol = idols.find((i) => {
+        const idMatch = i.id.toLowerCase();
+        const nameMatch = i.name.toLowerCase();
+        const groupMatch = i.groupLabel.toLowerCase();
+        
+        return (
+          idMatch.includes(lower) || 
+          nameMatch.includes(lower) || 
+          groupMatch.includes(lower) ||
+          (lower.includes("지민") && idMatch === "jimin_bang") ||
+          (lower.includes("영지") && idMatch === "leeyoungji") ||
+          (lower.includes("정국") && idMatch === "jungkook") ||
+          (lower.includes("카리나") && idMatch === "karina") ||
+          (lower.includes("영케이") && idMatch === "youngk")
+        );
+      });
       
       if (matchedIdol) {
         if (matchedIdol.id !== selectedIdol?.id) {
@@ -254,7 +267,7 @@ export default function Home({ selectedIdol, onIdolChange, skipIdolPrompt }) {
         localStorage.setItem("selected_idol", JSON.stringify(matchedIdol));
       }
     }
-  }, [hasIdolInStorage, onIdolChange]);
+  }, [hasIdolInStorage, onIdolChange, selectedIdol?.id]);
 
   const displayPlaces = useMemo(
     () =>
@@ -344,7 +357,7 @@ export default function Home({ selectedIdol, onIdolChange, skipIdolPrompt }) {
               $active={categoryFilter === cat}
               onClick={() => setCategoryFilter(categoryFilter === cat ? null : cat)}
             >
-              {cat}
+              2026 {cat}
             </FilterChip>
           ))}
         </FilterBar>
