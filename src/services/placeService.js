@@ -1,7 +1,7 @@
 import { places as mockPlaces } from '../data/places'
 
 // 백엔드 API 주소 및 환경 변수 고정
-const BASE_URL = 'http://localhost:5000/api';
+const BASE_URL = '/api';
 const KAKAO_REST_KEY = import.meta.env.VITE_KAKAO_REST_KEY;
 
 /** 카카오 응답 → 앱 내부 Place 형식으로 변환 */
@@ -44,25 +44,31 @@ async function kakaoSearchKeyword(query, { x, y, radius = 5000, size = 15 } = {}
   return data.documents ?? []
 }
 
-/** 아이돌별 장소 목록 조회 */
+/** 🎯 아이돌별 장소 목록 조회 (아티스트 아이디 조건 전송 및 원본 필드 보존 강화) */
 export const fetchPlacesByIdol = async (idolId) => {
   if (BASE_URL) {
-    const res = await fetch(`${BASE_URL}/spots`); 
+    // 🌟 1. 백엔드가 조건부 조회를 지원하도록 URL 파라미터 장착
+    const url = idolId 
+      ? `${BASE_URL}/spots?idolId=${encodeURIComponent(idolId)}` 
+      : `${BASE_URL}/spots`;
+
+    const res = await fetch(url); 
     if (!res.ok) throw new Error('장소 목록 조회 실패');
     const allSpots = await res.json();
 
     return allSpots.map((spot) => ({
-      // 🔥 [수정] 백엔드에서 넘겨주는 ID 컬럼명(placeId 등)을 우선적으로 받도록 안전장치 마련
-      id: String(spot.placeId || spot.id || spot.spotId), 
+      // 구조분해 할당을 통해 백엔드가 준 group_name, member_name, image_url 등 원본 필드를 그대로 유지 
+      ...spot,
+      id: String(spot.placeId || spot.id || spot.spotId || spot.place_id), 
       name: spot.placeName || spot.place_name || spot.name,          
       address: spot.address,
       category: spot.category || '기타',
       lat: Number(spot.latitude || spot.lat),    
       lng: Number(spot.longitude || spot.lng),   
       description: spot.description || '',
-      image: spot.imageUrl || '',
-      imageUrl: spot.imageUrl || '',
-      hours: spot.operatingHours || '',
+      image: spot.imageUrl || spot.image_url || spot.image || '',
+      imageUrl: spot.imageUrl || spot.image_url || spot.image || '',
+      hours: spot.operatingHours || spot.operating_hours || spot.hours || '',
       holiday: spot.holiday || ''
     }));
   }
@@ -84,18 +90,18 @@ export const searchPlaces = async (query, idolId) => {
     
     const spots = await res.json();
     return spots.map(spot => ({
-      // 🔥 [수정] 동일하게 안전한 ID 매핑 적용
-      id: String(spot.placeId || spot.id || spot.spotId),
-      name: spot.placeName || spot.name,
-      placeName: spot.placeName || spot.name,
+      ...spot, // 원본 확장 필드 보존 안전선
+      id: String(spot.placeId || spot.id || spot.spotId || spot.place_id),
+      name: spot.placeName || spot.place_name || spot.name,
+      placeName: spot.placeName || spot.place_name || spot.name,
       address: spot.address,
       category: spot.category || '기타',
       lat: Number(spot.latitude || spot.lat),
       lng: Number(spot.longitude || spot.lng),
       description: spot.description || '',
-      image: spot.imageUrl || '',
-      imageUrl: spot.imageUrl || '',
-      hours: spot.operatingHours || '',
+      image: spot.imageUrl || spot.image_url || spot.image || '',
+      imageUrl: spot.imageUrl || spot.image_url || spot.image || '',
+      hours: spot.operatingHours || spot.operating_hours || spot.hours || '',
       holiday: spot.holiday || ''
     }));
   }
@@ -116,7 +122,6 @@ export const searchPlaces = async (query, idolId) => {
 
 /** 장소 상세 조회 */
 export const fetchPlaceDetail = async (placeId) => {
-  // 🛡️ [추가 예외 처리] placeId가 아예 없거나 문자열 "undefined"이면 요청 자체를 차단
   if (!placeId || placeId === 'undefined') {
     console.error("⚠️ 유효하지 않은 placeId로 상세 조회가 요청되었습니다.");
     return null; 
@@ -129,17 +134,17 @@ export const fetchPlaceDetail = async (placeId) => {
       const spot = await res.json();
       
       return {
-        // 🔥 [수정] 동일하게 안전한 ID 매핑 적용
-        id: String(spot.placeId || spot.id || spot.spotId),
-        name: spot.placeName || spot.name,
+        ...spot, // 원본 확장 필드 보존 안전선
+        id: String(spot.placeId || spot.id || spot.spotId || spot.place_id),
+        name: spot.placeName || spot.place_name || spot.name,
         address: spot.address,
         category: spot.category || '기타',
         lat: Number(spot.latitude || spot.lat),
         lng: Number(spot.longitude || spot.lng),
         description: spot.description || '',
-        image: spot.imageUrl || '',
-        imageUrl: spot.imageUrl || '',
-        hours: spot.operatingHours || spot.hours || '',
+        image: spot.imageUrl || spot.image_url || spot.image || '',
+        imageUrl: spot.imageUrl || spot.image_url || spot.image || '',
+        hours: spot.operatingHours || spot.operating_hours || spot.hours || '',
         holiday: spot.holiday || ''
       };
     } catch (err) {

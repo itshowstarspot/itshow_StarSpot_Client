@@ -115,7 +115,7 @@ export default function MyPage({
       const userId = userObj.id || userObj.user_id;
       const userEmail = userObj.email || userObj.user_email;
 
-      await axios.put(`http://localhost:5000/api/users/profile`, {
+      await axios.put(`/api/users/profile`, {
         userId: userId,
         email: userEmail,
         nickname: newNick,
@@ -151,7 +151,7 @@ export default function MyPage({
       const userId = userObj.id || userObj.user_id;
       const userEmail = userObj.email || userObj.user_email;
 
-      await axios.put(`http://localhost:5000/api/users/profile`, {
+      await axios.put(`/api/users/profile`, {
         userId: userId,
         email: userEmail,
         favorite_idol: idol.name,
@@ -187,7 +187,7 @@ export default function MyPage({
           userObj.id || userObj.user_id || userObj.email || userObj.user_email;
 
         await axios.delete(
-          `http://localhost:5000/api/users/${targetIdentifier}`,
+          `/api/users/${targetIdentifier}`,
         );
         alert("탈퇴가 완료되었습니다. 이용해 주셔서 감사합니다.");
 

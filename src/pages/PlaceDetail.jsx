@@ -76,8 +76,8 @@ const VisitPhotos = styled.div`
 `;
 
 const VisitPhoto = styled.div`
-  width: 100px;
-  height: 100px;
+  width: 200px;
+  aspect-ratio: 16 / 9;
   border-radius: 10px;
   background: #d9d9d9;
   flex-shrink: 0;
@@ -180,7 +180,7 @@ export default function PlaceDetail() {
             isFavorite={checkFavorite(place.id)}
             onFavorite={() => toggleFavorite(place.id)}
             onRoute={() => {
-              navigate(`/?mode=route&placeId=${place.id}`);
+              navigate(`/home?mode=route&placeId=${place.id}`);
             }}
           />
         )}

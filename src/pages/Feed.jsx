@@ -7,7 +7,7 @@ import EmptyState from "../components/common/EmptyState";
 import LoadingSpinner from "../components/common/LoadingSpinner";
 import Button from "../components/common/Button";
 import Modal from "../components/common/Modal";
-import { fetchFeeds, createFeed } from "../services/feedService";
+import { fetchFeeds, createFeed, deleteFeed, updateFeed } from "../services/feedService";
 import { feedSortOptions } from "../domain/feed/feed";
 
 const Page = styled.main`
@@ -83,12 +83,8 @@ const Textarea = styled.textarea`
   margin-bottom: 12px;
   line-height: 1.5;
 
-  &:focus {
-    border-color: #e8d664;
-  }
-  &::placeholder {
-    color: rgba(45, 47, 54, 0.35);
-  }
+  &:focus { border-color: #e8d664; }
+  &::placeholder { color: rgba(45, 47, 54, 0.35); }
 `;
 
 const SelectPlace = styled.select`
@@ -102,12 +98,10 @@ const SelectPlace = styled.select`
   margin-bottom: 12px;
   outline: none;
 
-  &:focus {
-    border-color: #e8d664;
-  }
+  &:focus { border-color: #e8d664; }
 `;
 
-const ImageUploadArea = styled.div`
+const MediaUploadArea = styled.div`
   width: 100%;
   aspect-ratio: 16 / 9;
   border: 2px dashed rgba(45, 47, 54, 0.2);
@@ -122,18 +116,16 @@ const ImageUploadArea = styled.div`
   transition: border-color 0.15s;
   position: relative;
 
-  &:hover {
-    border-color: #e8d664;
-  }
+  &:hover { border-color: #e8d664; }
 
-  img {
+  img, video {
     width: 100%;
     height: 100%;
     object-fit: cover;
   }
 `;
 
-const ImagePlaceholder = styled.div`
+const MediaPlaceholder = styled.div`
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -147,7 +139,7 @@ const HiddenFileInput = styled.input`
   display: none;
 `;
 
-const RemoveImageBtn = styled.button`
+const RemoveMediaBtn = styled.button`
   position: absolute;
   top: 6px;
   right: 6px;
@@ -162,53 +154,79 @@ const RemoveImageBtn = styled.button`
   display: flex;
   align-items: center;
   justify-content: center;
+  z-index: 1;
 `;
 
 const ErrorMsg = styled.p`
   font-size: 13px;
   color: #e85050;
+  margin: 0 0 8px;
 `;
 
 const PLACE_OPTIONS = [
-  { id: "1", name: "우돈청 (정국 성지)" },
-  { id: "5", name: "자연도소금빵 (지민 성지)" },
-  { id: "8", name: "실비옥 (카리나 성지)" },
+  { id: "1",  name: "우돈청 (정국 성지)" },
+  { id: "5",  name: "자연도소금빵 (지민 성지)" },
+  { id: "8",  name: "실비옥 (카리나 성지)" },
   { id: "11", name: "추암해수욕장 (영케이 성지)" },
   { id: "14", name: "대박곱창 (영지 성지)" },
   { id: "17", name: "볼링볼링 (재현 성지)" },
 ];
 
+const getCurrentUser = () => {
+  try {
+    return JSON.parse(localStorage.getItem("user") || "{}");
+  } catch {
+    return {};
+  }
+};
+
 export default function Feed() {
   const navigate = useNavigate();
+  const fileInputRef = useRef(null);
+
   const [feeds, setFeeds] = useState([]);
   const [sort, setSort] = useState("latest");
   const [isLoading, setIsLoading] = useState(false);
   const [isPosting, setIsPosting] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [content, setContent] = useState("");
-
   const [selectedPlaceId, setSelectedPlaceId] = useState("1");
-  const [imageFile, setImageFile] = useState(null);
-  const [imagePreview, setImagePreview] = useState(null);
+  const [mediaFile, setMediaFile] = useState(null);
+  const [mediaPreview, setMediaPreview] = useState(null);
+  const [mediaType, setMediaType] = useState("image");
   const [postError, setPostError] = useState(null);
-  const fileInputRef = useRef(null);
 
-  const handleImageChange = (e) => {
+  // 수정 모드
+  const [editingFeed, setEditingFeed] = useState(null);
+  const [editContent, setEditContent] = useState("");
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [editError, setEditError] = useState(null);
+
+  const handleMediaChange = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    setImageFile(file);
-    const reader = new FileReader();
-    reader.onload = () => {
-      setImagePreview(reader.result);
-    };
-    reader.readAsDataURL(file);
+    setMediaFile(file);
+
+    if (file.type.startsWith("video/")) {
+      setMediaType("video");
+      setMediaPreview(URL.createObjectURL(file));
+    } else {
+      setMediaType("image");
+      const reader = new FileReader();
+      reader.onload = () => setMediaPreview(reader.result);
+      reader.readAsDataURL(file);
+    }
   };
 
-  const handleRemoveImage = (e) => {
+  const handleRemoveMedia = (e) => {
     e.stopPropagation();
-    setImageFile(null);
-    setImagePreview(null);
+    if (mediaPreview && mediaType === "video") {
+      URL.revokeObjectURL(mediaPreview);
+    }
+    setMediaFile(null);
+    setMediaPreview(null);
+    setMediaType("image");
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
@@ -216,30 +234,18 @@ export default function Feed() {
     setShowModal(false);
     setContent("");
     setSelectedPlaceId("1");
-    setImageFile(null);
-    setImagePreview(null);
+    handleRemoveMedia({ stopPropagation: () => {} });
     setPostError(null);
   };
 
-  // 🌟 내 리뷰 글만 필터링하여 가져오도록 로직 보강
   const loadFeeds = useCallback(async () => {
     setIsLoading(true);
     try {
-      const savedUser = JSON.parse(localStorage.getItem("user") || "{}");
-      const currentUserEmail =
-        savedUser?.email || savedUser?.user_email || "test15@gmail.com";
-
-      // 1단계: API 요청 시 현재 유저 정보를 조건으로 함께 전달
+      const user = getCurrentUser();
+      const currentUserEmail = user?.email || user?.user_email || "test15@gmail.com";
       const data = await fetchFeeds({ sort, userEmail: currentUserEmail });
-
-      // 2단계: 백엔드 스펙에 대비해, 반환된 목록 중 내 이메일과 일치하는 글만 한 번 더 검증 필터링
-      const myFeeds = (data || []).filter((feed) => {
-        const feedUserEmail =
-          feed.userEmail || feed.user_email || feed.writerEmail;
-        // 만약 백엔드에 이메일 정보가 누락되었거나 전체 오픈 데이터라면 필터를 유지하되, 유연하게 매핑하도록 설계
-        return !feedUserEmail || feedUserEmail === currentUserEmail;
-      });
-
+      // 서버에서 이미 필터링되어 오지만, 혹시 모를 타인 데이터 방어
+      const myFeeds = (data || []).filter((f) => f.userEmail === currentUserEmail);
       setFeeds(myFeeds);
     } catch (err) {
       console.error("[Feed] 피드 로딩 실패:", err);
@@ -261,24 +267,68 @@ export default function Feed() {
     setPostError(null);
 
     try {
-      const savedUser = JSON.parse(localStorage.getItem("user") || "{}");
-      const currentUserEmail =
-        savedUser?.email || savedUser?.user_email || "test15@gmail.com";
+      const user = getCurrentUser();
+      const currentUserEmail = user?.email || user?.user_email || "test15@gmail.com";
+      const nickname = user?.nickname || "익명";
 
       await createFeed({
         placeId: selectedPlaceId,
-        image: imagePreview ?? "",
+        image: mediaType === "image" ? (mediaPreview ?? "") : "",
+        mediaFile: mediaType === "video" ? mediaFile : null,
         content,
         userEmail: currentUserEmail,
+        nickname,
       });
 
       await loadFeeds();
       handleCloseModal();
-      alert("성지순례 방문 후기가 성공적으로 등록되었습니다! ✨");
+      alert("방문 후기와 방문 기록이 함께 등록되었습니다!");
     } catch (err) {
       setPostError(err.message || "등록 중 오류가 발생했습니다.");
     } finally {
       setIsPosting(false);
+    }
+  };
+
+  const handleDelete = async (feedId) => {
+    if (!window.confirm("이 후기를 삭제하시겠습니까?")) return;
+    try {
+      await deleteFeed(feedId);
+      setFeeds((prev) => prev.filter((f) => f.id !== feedId));
+    } catch (err) {
+      alert("삭제 중 오류가 발생했습니다.");
+    }
+  };
+
+  const handleEditOpen = (feed) => {
+    setEditingFeed(feed);
+    setEditContent(feed.content);
+    setEditError(null);
+  };
+
+  const handleEditClose = () => {
+    setEditingFeed(null);
+    setEditContent("");
+    setEditError(null);
+  };
+
+  const handleUpdate = async () => {
+    if (!editContent.trim()) {
+      setEditError("내용을 입력해주세요.");
+      return;
+    }
+    setIsUpdating(true);
+    setEditError(null);
+    try {
+      await updateFeed(editingFeed.id, editContent);
+      setFeeds((prev) =>
+        prev.map((f) => f.id === editingFeed.id ? { ...f, content: editContent } : f)
+      );
+      handleEditClose();
+    } catch (err) {
+      setEditError(err.message || "수정 중 오류가 발생했습니다.");
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -287,7 +337,7 @@ export default function Feed() {
       <TopBar>
         <TopLeft>
           <BackBtn onClick={() => navigate(-1)}>←</BackBtn>
-          <Title>팬 피드</Title>
+          <Title>내 피드</Title>
         </TopLeft>
         <Button size="sm" onClick={() => setShowModal(true)}>
           + 글 작성
@@ -308,69 +358,58 @@ export default function Feed() {
 
         {isLoading && <LoadingSpinner />}
         {!isLoading && feeds.length === 0 && (
-          <EmptyState
-            icon="📝"
-            message="아직 피드가 없어요. 첫 번째 후기를 남겨보세요!"
-          />
+          <EmptyState icon="📝" message="아직 피드가 없어요. 첫 번째 후기를 남겨보세요!" />
         )}
         <FeedGrid>
           {feeds.map((f, idx) => (
             <FeedCard
               key={f.id || idx}
-              image={f.image || f.photo_url}
-              placeName={f.placeName || f.place_name}
+              image={f.image}
+              placeName={f.placeName}
               content={f.content}
-              viewCount={f.viewCount || 0}
-              createdAt={f.createdAt || f.date}
+              createdAt={f.createdAt}
+              onEdit={() => handleEditOpen(f)}
+              onDelete={() => handleDelete(f.id)}
             />
           ))}
         </FeedGrid>
       </Content>
 
+      {/* 작성 모달 */}
       <Modal isOpen={showModal} onClose={handleCloseModal}>
         <HiddenFileInput
           ref={fileInputRef}
           type="file"
-          accept="image/*"
-          onChange={handleImageChange}
+          accept="image/*,video/*"
+          onChange={handleMediaChange}
         />
         <h2 style={{ color: "#2d2f36", marginBottom: 16 }}>방문 후기 작성</h2>
 
-        <label
-          style={{
-            fontSize: "13px",
-            fontWeight: "600",
-            color: "#7e838f",
-            display: "block",
-            marginBottom: "6px",
-          }}
-        >
+        <label style={{ fontSize: "13px", fontWeight: "600", color: "#7e838f", display: "block", marginBottom: "6px" }}>
           📍 다녀온 성지 장소 선택
         </label>
-        <SelectPlace
-          value={selectedPlaceId}
-          onChange={(e) => setSelectedPlaceId(e.target.value)}
-        >
+        <SelectPlace value={selectedPlaceId} onChange={(e) => setSelectedPlaceId(e.target.value)}>
           {PLACE_OPTIONS.map((opt) => (
-            <option key={opt.id} value={opt.id}>
-              {opt.name}
-            </option>
+            <option key={opt.id} value={opt.id}>{opt.name}</option>
           ))}
         </SelectPlace>
 
-        <ImageUploadArea onClick={() => fileInputRef.current?.click()}>
-          {imagePreview ? (
+        <MediaUploadArea onClick={() => fileInputRef.current?.click()}>
+          {mediaPreview ? (
             <>
-              <img src={imagePreview} alt="첨부 사진" />
-              <RemoveImageBtn onClick={handleRemoveImage}>✕</RemoveImageBtn>
+              {mediaType === "video"
+                ? <video src={mediaPreview} muted playsInline />
+                : <img src={mediaPreview} alt="첨부 미디어" />
+              }
+              <RemoveMediaBtn onClick={handleRemoveMedia}>✕</RemoveMediaBtn>
             </>
           ) : (
-            <ImagePlaceholder>
+            <MediaPlaceholder>
               <span style={{ fontSize: 28 }}>📷</span>
-              <span>탭하여 사진 선택</span>
-            </ImagePlaceholder>
+              <span>탭하여 사진/동영상 선택</span>
+            </MediaPlaceholder>
           )}
-        </ImageUploadArea>
+        </MediaUploadArea>
 
         <Textarea
           placeholder="방문 후기를 작성해주세요..."
@@ -380,16 +419,27 @@ export default function Feed() {
         />
         {postError && <ErrorMsg>{postError}</ErrorMsg>}
         <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
-          <Button variant="secondary" fullWidth onClick={handleCloseModal}>
-            취소
-          </Button>
-          <Button
-            fullWidth
-            style={{ color: "#ffffff" }}
-            onClick={handlePost}
-            disabled={!content.trim() || isPosting}
-          >
+          <Button variant="secondary" fullWidth onClick={handleCloseModal}>취소</Button>
+          <Button fullWidth style={{ color: "#ffffff" }} onClick={handlePost} disabled={!content.trim() || isPosting}>
             {isPosting ? "등록 중..." : "등록"}
+          </Button>
+        </div>
+      </Modal>
+
+      {/* 수정 모달 */}
+      <Modal isOpen={!!editingFeed} onClose={handleEditClose}>
+        <h2 style={{ color: "#2d2f36", marginBottom: 16 }}>후기 수정</h2>
+        <Textarea
+          placeholder="수정할 내용을 입력해주세요..."
+          value={editContent}
+          onChange={(e) => setEditContent(e.target.value)}
+          maxLength={500}
+        />
+        {editError && <ErrorMsg>{editError}</ErrorMsg>}
+        <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
+          <Button variant="secondary" fullWidth onClick={handleEditClose}>취소</Button>
+          <Button fullWidth style={{ color: "#ffffff" }} onClick={handleUpdate} disabled={!editContent.trim() || isUpdating}>
+            {isUpdating ? "수정 중..." : "수정 완료"}
           </Button>
         </div>
       </Modal>

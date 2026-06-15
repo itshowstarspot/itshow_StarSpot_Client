@@ -284,6 +284,7 @@ const NodeDetail = styled.div`
   display: flex;
   align-items: center;
   gap: 6px;
+  margin-top: 2px;
 `;
 
 const SuggestionList = styled.ul`
@@ -318,12 +319,38 @@ const SuggestionItem = styled.li`
   }
 `;
 
-/* ── 🌟 메인 컴포넌트 교정 진입 ── */
+const TabButtonGroup = styled.div`
+  display: flex;
+  gap: 8px;
+  padding: 14px 20px 4px 20px;
+  background: #ffffff;
+  flex-shrink: 0;
+`;
+
+const TabButton = styled.button`
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  border-radius: 20px;
+  border: 2px solid ${({ $active }) => ($active ? "#e8d664" : "#f1f3f5")};
+  background: ${({ $active }) => ($active ? "#e8d664" : "#ffffff")};
+  color: ${({ $active }) => ($active ? "#ffffff" : "#666666")};
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover {
+    background: ${({ $active }) => ($active ? "#e8d664" : "#fdfae7")};
+    border-color: #e8d664;
+  }
+`;
+
 export default function RoutePanel({
   onRouteSearch,
   mapCenter,
   myLocation,
   routeCoords,
+  courseRoute,
+  onCourseRouteClear,
 }) {
   const [startQuery, setStartQuery] = useState("");
   const [endQuery, setEndQuery] = useState("");
@@ -334,209 +361,337 @@ export default function RoutePanel({
 
   const [isLoading, setIsLoading] = useState(false);
   const [hasRouteResult, setHasRouteResult] = useState(false);
+  const [activeTab, setActiveTab] = useState("transit"); 
+
   const [routeSummary, setRouteSummary] = useState({
-    totalMinutes: 0,
-    arrivalTimeStr: "",
-    taxiFare: 0,
-    distanceKm: 0,
+    transit: null,
+    car: null,
+    walk: null,
   });
 
-  // 무한 루프 실행 방지를 위해 이미 자동 처리 완료된 외부 신호 ID 저장용 ref
   const lastProcessedTriggerId = useRef(null);
+  const lastCourseRouteId = useRef(null);
 
   const centerLng = mapCenter?.lng || 126.978;
   const centerLat = mapCenter?.lat || 37.5665;
 
-  // 📌 교정 완료된 useEffect 부분
+  // 코스 길찾기 이펙트
   useEffect(() => {
-    // 트리거 신호가 유효하고, 직전 처리했던 신호 ID와 다를 때만 진입
-    if (
-      routeCoords?.isDirectTrigger &&
-      routeCoords.id !== lastProcessedTriggerId.current
-    ) {
-      // 내 위치 정보가 아직 도착하지 않았다면 대기 상태 표시
-      if (!myLocation?.lat || !myLocation?.lng) {
-        setStartQuery("📍 내 위치를 받아오는 중...");
-        return;
+    if (!courseRoute?.id || courseRoute.id === lastCourseRouteId.current) return;
+    const places = courseRoute.places;
+    if (!places || places.length < 2) return;
+
+    lastCourseRouteId.current = courseRoute.id;
+    onCourseRouteClear?.();
+
+    const validPlaces = places.filter((p) => p.latitude && p.longitude).slice(0, 6);
+    if (validPlaces.length < 2) {
+      alert("경로를 계산할 좌표 정보가 부족해요.");
+      return;
+    }
+
+    const destination = validPlaces[validPlaces.length - 1];
+    const waypoints = validPlaces.slice(0, -1);
+
+    const doRoute = async (originLat, originLng) => {
+      setIsLoading(true);
+      setStartQuery("📍 내 현재 위치");
+      setStartCoord({ lat: originLat, lng: originLng });
+      setEndQuery(destination.placeName || destination.name || "도착지");
+      setEndCoord({ lat: Number(destination.latitude), lng: Number(destination.longitude) });
+
+      try {
+        const params = {
+          origin: `${originLng},${originLat}`,
+          destination: `${destination.longitude},${destination.latitude}`,
+          priority: "RECOMMEND",
+        };
+        if (waypoints.length > 0) {
+          params.waypoints = waypoints.map((p) => `${p.longitude},${p.latitude}`).join("|");
+        }
+
+        const res = await axios.get("https://apis-navi.kakaomobility.com/v1/directions", {
+          headers: { Authorization: `KakaoAK ${import.meta.env.VITE_KAKAO_REST_KEY}` },
+          params,
+        });
+
+        const route = res.data.routes?.[0];
+        if (!route) { alert("경로를 찾을 수 없습니다."); return; }
+
+        const linePath = [];
+        route.sections.forEach((section) => {
+          section.roads.forEach((road) => {
+            road.vertexes.forEach((v, i) => {
+              if (i % 2 === 0) linePath.push({ lng: v, lat: road.vertexes[i + 1] });
+            });
+          });
+        });
+
+        const totalMinutes = Math.ceil(route.summary.duration / 60);
+        const distanceKm = (route.summary.distance / 1000).toFixed(1);
+
+        setRouteSummary({
+          transit: null,
+          car: {
+            totalMinutes,
+            arrivalTimeStr: getArrivalTimeStr(totalMinutes),
+            fareStr: `택시비 약 ${(route.summary.fare?.taxi ?? 0).toLocaleString()}원`,
+            distanceKm,
+          },
+          walk: null,
+        });
+        
+        setActiveTab("car");
+        setStartQuery("📍 내 현재 위치");
+        setEndQuery(`코스 (${validPlaces.length}개 장소)`);
+        onRouteSearch({ start: { lat: originLat, lng: originLng }, end: { lat: Number(destination.latitude), lng: Number(destination.longitude) }, path: linePath });
+        setHasRouteResult(true);
+      } catch (err) {
+        console.error("코스 경로 탐색 실패:", err);
+        alert("경로 탐색 중 오류가 발생했습니다.");
+      } finally {
+        setIsLoading(false);
       }
+    };
 
-      // 조건 충족 시 중복 실행되지 않도록 즉시 ref 업데이트
-      lastProcessedTriggerId.current = routeCoords.id;
+    if (myLocation?.lat && myLocation?.lng) {
+      doRoute(myLocation.lat, myLocation.lng);
+      return;
+    }
 
-      setEndQuery(routeCoords.name);
-      const targetEnd = { lat: routeCoords.lat, lng: routeCoords.lng };
-      setEndCoord(targetEnd);
+    if (!navigator.geolocation) { alert("이 브라우저는 GPS를 지원하지 않아요."); return; }
+    setStartQuery("📍 내 위치 가져오는 중...");
+    navigator.geolocation.getCurrentPosition(
+      (pos) => doRoute(pos.coords.latitude, pos.coords.longitude),
+      (err) => {
+        setStartQuery("");
+        if (err.code === 1) alert("GPS 권한을 허용해주세요.");
+        else alert("현재 위치를 가져올 수 없어요.");
+      },
+      { timeout: 10000, enableHighAccuracy: false, maximumAge: 60000 },
+    );
+  }, [courseRoute, myLocation]);
 
+  useEffect(() => {
+    if (!routeCoords?.isDirectTrigger || routeCoords.id === lastProcessedTriggerId.current) return;
+    lastProcessedTriggerId.current = routeCoords.id;
+
+    const targetEnd = { lat: routeCoords.lat, lng: routeCoords.lng };
+    setEndQuery(routeCoords.name);
+    setEndCoord(targetEnd);
+
+    if (myLocation?.lat && myLocation?.lng) {
       const targetStart = { lat: myLocation.lat, lng: myLocation.lng };
       setStartQuery("📍 내 현재 위치");
       setStartCoord(targetStart);
-
-      // 자동 경로 탐색 API 호출
       triggerAutoFindRoute(targetStart, targetEnd);
+      return;
     }
+
+    if (!navigator.geolocation) { alert("이 브라우저는 GPS를 지원하지 않아요."); return; }
+    setStartQuery("📍 내 위치 가져오는 중...");
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        try {
+          const addrRes = await axios.get("https://dapi.kakao.com/v2/local/geo/coord2address.json", {
+            headers: { Authorization: `KakaoAK ${import.meta.env.VITE_KAKAO_REST_KEY}` },
+            params: { x: lng, y: lat },
+          });
+          const doc = addrRes.data.documents?.[0];
+          const name = doc?.road_address?.address_name || doc?.address?.address_name || "내 현재 위치";
+          setStartQuery("📍 " + name);
+        } catch { setStartQuery("📍 내 현재 위치"); }
+        const targetStart = { lat, lng };
+        setStartCoord(targetStart);
+        triggerAutoFindRoute(targetStart, targetEnd);
+      },
+      (err) => {
+        setStartQuery("");
+        alert("현재 위치를 가져올 수 없어요.");
+      },
+      { timeout: 10000, enableHighAccuracy: false, maximumAge: 60000 },
+    );
   }, [routeCoords, myLocation]);
 
-  /* 🌟 동적 파라미터를 받아 바로 카카오 API 연동해 지도를 그리는 자동 주행 헬퍼 함수 */
+  // 비동기 경로 데이터 결합 처리
   const triggerAutoFindRoute = async (start, end) => {
     if (isLoading) return;
     setIsLoading(true);
 
+    const masterSummary = { transit: null, car: null, walk: null };
+
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const date = String(now.getDate()).padStart(2, "0");
+    const hours = String(now.getHours()).padStart(2, "0");
+    const minutes = String(now.getMinutes()).padStart(2, "0");
+    const currentDttm = `${year}${month}${date}${hours}${minutes}`; // 예: "202606151710"
+
+    // 1️⃣ 대중교통 탐색
     try {
-      const res = await axios.get(
-        "https://apis-navi.kakaomobility.com/v1/directions",
-        {
-          headers: {
-            Authorization: `KakaoAK ${import.meta.env.VITE_KAKAO_REST_KEY}`,
-          },
-          params: {
-            origin: `${start.lng},${start.lat}`,
-            destination: `${end.lng},${end.lat}`,
-            priority: "RECOMMEND",
-          },
-        },
-      );
-
-      const linePath = [];
-      const route = res.data.routes?.[0];
-      if (!route) {
-        alert("경로를 찾을 수 없습니다.");
-        setIsLoading(false);
-        return;
+      const res = await axios.post("/api/transit/routes", {
+        startX: start.lng, startY: start.lat,
+        endX: end.lng, endY: end.lat,
+        lang: 0, count: 1, 
+        searchDttm: currentDttm
+      });
+      const transitData = res.data;
+      
+      if (transitData && transitData.totalTime) {
+        const totalMinutes = parseInt(transitData.totalTime) || 0;
+        masterSummary.transit = {
+          totalMinutes,
+          arrivalTimeStr: getArrivalTimeStr(totalMinutes),
+          fareStr: transitData.totalFare ? `${transitData.totalFare.toLocaleString()}원` : "비용 미정",
+          detailPath: transitData.path || [],
+        };
       }
-
-      route.sections[0].roads.forEach((road) => {
-        road.vertexes.forEach((vertex, index) => {
-          if (index % 2 === 0) {
-            linePath.push({ lng: vertex, lat: road.vertexes[index + 1] });
-          }
-        });
-      });
-
-      const totalMinutes = Math.ceil(route.summary.duration / 60);
-      const distanceKm = (route.summary.distance / 1000).toFixed(1);
-
-      const now = new Date();
-      now.setMinutes(now.getMinutes() + totalMinutes);
-      let hours = now.getHours();
-      const ampm = hours >= 12 ? "오후" : "오전";
-      hours = hours % 12 || 12;
-      const minutesStr = now.getMinutes().toString().padStart(2, "0");
-
-      setRouteSummary({
-        totalMinutes,
-        arrivalTimeStr: `${ampm} ${hours}:${minutesStr} 도착`,
-        taxiFare: route.summary.fare.taxi,
-        distanceKm,
-      });
-
-      // 지도가 선을 그리도록 부모 이벤트 트리거 호출
-      onRouteSearch({ start, end, path: linePath });
-      setHasRouteResult(true);
-    } catch (err) {
-      console.error("자동 경로 탐색 실패:", err);
-      alert("경로 탐색 중 오류가 발생했습니다.");
-    } finally {
-      setIsLoading(false);
+    } catch (err) { 
+      console.error("대중교통 탐색 실패:", err); 
     }
+
+    // 2️⃣ 차량 탐색
+    try {
+      const res = await axios.get("https://apis-navi.kakaomobility.com/v1/directions", {
+        headers: { Authorization: `KakaoAK ${import.meta.env.VITE_KAKAO_REST_KEY}` },
+        params: { origin: `${start.lng},${start.lat}`, destination: `${end.lng},${end.lat}`, priority: "RECOMMEND" },
+      });
+      const route = res.data.routes?.[0];
+      if (route) {
+        const totalMinutes = Math.ceil(route.summary.duration / 60);
+        masterSummary.car = {
+          totalMinutes,
+          arrivalTimeStr: getArrivalTimeStr(totalMinutes),
+          fareStr: `택시비 약 ${(route.summary.fare?.taxi ?? 0).toLocaleString()}원`,
+          distanceKm: (route.summary.distance / 1000).toFixed(1),
+        };
+      }
+    } catch (err) { console.error("차량 탐색 실패:", err); }
+
+    // 3️⃣ 도보 탐색
+    const dLat = (end.lat - start.lat) * 111;
+    const dLng = (end.lng - start.lng) * 88;
+    const distanceKm = parseFloat(window.Math.sqrt(dLat * dLat + dLng * dLng).toFixed(1));
+    const totalMinutes = Math.round(distanceKm * 15);
+    if (totalMinutes > 0) {
+      masterSummary.walk = {
+        totalMinutes,
+        arrivalTimeStr: getArrivalTimeStr(totalMinutes),
+        fareStr: `약 ${Math.round(totalMinutes * 3.8)} kcal 소모`,
+        distanceKm,
+      };
+    }
+
+    setRouteSummary(masterSummary);
+    
+    // 데이터 유무에 따른 유연한 기본 포커싱 분기 처리
+    if (!masterSummary.transit && masterSummary.car) {
+      setActiveTab("car");
+    } else {
+      setActiveTab("transit");
+    }
+
+    onRouteSearch({ start, end, path: [start, end] });
+    setHasRouteResult(true);
+    setIsLoading(false);
   };
 
-  // 기존 검색어 추천 연동 로직 (Debounce)
+  // 추천 검색어 디바운스
   useEffect(() => {
     const query = activeField === "start" ? startQuery : endQuery;
-    if (
-      !query ||
-      query.length < 2 ||
-      query.startsWith("📍") ||
-      query.startsWith("내 위치")
-    ) {
+    if (!query || query.length < 2 || query.startsWith("📍") || query.startsWith("내 위치")) {
       setSuggestions([]);
       return;
     }
     const delayDebounce = setTimeout(async () => {
       try {
-        const res = await axios.get(
-          `https://dapi.kakao.com/v2/local/search/keyword.json`,
-          {
-            headers: {
-              Authorization: `KakaoAK ${import.meta.env.VITE_KAKAO_REST_KEY}`,
-            },
-            params: { query, x: centerLng, y: centerLat, radius: 20000 },
-          },
-        );
+        const res = await axios.get(`https://dapi.kakao.com/v2/local/search/keyword.json`, {
+          headers: { Authorization: `KakaoAK ${import.meta.env.VITE_KAKAO_REST_KEY}` },
+          params: { query, x: centerLng, y: centerLat, radius: 20000 },
+        });
         setSuggestions(res.data.documents || []);
-      } catch (err) {
-        console.error(err);
-      }
+      } catch (err) { console.error(err); }
     }, 200);
     return () => clearTimeout(delayDebounce);
   }, [startQuery, endQuery, activeField, centerLng, centerLat]);
 
-  const handlePickMyLocation = async (field) => {
-    if (!myLocation?.lat) {
-      alert("GPS 위치 정보를 받아오는 중입니다.");
-      return;
-    }
-    try {
-      const addrRes = await axios.get(
-        `https://dapi.kakao.com/v2/local/geo/coord2address.json`,
-        {
-          headers: {
-            Authorization: `KakaoAK ${import.meta.env.VITE_KAKAO_REST_KEY}`,
-          },
-          params: { x: myLocation.lng, y: myLocation.lat },
-        },
-      );
-      const doc = addrRes.data.documents?.[0];
-      const finalName =
-        doc?.road_address?.address_name ||
-        doc?.address?.address_name ||
-        "내 현재 위치";
+  const handlePickMyLocation = (field) => {
+    if (!navigator.geolocation) { alert("이 브라우저는 GPS를 지원하지 않아요."); return; }
+    const setQuery = field === "start" ? setStartQuery : setEndQuery;
+    const setCoord = field === "start" ? setStartCoord : setEndCoord;
 
-      setHasRouteResult(false);
+    setQuery("📍 위치 가져오는 중...");
+    setHasRouteResult(false);
 
-      if (field === "start") {
-        setStartQuery("📍 " + finalName);
-        setStartCoord({ lat: myLocation.lat, lng: myLocation.lng });
-      } else {
-        setEndQuery("📍 " + finalName);
-        setEndCoord({ lat: myLocation.lat, lng: myLocation.lng });
-      }
-    } catch (err) {
-      alert("주소 변환에 실패했습니다.");
-    }
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        try {
+          const addrRes = await axios.get(`https://dapi.kakao.com/v2/local/geo/coord2address.json`, {
+            headers: { Authorization: `KakaoAK ${import.meta.env.VITE_KAKAO_REST_KEY}` },
+            params: { x: lng, y: lat },
+          });
+          const doc = addrRes.data.documents?.[0];
+          const finalName = doc?.road_address?.address_name || doc?.address?.address_name || "내 현재 위치";
+          setQuery("📍 " + finalName);
+        } catch { setQuery("📍 내 현재 위치"); }
+        setCoord({ lat, lng });
+      },
+      (err) => {
+        setQuery("");
+        alert("현재 위치를 가져올 수 없어요.");
+      },
+      { timeout: 10000, enableHighAccuracy: false, maximumAge: 60000 },
+    );
   };
 
   const handleSwapNodes = () => {
     setHasRouteResult(false);
-    const tQ = startQuery;
-    const tC = startCoord;
-    setStartQuery(endQuery);
-    setStartCoord(endCoord);
-    setEndQuery(tQ);
-    setEndCoord(tC);
+    const tQ = startQuery; const tC = startCoord;
+    setStartQuery(endQuery); setStartCoord(endCoord);
+    setEndQuery(tQ); setEndCoord(tC);
   };
 
   const handleSelectPlace = (place) => {
     const coord = { lat: parseFloat(place.y), lng: parseFloat(place.x) };
     setHasRouteResult(false);
-
-    if (activeField === "start") {
-      setStartQuery(place.place_name);
-      setStartCoord(coord);
-    } else {
-      setEndQuery(place.place_name);
-      setEndCoord(coord);
-    }
+    if (activeField === "start") { setStartQuery(place.place_name); setStartCoord(coord); }
+    else { setEndQuery(place.place_name); setEndCoord(coord); }
     setSuggestions([]);
     setActiveField(null);
   };
 
   const handleFindRoute = async () => {
-    if (!startCoord || !endCoord) {
-      alert("출발지와 목적지를 모두 지정해 주세요.");
-      return;
-    }
+    if (!startCoord || !endCoord) { alert("출발지와 목적지를 모두 지정해 주세요."); return; }
     triggerAutoFindRoute(startCoord, endCoord);
+  };
+
+  const getArrivalTimeStr = (mins) => {
+    const now = new Date();
+    now.setMinutes(now.getMinutes() + mins);
+    let hours = now.getHours();
+    const ampm = hours >= 12 ? "오후" : "오전";
+    hours = hours % 12 || 12;
+    return `${ampm} ${hours}:${now.getMinutes().toString().padStart(2, "0")} 도착`;
+  };
+
+  const parseTransitStep = (stepText) => {
+    const cleanText = stepText.replace(/🚶|🚍|🚇/g, "").trim();
+    
+    const bracketRegex = /\(([^)]+)\)/;
+    const match = cleanText.match(bracketRegex);
+
+    if (match) {
+      const mainTitle = cleanText.replace(bracketRegex, "").trim();
+      const subDetail = match[1].trim();
+      return { mainTitle, subDetail };
+    }
+
+    return { mainTitle: cleanText, subDetail: null };
   };
 
   return (
@@ -548,36 +703,22 @@ export default function RoutePanel({
             <InputBlock>
               <BlockHeader>
                 <NodeBadge>출발</NodeBadge>
-                <InlinePickButton onClick={() => handlePickMyLocation("start")}>
-                  내위치
-                </InlinePickButton>
+                <InlinePickButton onClick={() => handlePickMyLocation("start")}>내위치</InlinePickButton>
               </BlockHeader>
               <InputWrapper>
                 <StyledInput
                   placeholder="출발지를 입력하세요"
                   value={startQuery}
-                  onChange={(e) => {
-                    setStartQuery(e.target.value);
-                    setActiveField("start");
-                    setHasRouteResult(false);
-                  }}
-                  onFocus={() => {
-                    setActiveField("start");
-                    setHasRouteResult(false);
-                  }}
+                  onChange={(e) => { setStartQuery(e.target.value); setActiveField("start"); setHasRouteResult(false); }}
+                  onFocus={() => { setActiveField("start"); setHasRouteResult(false); }}
                 />
               </InputWrapper>
               {activeField === "start" && suggestions.length > 0 && (
                 <SuggestionList>
                   {suggestions.map((p, i) => (
-                    <SuggestionItem
-                      key={i}
-                      onClick={() => handleSelectPlace(p)}
-                    >
+                    <SuggestionItem key={i} onClick={() => handleSelectPlace(p)}>
                       <strong>{p.place_name}</strong>
-                      <span style={{ fontSize: "11px", color: "#888888" }}>
-                        {p.address_name}
-                      </span>
+                      <span style={{ fontSize: "11px", color: "#888888" }}>{p.address_name}</span>
                     </SuggestionItem>
                   ))}
                 </SuggestionList>
@@ -587,36 +728,22 @@ export default function RoutePanel({
             <InputBlock>
               <BlockHeader>
                 <NodeBadge>도착</NodeBadge>
-                <InlinePickButton onClick={() => handlePickMyLocation("end")}>
-                  내위치
-                </InlinePickButton>
+                <InlinePickButton onClick={() => handlePickMyLocation("end")}>내위치</InlinePickButton>
               </BlockHeader>
               <InputWrapper>
                 <StyledInput
                   placeholder="도착지를 입력하세요"
                   value={endQuery}
-                  onChange={(e) => {
-                    setEndQuery(e.target.value);
-                    setActiveField("end");
-                    setHasRouteResult(false);
-                  }}
-                  onFocus={() => {
-                    setActiveField("end");
-                    setHasRouteResult(false);
-                  }}
+                  onChange={(e) => { setEndQuery(e.target.value); setActiveField("end"); setHasRouteResult(false); }}
+                  onFocus={() => { setActiveField("end"); setHasRouteResult(false); }}
                 />
               </InputWrapper>
               {activeField === "end" && suggestions.length > 0 && (
                 <SuggestionList>
                   {suggestions.map((p, i) => (
-                    <SuggestionItem
-                      key={i}
-                      onClick={() => handleSelectPlace(p)}
-                    >
+                    <SuggestionItem key={i} onClick={() => handleSelectPlace(p)}>
                       <strong>{p.place_name}</strong>
-                      <span style={{ fontSize: "11px", color: "#888888" }}>
-                        {p.address_name}
-                      </span>
+                      <span style={{ fontSize: "11px", color: "#888888" }}>{p.address_name}</span>
                     </SuggestionItem>
                   ))}
                 </SuggestionList>
@@ -625,16 +752,7 @@ export default function RoutePanel({
           </InputGroupWrapper>
 
           <SwapButton onClick={handleSwapNodes}>
-            <svg
-              width="18"
-              height="18"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="#c09d32"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#c09d32" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="17 1 21 5 17 9"></polyline>
               <path d="M3 11V9a4 4 0 0 1 4-4h14"></path>
               <polyline points="7 23 3 19 7 15"></polyline>
@@ -648,57 +766,142 @@ export default function RoutePanel({
       </SearchHeader>
 
       {hasRouteResult && (
+        <TabButtonGroup>
+          <TabButton $active={activeTab === "transit"} onClick={() => setActiveTab("transit")}>대중교통</TabButton>
+          <TabButton $active={activeTab === "car"} onClick={() => setActiveTab("car")}>자동차</TabButton>
+          <TabButton $active={activeTab === "walk"} onClick={() => setActiveTab("walk")}>도보</TabButton>
+        </TabButtonGroup>
+      )}
+
+      {hasRouteResult && (
         <ResultContainer>
-          <SummaryBox>
-            <MainTimeInfo>
-              <span className="accent-time">
-                추천 {routeSummary.totalMinutes}분
-              </span>
-              <span className="arrival-time">
-                {routeSummary.arrivalTimeStr}
-              </span>
-              <span className="fee">
-                {routeSummary.taxiFare.toLocaleString()}원 (택시비)
-              </span>
-            </MainTimeInfo>
-            <VehicleBadges>
-              <SummaryBadge $bg="#fdf3df" $color="#c09d32">
-                🚗 추천경로
-              </SummaryBadge>
-              <SummaryBadge $bg="#e8d664" $color="#ffffff">
-                {routeSummary.distanceKm} km
-              </SummaryBadge>
-            </VehicleBadges>
-          </SummaryBox>
+          {/* 1️⃣ 대중교통 전용 타임라인 */}
+          {activeTab === "transit" && routeSummary.transit && (
+            <div>
+              <SummaryBox>
+                <MainTimeInfo>
+                  <span className="accent-time">추천 {routeSummary.transit.totalMinutes}분</span>
+                  <span className="arrival-time">{routeSummary.transit.arrivalTimeStr}</span>
+                  <span className="fee">{routeSummary.transit.fareStr} (교통비)</span>
+                </MainTimeInfo>
+                <VehicleBadges>
+                  <SummaryBadge $bg="#e7f5ff" $color="#1c7ed6">🚍 대중교통 최적 경로</SummaryBadge>
+                </VehicleBadges>
+              </SummaryBox>
+              <TimelineContainer>
+                <TimelineItem>
+                  <LineGraphic $isTransit={true} $color="#1c7ed6" />
+                  <NodeIcon $color="#1c7ed6">출</NodeIcon>
+                  <NodeContent><NodeTitle>{startQuery || "출발지"}</NodeTitle></NodeContent>
+                </TimelineItem>
+                
+                {routeSummary.transit.detailPath?.map((step, index) => {
+                  let icon = "•";
+                  if (step.includes("🚶")) icon = "🚶";
+                  if (step.includes("🚍")) icon = "🚌";
+                  if (step.includes("🚇")) icon = "🚇";
+                  
+                  // 🌟 괄호를 자르고 데이터 분리 추출
+                  const { mainTitle, subDetail } = parseTransitStep(step);
 
-          <TimelineContainer>
-            <TimelineItem>
-              <LineGraphic $isTransit={true} $color="#e8d664" />
-              <NodeIcon $color="#c09d32">출</NodeIcon>
-              <NodeContent>
-                <NodeTitle>{startQuery || "출발지"}</NodeTitle>
-                <NodeDetail>여기서부터 차량 이동을 시작합니다.</NodeDetail>
-              </NodeContent>
-            </TimelineItem>
+                  return (
+                    <TimelineItem key={index}>
+                      <LineGraphic $isTransit={true} $color={step.includes("🚶") ? "#a6afba" : "#1c7ed6"} />
+                      <NodeIcon $color="#1c7ed6">{icon}</NodeIcon>
+                      <NodeContent>
+                        <NodeTitle>{mainTitle}</NodeTitle>
+                        {subDetail && <NodeDetail>{subDetail}</NodeDetail>}
+                      </NodeContent>
+                    </TimelineItem>
+                  );
+                })}
+                
+                <TimelineItem>
+                  <LineGraphic $isTransit={false} />
+                  <NodeIcon $color="#2b8a3e">도</NodeIcon>
+                  <NodeContent>
+                    <NodeTitle>{endQuery || "목적지"}</NodeTitle>
+                  </NodeContent>
+                </TimelineItem>
+              </TimelineContainer>
+            </div>
+          )}
 
-            <TimelineItem>
-              <LineGraphic $isTransit={true} $color="#e8d664" />
-              <NodeIcon $color="#e8d664">🚗</NodeIcon>
-              <NodeContent>
-                <NodeTitle>내비게이션 최적 경로 주행</NodeTitle>
-                <NodeDetail>실시간 교통 상황 반영 완료</NodeDetail>
-              </NodeContent>
-            </TimelineItem>
+          {/* 2️⃣ 자동차 전용 타임라인 */}
+          {activeTab === "car" && routeSummary.car && (
+            <div>
+              <SummaryBox>
+                <MainTimeInfo>
+                  <span className="accent-time" style={{ color: '#fd7e14' }}>내비 {routeSummary.car.totalMinutes}분</span>
+                  <span className="arrival-time">{routeSummary.car.arrivalTimeStr}</span>
+                  <span className="fee">{routeSummary.car.distanceKm} km</span>
+                </MainTimeInfo>
+                <VehicleBadges>
+                  <SummaryBadge $bg="#fff4e6" $color="#fd7e14">🚗 실시간 자동차 경로</SummaryBadge>
+                </VehicleBadges>
+              </SummaryBox>
+              <TimelineContainer>
+                <TimelineItem>
+                  <LineGraphic $isTransit={true} $color="#fd7e14" />
+                  <NodeIcon $color="#fd7e14">출</NodeIcon>
+                  <NodeContent><NodeTitle>{startQuery || "출발지"}</NodeTitle></NodeContent>
+                </TimelineItem>
+                <TimelineItem>
+                  <LineGraphic $isTransit={true} $color="#fd7e14" />
+                  <NodeIcon $color="#ffa94d">🚗</NodeIcon>
+                  <NodeContent>
+                    <NodeTitle>최적 도로 실시간 주행</NodeTitle>
+                    <NodeDetail>{routeSummary.car.fareStr}</NodeDetail>
+                  </NodeContent>
+                </TimelineItem>
+                <TimelineItem>
+                  <LineGraphic $isTransit={false} />
+                  <NodeIcon $color="#2b8a3e">도</NodeIcon>
+                  <NodeContent>
+                    <NodeTitle>{endQuery || "목적지"}</NodeTitle>
+                  </NodeContent>
+                </TimelineItem>
+              </TimelineContainer>
+            </div>
+          )}
 
-            <TimelineItem>
-              <LineGraphic $isTransit={false} />
-              <NodeIcon $color="#c09d32">도</NodeIcon>
-              <NodeContent>
-                <NodeTitle>{endQuery || "목적지"}</NodeTitle>
-                <NodeDetail>안전하게 목적지에 도착했습니다.</NodeDetail>
-              </NodeContent>
-            </TimelineItem>
-          </TimelineContainer>
+          {/* 3️⃣ 도보 전용 타임라인 */}
+          {activeTab === "walk" && routeSummary.walk && (
+            <div>
+              <SummaryBox>
+                <MainTimeInfo>
+                  <span className="accent-time" style={{ color: '#40c057' }}>도보 {routeSummary.walk.totalMinutes}분</span>
+                  <span className="arrival-time">{routeSummary.walk.arrivalTimeStr}</span>
+                  <span className="fee">{routeSummary.walk.distanceKm} km</span>
+                </MainTimeInfo>
+                <VehicleBadges>
+                  <SummaryBadge $bg="#ebfbee" $color="#40c057">🚶 튼튼 보행 추천 경로</SummaryBadge>
+                </VehicleBadges>
+              </SummaryBox>
+              <TimelineContainer>
+                <TimelineItem>
+                  <LineGraphic $isTransit={true} $color="#40c057" />
+                  <NodeIcon $color="#40c057">출</NodeIcon>
+                  <NodeContent><NodeTitle>{startQuery || "출발지"}</NodeTitle></NodeContent>
+                </TimelineItem>
+                <TimelineItem>
+                  <LineGraphic $isTransit={true} $color="#63e6be" />
+                  <NodeIcon $color="#40c057">🚶</NodeIcon>
+                  <NodeContent>
+                    <NodeTitle>보행자 및 골목 이면도로 우선</NodeTitle>
+                    <NodeDetail>{routeSummary.walk.fareStr}</NodeDetail>
+                  </NodeContent>
+                </TimelineItem>
+                <TimelineItem>
+                  <LineGraphic $isTransit={false} />
+                  <NodeIcon $color="#2b8a3e">도</NodeIcon>
+                  <NodeContent>
+                    <NodeTitle>{endQuery || "목적지"}</NodeTitle>
+                  </NodeContent>
+                </TimelineItem>
+              </TimelineContainer>
+            </div>
+          )}
         </ResultContainer>
       )}
     </PanelWrapper>

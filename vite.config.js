@@ -10,7 +10,17 @@ export default defineConfig({
     proxy: {
       // 🌟 /api로 시작하는 모든 요청은 진짜 노드 백엔드 서버(5000포트)로 우회시킵니다.
       '/api': {
-        target: 'http://localhost:5000', 
+        target: 'http://localhost:5000',
+        changeOrigin: true,
+        secure: false,
+      },
+      '/feeds': {
+        target: 'http://localhost:5000',
+        changeOrigin: true,
+        secure: false,
+      },
+      '/uploads': {
+        target: 'http://localhost:5000',
         changeOrigin: true,
         secure: false,
       }

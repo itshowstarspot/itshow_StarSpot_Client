@@ -184,20 +184,30 @@ export default function Photo({ selectedIdol }) {
   // 카메라 시작
   useEffect(() => {
     async function startCamera() {
+      if (!navigator.mediaDevices?.getUserMedia) {
+        setCameraError("이 브라우저는 카메라를 지원하지 않아요. Chrome 또는 Safari를 사용해주세요.");
+        return;
+      }
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            facingMode: "user",
-            width: { ideal: 960 },
-            height: { ideal: 540 },
-            frameRate: { ideal: 24, max: 30 },
-          },
+          video: { facingMode: "user" },
           audio: false,
         });
         streamRef.current = stream;
-        if (videoRef.current) videoRef.current.srcObject = stream;
-      } catch {
-        setCameraError("카메라 권한을 허용하면 함께 사진을 찍을 수 있어요.");
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          videoRef.current.play().catch(() => {});
+        }
+      } catch (err) {
+        if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
+          setCameraError("카메라 권한이 차단되어 있어요. 브라우저 설정에서 허용해주세요.");
+        } else if (err.name === "NotFoundError" || err.name === "DevicesNotFoundError") {
+          setCameraError("카메라를 찾을 수 없어요. 카메라가 연결되어 있는지 확인해주세요.");
+        } else if (err.name === "NotReadableError") {
+          setCameraError("카메라가 다른 앱에서 사용 중이에요. 다른 탭이나 앱을 닫고 다시 시도해주세요.");
+        } else {
+          setCameraError(`카메라 오류: ${err.message}`);
+        }
       }
     }
 
@@ -332,6 +342,7 @@ export default function Photo({ selectedIdol }) {
         playsInline
         muted
         onCanPlay={() => setCameraReady(true)}
+        onLoadedMetadata={() => setCameraReady(true)}
       />
 
       {/* 카메라 미리보기 캔버스 — 전체화면 */}

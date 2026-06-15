@@ -168,7 +168,7 @@ export default function VisitHistory() {
     setLoading(true);
 
     axios
-      .get(`http://localhost:5000/api/users/visit-history/${userEmail}`)
+      .get(`/api/users/visit-history/${userEmail}`)
       .then((res) => {
         setVisits(res.data || []);
         setLoading(false);
@@ -187,7 +187,7 @@ export default function VisitHistory() {
   const handleCardClick = (item) => {
     if (!item) return;
 
-    const finalPlaceId = item.place_id || item.placeId || item.id;
+    const finalPlaceId = item.spot_id || item.place_id || item.placeId;
 
     if (finalPlaceId && String(finalPlaceId) !== "undefined") {
       navigate(`/place/${finalPlaceId}`);

@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import styled, { keyframes } from "styled-components";
+import axios from "axios";
 import { generateShareLink } from "../../services/courseService";
 
-// 코스 생성에 필요한 최소 장소 개수 조건 상수를 적용합니다.
 const COURSE_MIN_PLACES = 2;
 
 const fadeIn = keyframes`
@@ -63,7 +63,6 @@ const ModalTitle = styled.h2`
   margin: 0 28px 4px 0;
 `;
 
-// 코스 이름 입력창을 위한 스타일드 컴포넌트 추가
 const TitleInput = styled.input`
   width: 100%;
   border: 1px solid rgba(45, 47, 54, 0.15);
@@ -79,11 +78,31 @@ const TitleInput = styled.input`
   }
 `;
 
+const TitleText = styled.div`
+  font-size: 14px;
+  font-weight: 700;
+  color: #2d2f36;
+  margin-bottom: 6px;
+  padding: 8px 10px;
+`;
+
 const ModalDesc = styled.p`
   font-size: 11px;
   color: rgba(45, 47, 54, 0.45);
   margin: 0;
   line-height: 1.5;
+`;
+
+const SharedBadge = styled.span`
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  color: #4a9d8f;
+  background: rgba(74, 157, 143, 0.1);
+  border: 1px solid rgba(74, 157, 143, 0.3);
+  border-radius: 6px;
+  padding: 2px 8px;
+  margin-bottom: 8px;
 `;
 
 const PlaceList = styled.div`
@@ -222,6 +241,27 @@ const SubmitBtn = styled.button`
   }
 `;
 
+const AddBtn = styled.button`
+  width: 100%;
+  height: 42px;
+  border-radius: 10px;
+  border: none;
+  background: #4a9d8f;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s;
+  &:hover {
+    background: #3d8577;
+  }
+  &:disabled {
+    background: #e2e2e2;
+    color: #aaaaaa;
+    cursor: not-allowed;
+  }
+`;
+
 const CancelBtn = styled.button`
   width: 100%;
   height: 38px;
@@ -237,9 +277,9 @@ const CancelBtn = styled.button`
   }
 `;
 
-const CopiedMsg = styled.div`
+const StatusMsg = styled.div`
   font-size: 11px;
-  color: #4a9d8f;
+  color: ${({ $error }) => ($error ? "#e85050" : "#4a9d8f")};
   text-align: center;
 `;
 
@@ -249,12 +289,13 @@ export default function CourseDetailModal({
   onClose,
   onSave,
   onDelete,
+  onCourseRoute,
 }) {
   const [title, setTitle] = useState("");
   const [places, setPlaces] = useState([]);
-  const [copied, setCopied] = useState([]);
+  const [statusMsg, setStatusMsg] = useState(null);
+  const [isAdding, setIsAdding] = useState(false);
 
-  // 🔄 [해결 핵심] 모달이 새로 열릴 때마다 부모의 course 데이터를 바탕으로 완벽히 초기화시킵니다.
   useEffect(() => {
     if (course) {
       setTitle(course.title || "");
@@ -263,9 +304,17 @@ export default function CourseDetailModal({
       setTitle("");
       setPlaces([]);
     }
-  }, [course, isOpen]); // course 객체나 열림 상태가 바뀔 때 감지
+    setStatusMsg(null);
+  }, [course, isOpen]);
 
   if (!course) return null;
+
+  // 로그인한 사용자 이메일
+  const storedUser = localStorage.getItem("user");
+  const loggedInEmail = storedUser ? JSON.parse(storedUser)?.email : null;
+
+  // 공유 코스 판별: 코스 작성자와 현재 사용자가 다르면 공유 코스
+  const isShared = !!(course.userEmail && loggedInEmail && course.userEmail !== loggedInEmail);
 
   const reorder = (from, to) => {
     const arr = [...places];
@@ -277,18 +326,42 @@ export default function CourseDetailModal({
   const handleShare = () => {
     const link = generateShareLink(course.id);
     navigator.clipboard?.writeText(link).catch(() => {});
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    setStatusMsg({ text: "링크가 클립보드에 복사됐어요!", error: false });
+    setTimeout(() => setStatusMsg(null), 2000);
   };
 
-  // 모달을 완전히 초기화하고 닫는 안전 함수
+  const handleAddToMyCourses = async () => {
+    if (!loggedInEmail) {
+      setStatusMsg({ text: "로그인이 필요합니다.", error: true });
+      return;
+    }
+    setIsAdding(true);
+    try {
+      const spotIds = places.map((p) => p.id).filter(Boolean);
+      await axios.post("/api/courses", {
+        title: course.title,
+        spotIds,
+        userEmail: loggedInEmail,
+      });
+      setStatusMsg({ text: "내 코스에 추가되었습니다!", error: false });
+      setTimeout(() => {
+        setStatusMsg(null);
+        handleCloseAndReset();
+      }, 1500);
+    } catch {
+      setStatusMsg({ text: "추가에 실패했습니다. 다시 시도해주세요.", error: true });
+    } finally {
+      setIsAdding(false);
+    }
+  };
+
   const handleCloseAndReset = () => {
     setTitle("");
     setPlaces([]);
+    setStatusMsg(null);
     onClose();
   };
 
-  // 검증: 제목이 존재하고 순서 조정 리스트 내 장소가 최소 기준(2개) 이상인지 감시
   const isInvalid = !title.trim() || places.length < COURSE_MIN_PLACES;
 
   return (
@@ -296,15 +369,22 @@ export default function CourseDetailModal({
       <Modal>
         <ModalHeader>
           <CloseBtn onClick={handleCloseAndReset}>✕</CloseBtn>
-          <ModalTitle>나만의 코스 관리</ModalTitle>
+          <ModalTitle>{isShared ? "공유된 코스" : "나만의 코스 관리"}</ModalTitle>
 
-          {/* ⭕ 코스 이름을 자유롭게 입력/변경할 수 있는 Input 추가 */}
-          <TitleInput
-            type="text"
-            placeholder="코스 이름을 지정해주세요"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-          />
+          {isShared ? (
+            <>
+              <SharedBadge>👤 {course.userEmail?.split("@")[0]} 님의 코스</SharedBadge>
+              <TitleText>{title}</TitleText>
+            </>
+          ) : (
+            <TitleInput
+              type="text"
+              placeholder="코스 이름을 지정해주세요"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+            />
+          )}
+
           <ModalDesc>
             {places.map((p) => p.name || p.placeName).join(" → ")}
           </ModalDesc>
@@ -318,53 +398,69 @@ export default function CourseDetailModal({
                 <PlaceName>{place.name || place.placeName}</PlaceName>
                 <PlaceAddr>{place.address}</PlaceAddr>
               </PlaceInfo>
-              <ArrowBtns>
-                <ArrowBtn disabled={i === 0} onClick={() => reorder(i, i - 1)}>
-                  ▲
-                </ArrowBtn>
-                <ArrowBtn
-                  disabled={i === places.length - 1}
-                  onClick={() => reorder(i, i + 1)}
-                >
-                  ▼
-                </ArrowBtn>
-              </ArrowBtns>
+              {/* 공유 코스에선 순서 변경 불가 */}
+              {!isShared && (
+                <ArrowBtns>
+                  <ArrowBtn disabled={i === 0} onClick={() => reorder(i, i - 1)}>▲</ArrowBtn>
+                  <ArrowBtn disabled={i === places.length - 1} onClick={() => reorder(i, i + 1)}>▼</ArrowBtn>
+                </ArrowBtns>
+              )}
             </PlaceRow>
           ))}
         </PlaceList>
 
         <Footer>
-          {copied && <CopiedMsg>링크가 클립보드에 복사됐어요!</CopiedMsg>}
-
-          {/* 공유 기능 */}
-          {course.id && (
-            <ShareBtn onClick={handleShare}>🔗 코스 공유하기</ShareBtn>
+          {statusMsg && (
+            <StatusMsg $error={statusMsg.error}>{statusMsg.text}</StatusMsg>
           )}
 
-          {/* ⭕ 조건 만족 시에만 활성화되는 코스 저장 버튼 */}
-          <SubmitBtn
-            disabled={isInvalid}
-            onClick={() => {
-              onSave({ ...course, title, places });
-              handleCloseAndReset();
-            }}
-          >
-            {course.id ? "코스 수정 완료" : "코스 생성"}
-          </SubmitBtn>
-
-          {/* 취소 / 삭제 액션 */}
-          {course.id ? (
-            <CancelBtn
-              style={{ borderColor: "#ff6b6b", color: "#ff6b6b" }}
+          {/* 길찾기 — 내 코스 / 공유 코스 모두 표시 */}
+          {places.length >= 2 && onCourseRoute && (
+            <SubmitBtn
+              style={{ background: "#4a9d8f" }}
               onClick={() => {
-                onDelete(course.id);
+                onCourseRoute(places);
                 handleCloseAndReset();
               }}
             >
-              코스 완전 삭제
-            </CancelBtn>
+              🗺️ 코스 길찾기
+            </SubmitBtn>
+          )}
+
+          {isShared ? (
+            /* 공유 코스 전용 버튼 */
+            <AddBtn onClick={handleAddToMyCourses} disabled={isAdding}>
+              {isAdding ? "추가 중..." : "⭐ 내 코스에 추가하기"}
+            </AddBtn>
           ) : (
-            <CancelBtn onClick={handleCloseAndReset}>취소</CancelBtn>
+            /* 내 코스 전용 버튼 */
+            <>
+              {course.id && (
+                <ShareBtn onClick={handleShare}>🔗 코스 공유하기</ShareBtn>
+              )}
+              <SubmitBtn
+                disabled={isInvalid}
+                onClick={() => {
+                  onSave({ ...course, title, places });
+                  handleCloseAndReset();
+                }}
+              >
+                {course.id ? "코스 수정 완료" : "코스 생성"}
+              </SubmitBtn>
+              {course.id ? (
+                <CancelBtn
+                  style={{ borderColor: "#ff6b6b", color: "#ff6b6b" }}
+                  onClick={() => {
+                    onDelete(course.id);
+                    handleCloseAndReset();
+                  }}
+                >
+                  코스 완전 삭제
+                </CancelBtn>
+              ) : (
+                <CancelBtn onClick={handleCloseAndReset}>취소</CancelBtn>
+              )}
+            </>
           )}
         </Footer>
       </Modal>

@@ -2,7 +2,7 @@ import { COURSE_MIN_PLACES } from '../domain/course/course'
 import { STORAGE_KEY_COURSES } from '../constants/storageKeys'
 
 // ✅ 백엔드 포트 5000번과 공통 경로 /api 적용
-const API_BASE_URL = 'http://localhost:5000/api'
+const API_BASE_URL = '/api'
 
 /* ── 추천 코스 고정 데이터 (오프라인/대비용) ── */
 const RECOMMENDED_COURSES = [
@@ -165,5 +165,5 @@ export const deleteCourse = async (courseId) => {
  * 코스 공유 링크 생성
  */
 export const generateShareLink = (courseId) => {
-  return `${window.location.origin}/course/${courseId}`
+  return `${window.location.origin}/home?courseId=${courseId}`
 }

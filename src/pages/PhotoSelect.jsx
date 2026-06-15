@@ -142,7 +142,7 @@ export default function PhotoSelect({ selectedIdol }) {
       }
 
       const res = await axios.post(
-        "http://localhost:5000/api/users/posts",
+        "/api/users/posts",
         formData,
         {
           headers: {

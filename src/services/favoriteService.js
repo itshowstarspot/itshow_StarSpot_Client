@@ -2,7 +2,7 @@ import axios from 'axios'
 import { STORAGE_KEY_FAVORITES as STORAGE_KEY } from '../constants/storageKeys'
 
 // ✅ 8080 포트 통신 거부 버그 원천 해결: 5000번 포트로 원천 고정
-const API_BASE_URL = 'http://localhost:5000/api'
+const API_BASE_URL = '/api'
 
 // 인증 헤더 추출 공통 함수
 const getAuthHeader = () => {

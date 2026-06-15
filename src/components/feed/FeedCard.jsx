@@ -18,8 +18,9 @@ const Thumbnail = styled.div`
   aspect-ratio: 4/3;
   overflow: hidden;
   background: #d9d9d9;
+  position: relative;
 
-  img {
+  img, video {
     width: 100%;
     height: 100%;
     object-fit: cover;
@@ -47,6 +48,7 @@ const Content = styled.p`
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  margin: 0;
 `
 
 const Meta = styled.div`
@@ -57,25 +59,61 @@ const Meta = styled.div`
   color: rgba(45,47,54,0.4);
 `
 
-/**
- * 팬 피드 카드 컴포넌트
- * @param {{ image: string, placeName: string, content: string, viewCount: number, createdAt: string }} props
- */
-export default function FeedCard({ image, placeName, content, viewCount, createdAt }) {
+const Actions = styled.div`
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+`
+
+const ActionBtn = styled.button`
+  flex: 1;
+  padding: 5px 0;
+  border-radius: 6px;
+  border: 1px solid;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+
+  &:hover { opacity: 0.75; }
+`
+
+const EditBtn = styled(ActionBtn)`
+  border-color: rgba(232,214,100,0.5);
+  background: rgba(232,214,100,0.1);
+  color: #b8a030;
+`
+
+const DeleteBtn = styled(ActionBtn)`
+  border-color: rgba(232,80,80,0.3);
+  background: rgba(232,80,80,0.07);
+  color: #c04040;
+`
+
+const isVideoUrl = (url) => {
+  if (!url) return false;
+  return /\.(mp4|webm|ogg|mov)(\?|$)/i.test(url) || url.startsWith('blob:')
+}
+
+export default function FeedCard({ image, placeName, content, viewCount, createdAt, onEdit, onDelete }) {
   const parsedDate = new Date(createdAt)
   const date = isNaN(parsedDate.getTime())
     ? ''
     : parsedDate.toLocaleDateString('ko-KR')
 
+  const isVideo = isVideoUrl(image)
+
   return (
     <Card>
       <Thumbnail>
         {image && (
-          <img
-            src={image}
-            alt={placeName ? `${placeName} 방문 사진` : '방문 사진'}
-            onError={(e) => { e.currentTarget.style.display = 'none' }}
-          />
+          isVideo
+            ? <video src={image} muted playsInline />
+            : <img
+                src={image}
+                alt={placeName ? `${placeName} 방문 사진` : '방문 사진'}
+                onError={(e) => { e.currentTarget.style.display = 'none' }}
+              />
         )}
       </Thumbnail>
       <Body>
@@ -83,8 +121,14 @@ export default function FeedCard({ image, placeName, content, viewCount, created
         <Content>{content}</Content>
         <Meta>
           <span>{date}</span>
-          <span>👁 {viewCount}</span>
+          {viewCount != null && <span>👁 {viewCount}</span>}
         </Meta>
+        {(onEdit || onDelete) && (
+          <Actions>
+            {onEdit && <EditBtn onClick={onEdit}>수정</EditBtn>}
+            {onDelete && <DeleteBtn onClick={onDelete}>삭제</DeleteBtn>}
+          </Actions>
+        )}
       </Body>
     </Card>
   )

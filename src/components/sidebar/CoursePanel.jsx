@@ -407,24 +407,8 @@ export default function CoursePanel({ onCourseOpen, idolId }) {
 
   // 컴포넌트 내부에 추가해서 콘솔창을 확인해보세요!
   useEffect(() => {
-    if (courses && courses.length > 0) {
-      console.log("=========================================");
-      console.log(
-        "📦 [디버깅] 서버에서 불러온 코스 목록 첫 번째 아이템:",
-        courses[0],
-      );
-      console.log("=========================================");
-    }
-  }, [courses]);
-
-  useEffect(() => {
-    if (courses && courses.length > 0) {
-      console.log(
-        "▶️ [디버깅] 현재 불러온 코스 목록 첫 번째 데이터 구조:",
-        courses[0],
-      );
-    }
-  }, [courses]);
+    loadCourses();
+  }, [loadCourses]);
 
   const sortedPlaces = useMemo(() => {
     return (places || []).map((p) => ({
@@ -494,8 +478,8 @@ export default function CoursePanel({ onCourseOpen, idolId }) {
   /* ── 목록 화면 (view === "list") 완벽 연동본 ── */
   if (view === "list") {
     // 로컬 스토리지 등에서 현재 로그인한 유저 이메일 동적 획득
-    const loggedInUser =
-      localStorage.getItem("userEmail") || "test14@gmail.com";
+    const storedUser = localStorage.getItem("user");
+    const loggedInUser = storedUser ? JSON.parse(storedUser)?.email : null;
 
     return (
       <Panel>

@@ -11,7 +11,9 @@ export default function ActivePanel({
   onRouteSearch,
   mapCenter,
   myLocation,
-  routeCoords, // 🌟 [교정] 부모(Home)가 낚아챈 우돈청 데이터를 접수합니다.
+  routeCoords,
+  courseRoute,
+  onCourseRouteClear,
 }) {
   switch (navId) {
     case "route":
@@ -20,7 +22,9 @@ export default function ActivePanel({
           onRouteSearch={onRouteSearch}
           mapCenter={mapCenter}
           myLocation={myLocation}
-          routeCoords={routeCoords} // 🌟 [교정] 길찾기 패널에게 우돈청 데이터를 최종 배달합니다.
+          routeCoords={routeCoords}
+          courseRoute={courseRoute}
+          onCourseRouteClear={onCourseRouteClear}
         />
       );
     case "favorite":

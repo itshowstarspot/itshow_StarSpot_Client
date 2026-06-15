@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 import axios from 'axios';
 
 // ⭕ 백엔드 서버 기본 주소 설정
-const API_BASE_URL = 'http://localhost:5000/api'; 
+const API_BASE_URL = '/api';
 
 export function useCourse() {
   const [courses, setCourses] = useState([]);
@@ -19,15 +19,11 @@ export function useCourse() {
       const user = storedUser ? JSON.parse(storedUser) : null;
       const userEmail = user?.email;
 
-      // 백엔드의 GET /api/courses 엔드포인트 호출
-      const response = await axios.get(`${API_BASE_URL}/courses`, {
-        headers: {
-          // 토큰 기반 통신 보완 (백엔드 getEmailFromToken용 Authorization 헤더 전송)
-          'Authorization': `Bearer ${userEmail || 'test14@gmail.com'}`
-        }
-      });
-      
-      setCourses(Array.isArray(response.data) ? response.data : []);
+      const params = userEmail ? { userEmail } : {};
+      const response = await axios.get(`${API_BASE_URL}/courses`, { params });
+
+      const data = response.data?.data ?? response.data;
+      setCourses(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error('[useCourse] 코스 로드 실패:', err);
       setError(err.response?.data?.message || '코스를 불러오는 중 오류가 발생했습니다.');
@@ -96,18 +92,14 @@ export function useCourse() {
         return onlyNumbers ? Number(onlyNumbers) : null;
       }).filter(id => id !== null);
 
-      // ⭕ 백엔드 POST /api/courses 스펙에 완벽 맞춤 JSON 본문 구성
       const requestBody = {
         title: title,
-        spotIds: spotIds
+        spotIds: spotIds,
+        userEmail: userEmail,
       };
 
       const response = await axios.post(`${API_BASE_URL}/courses`, requestBody, {
-        headers: { 
-          'Content-Type': 'application/json',
-          // 백엔드의 getEmailFromToken이 이 헤더를 찢어서 이메일로 인지함
-          'Authorization': `Bearer ${userEmail}`
-        }
+        headers: { 'Content-Type': 'application/json' },
       });
 
       console.log('🎯 [useCourse] 코스 생성 성공 서버 응답:', response.data);
@@ -128,8 +120,14 @@ export function useCourse() {
   const removeCourse = useCallback(async (courseId) => {
     if (!window.confirm('정말 이 코스를 삭제하시겠습니까?')) return;
 
+    const storedUser = localStorage.getItem('user');
+    const user = storedUser ? JSON.parse(storedUser) : null;
+    const userEmail = user?.email;
+
     try {
-      await axios.delete(`${API_BASE_URL}/courses/${courseId}`);
+      await axios.delete(`${API_BASE_URL}/courses/${courseId}`, {
+        data: { userEmail },
+      });
       await loadCourses();
     } catch (err) {
       console.error('[useCourse] 코스 삭제 실패:', err);

@@ -656,7 +656,7 @@ export default function PlaceDetailModal({ placeId, onClose, initialReview }) {
 
                 <ActionRow>
                   <ActionBtn
-                    onClick={() => navigate(`/?mode=route&placeId=${placeId}`)}
+                    onClick={() => navigate(`/home?mode=route&placeId=${placeId}`)}
                   >
                     🗺️ 길찾기
                   </ActionBtn>
@@ -671,12 +671,6 @@ export default function PlaceDetailModal({ placeId, onClose, initialReview }) {
                 ) : (
                   <EmptyText>소개 정보가 없어요.</EmptyText>
                 )}
-              </Section>
-
-              {/* 메뉴 */}
-              <Section>
-                <SectionTitle>메뉴</SectionTitle>
-                <EmptyText>메뉴 정보가 없어요.</EmptyText>
               </Section>
 
               {/* 리뷰 */}

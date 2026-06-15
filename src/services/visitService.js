@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API_BASE_URL = "http://localhost:5000/api/users";
+const API_BASE_URL = "/api/users";
 
 /**
  * 현재 로그인한 사용자의 이메일을 가져오는 헬퍼 함수
@@ -47,9 +47,7 @@ export const createVisit = async (data) => {
   // 백엔드가 요구하는 데이터 포맷(주로 스네이크 케이스인 place_id, place_name 등)에 맞춰 매핑
   const payload = {
     email: email,
-    place_id: Number(data.placeId || data.id), // 데이터가 숫자형 ID라면 Number로 변환
-    place_name: data.placeName || data.name,
-    member_name: data.memberName || data.member_name || "",
+    spot_id: Number(data.placeId || data.spot_id || data.id) || null,
     date: data.date,
   };
 

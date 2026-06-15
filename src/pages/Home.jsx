@@ -76,7 +76,6 @@ const FilterChip = styled.button`
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   transition: all 0.15s;
   white-space: nowrap;
-}
 `;
 
 const PanelOverlay = styled.div`
@@ -102,12 +101,26 @@ export default function Home({ selectedIdol, onIdolChange, skipIdolPrompt }) {
   const [categoryFilter, setCategoryFilter] = useState(null);
   const [selectedCourse, setSelectedCourse] = useState(null);
 
-  /* ── 길찾기 및 위치 상태 관리 ── */
   const [myLocation, setMyLocation] = useState(null);
   const [mapCenter, setMapCenter] = useState(null);
   const [routeCoords, setRouteCoords] = useState(null);
+  const [courseRoute, setCourseRoute] = useState(null);
 
-  /* ── 외부 링크 및 내부 길찾기 전환 파이프라인 정비 ── */
+  useEffect(() => {
+    const courseId = searchParams.get("courseId");
+    if (!courseId) return;
+    axios
+      .get(`/api/courses/${courseId}`)
+      .then((res) => {
+        const course = res.data?.data ?? res.data;
+        if (course) {
+          setSelectedCourse(course);
+          setSearchParams({}, { replace: true });
+        }
+      })
+      .catch((err) => console.error("❌ 공유 코스 로드 실패:", err));
+  }, [searchParams]);
+
   useEffect(() => {
     const mode = searchParams.get("mode");
     const placeId = searchParams.get("placeId");
@@ -126,11 +139,9 @@ export default function Home({ selectedIdol, onIdolChange, skipIdolPrompt }) {
             const finalLng = Number(place.lng || place.longitude);
             const finalName = place.name || place.placeName || "선택된 장소";
 
-            const parsedId =
-              place.id || place._id || place.spotId || place.placeId || placeId;
-
             if (!isNaN(finalLat) && !isNaN(finalLng)) {
               const destinationData = {
+                id: Date.now(),
                 lat: finalLat,
                 lng: finalLng,
                 name: finalName,
@@ -139,10 +150,7 @@ export default function Home({ selectedIdol, onIdolChange, skipIdolPrompt }) {
 
               setRouteCoords(destinationData);
               setMapCenter({ lat: finalLat, lng: finalLng });
-
-              if (parsedId && String(parsedId) !== "undefined") {
-                setSelectedPlaceId(String(parsedId));
-              }
+              setSearchParams({}, { replace: true });
             }
           }
         })
@@ -180,33 +188,73 @@ export default function Home({ selectedIdol, onIdolChange, skipIdolPrompt }) {
     return !skipIdolPrompt;
   });
 
+  const currentUserEmail = useMemo(() => {
+    const savedUserStr = localStorage.getItem("user");
+    if (!savedUserStr) return null;
+    try {
+      const userObj = JSON.parse(savedUserStr);
+      return userObj.email || userObj.user_email || null;
+    } catch {
+      return null;
+    }
+  }, []);
+
+  // ⭐ [핵심 수리] 하드코딩 탈출 및 대소문자 예외 단절
   const currentIdolId = useMemo(() => {
     if (selectedIdol?.id) return selectedIdol.id;
+    
     if (hasIdolInStorage) {
+      const lowerIdol = hasIdolInStorage.toLowerCase().trim();
+      
+      if (lowerIdol.includes("youngji") || lowerIdol.includes("영지")) {
+        return "leeyoungji";
+      }
+      if (lowerIdol.includes("jimin") || lowerIdol.includes("지민") || lowerIdol.includes("izna")) {
+        return "jimin_bang"; // 👈 무조건 방지민 전용 키 바인딩 보장
+      }
+      if (lowerIdol.includes("jungkook") || lowerIdol.includes("정국")) {
+        return "jungkook";
+      }
+      if (lowerIdol.includes("karina") || lowerIdol.includes("카리나")) {
+        return "karina";
+      }
+      if (lowerIdol.includes("youngk") || lowerIdol.includes("영케이")) {
+        return "youngk";
+      }
+
       const matched = idols.find(
-        (i) => i.name === hasIdolInStorage || i.id === hasIdolInStorage,
+        (i) => i.name === hasIdolInStorage || i.id === hasIdolInStorage || i.id?.includes(lowerIdol)
       );
-      return matched?.id || null;
+      return matched?.id || hasIdolInStorage;
     }
     return null;
   }, [selectedIdol, hasIdolInStorage]);
 
-  const { filteredPlaces } = usePlaces(currentIdolId);
+  // 🎯 최치 수정한 usePlaces 훅 연결 완료
+  const { filteredPlaces } = usePlaces(currentIdolId, currentUserEmail);
   const { removeCourse } = useCourse();
 
+  // ⭐ [긴급 초기화 세션 동기화] 로컬스토리지에 예전 데이터 묶여있으면 강제 업데이트
   useEffect(() => {
     if (hasIdolInStorage) {
+      const lower = hasIdolInStorage.toLowerCase();
+      let searchKey = hasIdolInStorage;
+      if (lower.includes("지민") || lower.includes("jimin") || lower.includes("izna")) {
+        searchKey = "방지민";
+      }
+
       const matchedIdol = idols.find(
-        (i) => i.name === hasIdolInStorage || i.id === hasIdolInStorage,
+        (i) => i.name === searchKey || i.id?.toLowerCase().includes("jimin")
       );
+      
       if (matchedIdol) {
-        if (matchedIdol.id !== selectedIdol?.id) onIdolChange(matchedIdol);
-        if (!localStorage.getItem("selected_idol")) {
-          localStorage.setItem("selected_idol", JSON.stringify(matchedIdol));
+        if (matchedIdol.id !== selectedIdol?.id) {
+          onIdolChange(matchedIdol);
         }
+        localStorage.setItem("selected_idol", JSON.stringify(matchedIdol));
       }
     }
-  }, [selectedIdol, onIdolChange, hasIdolInStorage]);
+  }, [hasIdolInStorage, onIdolChange]);
 
   const displayPlaces = useMemo(
     () =>
@@ -216,33 +264,20 @@ export default function Home({ selectedIdol, onIdolChange, skipIdolPrompt }) {
     [filteredPlaces, categoryFilter],
   );
 
-  // 🎯 [수정 완료] 이제 검색창이나 마커에서 장소를 클릭하면 외부 페이지로 튕기지 않고 화면 중앙에 원래 모달을 활성화합니다!
   const handlePlaceClick = useCallback((placeOrId) => {
     if (!placeOrId) return;
-
     let id = "";
     if (typeof placeOrId === "object") {
-      id =
-        placeOrId.id || placeOrId.spotId || placeOrId._id || placeOrId.placeId;
+      id = placeOrId.id || placeOrId.spotId || placeOrId._id || placeOrId.placeId;
     } else {
       id = placeOrId;
     }
-
     if (id && String(id) !== "undefined" && String(id).trim() !== "") {
-      // 💡 핵심 교체: 페이지 전환(navigate)을 완전히 걷어내고 모달 스테이트를 오픈합니다!
       setSelectedPlaceId(String(id));
-    } else {
-      console.error(
-        "❌ 유효하지 않은 장소 ID가 포착되어 모달을 열 수 없습니다:",
-        placeOrId,
-      );
     }
   }, []);
 
-  const handleCourseOpen = useCallback(
-    (course) => setSelectedCourse(course),
-    [],
-  );
+  const handleCourseOpen = useCallback((course) => setSelectedCourse(course), []);
 
   const handleIdolSelect = async (idol) => {
     onIdolChange(idol);
@@ -258,7 +293,7 @@ export default function Home({ selectedIdol, onIdolChange, skipIdolPrompt }) {
     try {
       const userId = userObj.id || userObj.user_id;
       const userEmail = userObj.email || userObj.user_email;
-      await axios.put(`http://localhost:5000/api/users/profile`, {
+      await axios.put(`/api/users/profile`, {
         userId,
         email: userEmail,
         favorite_idol: idol.name,
@@ -268,8 +303,7 @@ export default function Home({ selectedIdol, onIdolChange, skipIdolPrompt }) {
     }
   };
 
-  const hasAnyIdol =
-    selectedIdol || localStorage.getItem("selected_idol") || hasIdolInStorage;
+  const hasAnyIdol = selectedIdol || localStorage.getItem("selected_idol") || hasIdolInStorage;
   const shouldOpenIdolModal = hasAnyIdol ? false : isModalOpen;
 
   return (
@@ -289,6 +323,8 @@ export default function Home({ selectedIdol, onIdolChange, skipIdolPrompt }) {
           mapCenter={mapCenter}
           myLocation={myLocation}
           routeCoords={routeCoords}
+          courseRoute={courseRoute}
+          onCourseRouteClear={() => setCourseRoute(null)}
         />
       </Sidebar>
 
@@ -306,9 +342,7 @@ export default function Home({ selectedIdol, onIdolChange, skipIdolPrompt }) {
             <FilterChip
               key={cat}
               $active={categoryFilter === cat}
-              onClick={() =>
-                setCategoryFilter(categoryFilter === cat ? null : cat)
-              }
+              onClick={() => setCategoryFilter(categoryFilter === cat ? null : cat)}
             >
               {cat}
             </FilterChip>
@@ -331,6 +365,11 @@ export default function Home({ selectedIdol, onIdolChange, skipIdolPrompt }) {
             onClose={() => setSelectedCourse(null)}
             onDelete={(id) => {
               removeCourse(id);
+              setSelectedCourse(null);
+            }}
+            onCourseRoute={(places) => {
+              setCourseRoute({ id: Date.now(), places });
+              setActiveNav("route");
               setSelectedCourse(null);
             }}
           />
