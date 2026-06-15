@@ -1,7 +1,8 @@
 #!/bin/bash
-KEY="$(dirname "$0")/3205_keypair.pem"
+KEY="$(dirname "$0")/../3205_keypair.pem"
 SERVER="ubuntu@3.39.191.121"
-FRONT="$(dirname "$0")/star-spot-client/front"
+FRONT="$(dirname "$0")/front"
+BACK="$(dirname "$0")/../star-spot-server/backend"
 
 case "$1" in
   front)
@@ -14,7 +15,7 @@ case "$1" in
     ;;
   back)
     echo "📤 백엔드 업로드 중..."
-    scp -i "$KEY" -r "$(dirname "$0")/star-spot-server/backend/src" $SERVER:/home/ubuntu/star-spot/backend/
+    scp -i "$KEY" -r "$BACK/src" $SERVER:/home/ubuntu/star-spot/backend/
     ssh -i "$KEY" $SERVER "pm2 restart all"
     echo "✅ 백엔드 배포 완료"
     ;;
