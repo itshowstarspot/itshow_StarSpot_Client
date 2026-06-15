@@ -101,30 +101,17 @@ export default function Home({ selectedIdol, onIdolChange, skipIdolPrompt }) {
   const [categoryFilter, setCategoryFilter] = useState(null);
   const [selectedCourse, setSelectedCourse] = useState(null);
 
+  /* ── 길찾기 및 위치 상태 관리 ── */
   const [myLocation, setMyLocation] = useState(null);
   const [mapCenter, setMapCenter] = useState(null);
   const [routeCoords, setRouteCoords] = useState(null);
-  const [courseRoute, setCourseRoute] = useState(null);
 
-  useEffect(() => {
-    const courseId = searchParams.get("courseId");
-    if (!courseId) return;
-    axios
-      .get(`/api/courses/${courseId}`)
-      .then((res) => {
-        const course = res.data?.data ?? res.data;
-        if (course) {
-          setSelectedCourse(course);
-          setSearchParams({}, { replace: true });
-        }
-      })
-      .catch((err) => console.error("❌ 공유 코스 로드 실패:", err));
-  }, [searchParams]);
-
+  /* ── ⭕ [수정 완료] 외부 링크 및 내부 길찾기 전환 파이프라인 정비 ── */
   useEffect(() => {
     const mode = searchParams.get("mode");
     const placeId = searchParams.get("placeId");
 
+    // placeId가 없거나 문자열 "undefined" 이면 작동 자체를 차단
     if (!placeId || placeId === "undefined" || String(placeId).trim() === "") {
       return;
     }
@@ -139,9 +126,12 @@ export default function Home({ selectedIdol, onIdolChange, skipIdolPrompt }) {
             const finalLng = Number(place.lng || place.longitude);
             const finalName = place.name || place.placeName || "선택된 장소";
 
+            // 백엔드 명세에 맞춘 안전한 ID 검증 프로퍼티 오버로딩
+            const parsedId =
+              place.id || place._id || place.spotId || place.placeId || placeId;
+
             if (!isNaN(finalLat) && !isNaN(finalLng)) {
               const destinationData = {
-                id: Date.now(),
                 lat: finalLat,
                 lng: finalLng,
                 name: finalName,
@@ -150,7 +140,11 @@ export default function Home({ selectedIdol, onIdolChange, skipIdolPrompt }) {
 
               setRouteCoords(destinationData);
               setMapCenter({ lat: finalLat, lng: finalLng });
-              setSearchParams({}, { replace: true });
+
+              // 🛡️ 최종 추출된 ID가 "undefined" 문자열이 아닐 때만 스테이트 주입
+              if (parsedId && String(parsedId) !== "undefined") {
+                setSelectedPlaceId(String(parsedId));
+              }
             }
           }
         })
@@ -188,86 +182,33 @@ export default function Home({ selectedIdol, onIdolChange, skipIdolPrompt }) {
     return !skipIdolPrompt;
   });
 
-  const currentUserEmail = useMemo(() => {
-    const savedUserStr = localStorage.getItem("user");
-    if (!savedUserStr) return null;
-    try {
-      const userObj = JSON.parse(savedUserStr);
-      return userObj.email || userObj.user_email || null;
-    } catch {
-      return null;
-    }
-  }, []);
-
-  // ⭐ [교정 위치 1] bangjeemin 억까 방지 및 정석 매핑 규격화 보장
   const currentIdolId = useMemo(() => {
-    if (selectedIdol?.id) {
-      // 혹시라도 예전 데이터로 bangjeemin이 넘어오면 강제로 jimin_bang 처리
-      return selectedIdol.id === 'bangjeemin' ? 'jimin_bang' : selectedIdol.id;
-    }
-    
+    if (selectedIdol?.id) return selectedIdol.id;
     if (hasIdolInStorage) {
-      const lowerIdol = hasIdolInStorage.toLowerCase().trim();
-      
-      if (lowerIdol.includes("youngji") || lowerIdol.includes("영지")) {
-        return "leeyoungji";
-      }
-      // 지민, izna, bangjeemin, jimin 등 어떤 찌꺼기가 들어와도 jimin_bang 바인딩 보장
-      if (lowerIdol.includes("jimin") || lowerIdol.includes("지민") || lowerIdol.includes("izna") || lowerIdol.includes("jeemin")) {
-        return "jimin_bang";
-      }
-      if (lowerIdol.includes("jungkook") || lowerIdol.includes("정국")) {
-        return "jungkook";
-      }
-      if (lowerIdol.includes("karina") || lowerIdol.includes("카리나")) {
-        return "karina";
-      }
-      if (lowerIdol.includes("youngk") || lowerIdol.includes("영케이")) {
-        return "youngk";
-      }
-
       const matched = idols.find(
-        (i) => i.name.toLowerCase() === lowerIdol || i.id === lowerIdol || i.id?.includes(lowerIdol)
+        (i) => i.name === hasIdolInStorage || i.id === hasIdolInStorage,
       );
-      return matched?.id || hasIdolInStorage;
+      return matched?.id || null;
     }
     return null;
   }, [selectedIdol, hasIdolInStorage]);
 
-  // 🎯 최치 수정한 usePlaces 훅 연결 완료
-  const { filteredPlaces } = usePlaces(currentIdolId, currentUserEmail);
+  const { filteredPlaces } = usePlaces(currentIdolId);
   const { removeCourse } = useCourse();
 
-  // ⭐ [교정 위치 2] 긴급 초기화 세션 동기화 로직 전면 튜닝 (프로필 유실 차단)
   useEffect(() => {
     if (hasIdolInStorage) {
-      const lower = hasIdolInStorage.toLowerCase().trim();
-      
-      const matchedIdol = idols.find((i) => {
-        const idMatch = i.id.toLowerCase();
-        const nameMatch = i.name.toLowerCase();
-        const groupMatch = i.groupLabel.toLowerCase();
-        
-        return (
-          idMatch.includes(lower) || 
-          nameMatch.includes(lower) || 
-          groupMatch.includes(lower) ||
-          (lower.includes("지민") && idMatch === "jimin_bang") ||
-          (lower.includes("영지") && idMatch === "leeyoungji") ||
-          (lower.includes("정국") && idMatch === "jungkook") ||
-          (lower.includes("카리나") && idMatch === "karina") ||
-          (lower.includes("영케이") && idMatch === "youngk")
-        );
-      });
-      
+      const matchedIdol = idols.find(
+        (i) => i.name === hasIdolInStorage || i.id === hasIdolInStorage,
+      );
       if (matchedIdol) {
-        if (matchedIdol.id !== selectedIdol?.id) {
-          onIdolChange(matchedIdol);
+        if (matchedIdol.id !== selectedIdol?.id) onIdolChange(matchedIdol);
+        if (!localStorage.getItem("selected_idol")) {
+          localStorage.setItem("selected_idol", JSON.stringify(matchedIdol));
         }
-        localStorage.setItem("selected_idol", JSON.stringify(matchedIdol));
       }
     }
-  }, [hasIdolInStorage, onIdolChange, selectedIdol?.id]);
+  }, [selectedIdol, onIdolChange, hasIdolInStorage]);
 
   const displayPlaces = useMemo(
     () =>
@@ -277,20 +218,41 @@ export default function Home({ selectedIdol, onIdolChange, skipIdolPrompt }) {
     [filteredPlaces, categoryFilter],
   );
 
-  const handlePlaceClick = useCallback((placeOrId) => {
-    if (!placeOrId) return;
-    let id = "";
-    if (typeof placeOrId === "object") {
-      id = placeOrId.id || placeOrId.spotId || placeOrId._id || placeOrId.placeId;
-    } else {
-      id = placeOrId;
-    }
-    if (id && String(id) !== "undefined" && String(id).trim() !== "") {
-      setSelectedPlaceId(String(id));
-    }
-  }, []);
+  // ⭕ [수정] undefined 문자열 및 다양한 ID 프로퍼티 대응 방어 코드
+  const handlePlaceClick = useCallback(
+    (placeOrId) => {
+      if (!placeOrId) return;
 
-  const handleCourseOpen = useCallback((course) => setSelectedCourse(course), []);
+      let id = "";
+      // 1. 인자가 객체로 넘어왔을 경우 (place)
+      if (typeof placeOrId === "object") {
+        id =
+          placeOrId.id ||
+          placeOrId.spotId ||
+          placeOrId._id ||
+          placeOrId.placeId;
+      } else {
+        // 2. 인자가 ID 값 단독으로 넘어왔을 경우
+        id = placeOrId;
+      }
+
+      // 'undefined' 문자열이거나 값이 유효하지 않다면 라우팅 차단
+      if (id && String(id) !== "undefined" && String(id).trim() !== "") {
+        navigate(`/place/${id}`);
+      } else {
+        console.error(
+          "❌ 유효하지 않은 장소 ID가 포착되어 이동을 차단했습니다:",
+          placeOrId,
+        );
+      }
+    },
+    [navigate],
+  );
+
+  const handleCourseOpen = useCallback(
+    (course) => setSelectedCourse(course),
+    [],
+  );
 
   const handleIdolSelect = async (idol) => {
     onIdolChange(idol);
@@ -306,7 +268,7 @@ export default function Home({ selectedIdol, onIdolChange, skipIdolPrompt }) {
     try {
       const userId = userObj.id || userObj.user_id;
       const userEmail = userObj.email || userObj.user_email;
-      await axios.put(`/api/users/profile`, {
+      await axios.put(`http://localhost:5000/api/users/profile`, {
         userId,
         email: userEmail,
         favorite_idol: idol.name,
@@ -316,7 +278,8 @@ export default function Home({ selectedIdol, onIdolChange, skipIdolPrompt }) {
     }
   };
 
-  const hasAnyIdol = selectedIdol || localStorage.getItem("selected_idol") || hasIdolInStorage;
+  const hasAnyIdol =
+    selectedIdol || localStorage.getItem("selected_idol") || hasIdolInStorage;
   const shouldOpenIdolModal = hasAnyIdol ? false : isModalOpen;
 
   return (
@@ -336,8 +299,6 @@ export default function Home({ selectedIdol, onIdolChange, skipIdolPrompt }) {
           mapCenter={mapCenter}
           myLocation={myLocation}
           routeCoords={routeCoords}
-          courseRoute={courseRoute}
-          onCourseRouteClear={() => setCourseRoute(null)}
         />
       </Sidebar>
 
@@ -355,9 +316,11 @@ export default function Home({ selectedIdol, onIdolChange, skipIdolPrompt }) {
             <FilterChip
               key={cat}
               $active={categoryFilter === cat}
-              onClick={() => setCategoryFilter(categoryFilter === cat ? null : cat)}
+              onClick={() =>
+                setCategoryFilter(categoryFilter === cat ? null : cat)
+              }
             >
-              2026 {cat}
+              {cat}
             </FilterChip>
           ))}
         </FilterBar>
@@ -378,11 +341,6 @@ export default function Home({ selectedIdol, onIdolChange, skipIdolPrompt }) {
             onClose={() => setSelectedCourse(null)}
             onDelete={(id) => {
               removeCourse(id);
-              setSelectedCourse(null);
-            }}
-            onCourseRoute={(places) => {
-              setCourseRoute({ id: Date.now(), places });
-              setActiveNav("route");
               setSelectedCourse(null);
             }}
           />
