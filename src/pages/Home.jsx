@@ -199,10 +199,9 @@ export default function Home({ selectedIdol, onIdolChange, skipIdolPrompt }) {
     }
   }, []);
 
-  // ⭐ [교정 위치 1] bangjeemin 억까 방지 및 정석 매핑 규격화 보장
+  // ✅ [복구완료 1] jimin_bang 규격 원천 보장
   const currentIdolId = useMemo(() => {
     if (selectedIdol?.id) {
-      // 혹시라도 예전 데이터로 bangjeemin이 넘어오면 강제로 jimin_bang 처리
       return selectedIdol.id === 'bangjeemin' ? 'jimin_bang' : selectedIdol.id;
     }
     
@@ -212,7 +211,6 @@ export default function Home({ selectedIdol, onIdolChange, skipIdolPrompt }) {
       if (lowerIdol.includes("youngji") || lowerIdol.includes("영지")) {
         return "leeyoungji";
       }
-      // 지민, izna, bangjeemin, jimin 등 어떤 찌꺼기가 들어와도 jimin_bang 바인딩 보장
       if (lowerIdol.includes("jimin") || lowerIdol.includes("지민") || lowerIdol.includes("izna") || lowerIdol.includes("jeemin")) {
         return "jimin_bang";
       }
@@ -234,11 +232,10 @@ export default function Home({ selectedIdol, onIdolChange, skipIdolPrompt }) {
     return null;
   }, [selectedIdol, hasIdolInStorage]);
 
-  // 🎯 최치 수정한 usePlaces 훅 연결 완료
   const { filteredPlaces } = usePlaces(currentIdolId, currentUserEmail);
   const { removeCourse } = useCourse();
 
-  // ⭐ [교정 위치 2] 긴급 초기화 세션 동기화 로직 전면 튜닝 (프로필 유실 차단)
+  // ✅ [복구완료 2] 정밀 세션 동기화 (프로필 흑화 현상 방지)
   useEffect(() => {
     if (hasIdolInStorage) {
       const lower = hasIdolInStorage.toLowerCase().trim();
@@ -357,7 +354,7 @@ export default function Home({ selectedIdol, onIdolChange, skipIdolPrompt }) {
               $active={categoryFilter === cat}
               onClick={() => setCategoryFilter(categoryFilter === cat ? null : cat)}
             >
-            {cat}
+              2026 {cat}
             </FilterChip>
           ))}
         </FilterBar>
