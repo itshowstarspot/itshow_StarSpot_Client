@@ -1,8 +1,10 @@
 import { COURSE_MIN_PLACES } from '../domain/course/course'
 import { STORAGE_KEY_COURSES } from '../constants/storageKeys'
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
 
-/* ── 추천 코스 데이터 ── */
+// ✅ 백엔드 포트 5000번과 공통 경로 /api 적용
+const API_BASE_URL = '/api'
+
+/* ── 추천 코스 고정 데이터 (오프라인/대비용) ── */
 const RECOMMENDED_COURSES = [
   {
     id: 'rec-jk-1',
@@ -29,81 +31,38 @@ const RECOMMENDED_COURSES = [
       { id: 'jk-10', name: '현대카드 바이닐앤플라스틱', address: '서울특별시 용산구 이태원로 248', category: '관광지', lat: 37.5344, lng: 126.9994, description: 'Dynamite 라이브버전을 촬영한 곳' },
     ],
   },
-  {
-    id: 'rec-bjm-1',
-    title: '방지민 성수 카페 투어',
-    idolId: 'bangjeemin',
-    isRecommended: true,
-    description: '방지민이 즐겨 찾는 성수동 카페들을 방문해보세요',
-    createdAt: '2026-01-03T00:00:00.000Z',
-    places: [
-      { id: 'bjm-1', name: '자연도소금빵 성수점', address: '서울특별시 성동구 연무장길 56-1', category: '카페', lat: 37.5458, lng: 127.0584, description: '추석 연휴에 소금빵을 웨이팅하던 지민 목격' },
-      { id: 'bjm-3', name: '마망젤라또 성수점', address: '서울특별시 성동구 연무장9길 8 1층', category: '카페', lat: 37.5449, lng: 127.0563, description: '리센느 인스타에 올라온 두바이쫀득젤라또를 먹는 지민' },
-    ],
-  },
-  {
-    id: 'rec-kar-1',
-    title: '카리나 서울 나들이',
-    idolId: 'karina',
-    isRecommended: true,
-    description: '카리나와 멤버들이 함께한 서울 스팟',
-    createdAt: '2026-01-04T00:00:00.000Z',
-    places: [
-      { id: 'kar-1', name: '실비옥', address: '서울특별시 성동구 아차산로 126', category: '음식점', lat: 37.5484, lng: 127.0629, description: '지젤과 카리나가 방문한 식당' },
-      { id: 'kar-3', name: '오잇 oeat', address: '서울특별시 용산구 신흥로 95', category: '카페', lat: 37.5358, lng: 126.9883, description: '카리나와 지젤이 직접 방문하여 사진을 올린 크로플 전문 카페' },
-      { id: 'kar-2', name: '롯데월드', address: '서울특별시 송파구 올림픽로 240', category: '관광지', lat: 37.5111, lng: 127.0987, description: '윈터와 카리나가 간 놀이공원' },
-    ],
-  },
-  {
-    id: 'rec-yk-1',
-    title: 'DAY6 영케이 투어',
-    idolId: 'youngk',
-    isRecommended: true,
-    description: '영케이와 DAY6의 흔적을 따라가보세요',
-    createdAt: '2026-01-05T00:00:00.000Z',
-    places: [
-      { id: 'yk-3', name: '빨간떡', address: '서울특별시 구로구 도림로20길', category: '음식점', lat: 37.4942, lng: 126.8879, description: '영케이의 개인 채널인 YBC에서 소개한 떡볶이 집' },
-      { id: 'yk-2', name: '캐리비안베이', address: '경기도 용인시 처인구 포곡읍 에버랜드로 199', category: '관광지', lat: 37.2933, lng: 127.2024, description: '워크맨 81화 캐리비안베이 알바 촬영' },
-    ],
-  },
-  {
-    id: 'rec-lyj-1',
-    title: '이영지 곱창 투어',
-    idolId: 'leeyoungji',
-    isRecommended: true,
-    description: '이영지 또간집 픽! 최애 곱창집 코스',
-    createdAt: '2026-01-06T00:00:00.000Z',
-    places: [
-      { id: 'lyj-1', name: '대박곱창 본점', address: '서울특별시 양천구 오목로 170 1층', category: '음식점', lat: 37.5265, lng: 126.8627, description: '이영지의 야곱 성지 2등 픽' },
-      { id: 'lyj-2', name: '울타리곱창', address: '서울특별시 양천구 오목로 일대', category: '음식점', lat: 37.5260, lng: 126.8635, description: "이영지 '또간집' 1등 야채곱창" },
-    ],
-  },
-  {
-    id: 'rec-jh-1',
-    title: 'NCT 재현 서울 투어',
-    idolId: 'jaehyun',
-    isRecommended: true,
-    description: '채널NCT에서 재현이 방문한 서울 스팟',
-    createdAt: '2026-01-07T00:00:00.000Z',
-    places: [
-      { id: 'jh-2', name: '도쿄수플레', address: '서울특별시 강남구 압구정로10길 35 1층', category: '카페', lat: 37.52128, lng: 127.0222, description: '태용이와 재현만의 수플레를 만든 곳' },
-      { id: 'jh-3', name: '커피탐이나', address: '서울특별시 마포구 잔다리로3안길 31', category: '카페', lat: 37.55017, lng: 126.9194, description: 'JCC에서 쟈니와 재현이 바리스타 체험을 한 카페' },
-      { id: 'jh-4', name: '잠수교', address: '서울특별시 서초구 반포동', category: '관광지', lat: 37.51466, lng: 126.9964, description: 'NCT127 Hello! #SEOUL 포토북 장소' },
-    ],
-  },
 ]
 
-/* ── 내 코스 더미 ── */
-const DEFAULT_COURSES = []
+// 🌟 [추출 함수] 백엔드가 이메일을 편하게 추출할 수 있도록 가공
+const getLoggedInUserEmail = () => {
+  try {
+    const userStorage = localStorage.getItem('user')
+    if (userStorage) {
+      const parsedUser = JSON.parse(userStorage)
+      return parsedUser.email || parsedUser.userEmail || null
+    }
+  } catch (error) {
+    console.error("로컬 스토리지 인증 정보 파싱 실패:", error)
+  }
+  return null
+}
+
+// 헤더 생성 함수
+const getAuthHeaders = () => {
+  const email = getLoggedInUserEmail()
+  // Bearer가 안 먹힐 수 있으므로 이메일 원본 주소 헤더도 쌍으로 안전하게 같이 보냅니다.
+  return email ? { 
+    'Authorization': `Bearer ${email}`,
+    'X-User-Email': email 
+  } : {}
+}
 
 const getLocalCourses = () => {
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY_COURSES) || 'null')
-    // 저장된 데이터가 없으면 기본 코스 반환
-    if (!saved) return DEFAULT_COURSES
-    return saved
+    return saved || []
   } catch {
-    return DEFAULT_COURSES
+    return []
   }
 }
 
@@ -113,84 +72,97 @@ const saveLocalCourses = (courses) => {
 
 /**
  * 추천 코스 조회
- * @param {string} [idolId] - 아이돌 필터 (없으면 전체)
- * @returns {Promise<Course[]>}
  */
 export const fetchRecommendedCourses = async (idolId) => {
-  if (BASE_URL) {
+  try {
     const params = new URLSearchParams({ recommended: 'true' })
     if (idolId) params.append('idolId', idolId)
-    const res = await fetch(`${BASE_URL}/courses?${params}`)
-    if (!res.ok) throw new Error('추천 코스 조회 실패')
-    return res.json()
+    const res = await fetch(`${API_BASE_URL}/courses?${params}`)
+    if (!res.ok) throw new Error()
+    return await res.json()
+  } catch {
+    return idolId
+      ? RECOMMENDED_COURSES.filter((c) => c.idolId === idolId)
+      : RECOMMENDED_COURSES
   }
-  return idolId
-    ? RECOMMENDED_COURSES.filter((c) => c.idolId === idolId)
-    : RECOMMENDED_COURSES
 }
 
 /**
- * 코스 목록 조회
- * @returns {Promise<Course[]>}
+ * 일반 코스 목록 조회
  */
-export const fetchCourses = async () => {
-  if (BASE_URL) {
-    const res = await fetch(`${BASE_URL}/api/courses`);
-    if (!res.ok) throw new Error('코스 목록 조회 실패')
-    return res.json()
+export const fetchCourses = async (userEmail) => {
+  try {
+    const email = userEmail || getLoggedInUserEmail()
+    const url = email ? `${API_BASE_URL}/courses?userEmail=${email}` : `${API_BASE_URL}/courses`
+    const res = await fetch(url)
+    if (!res.ok) throw new Error()
+    return await res.json()
+  } catch {
+    return getLocalCourses()
   }
-  return getLocalCourses()
 }
 
 /**
- * 코스 생성
- * @param {{ title: string, idolId: string, places: Place[] }} data
- * @returns {Promise<Course>}
+ * 코스 생성 (🌟 빠졌던 idolId 수급 및 패킷 규격 완전체 버전)
  */
 export const createCourse = async (data) => {
   if (data.places.length < COURSE_MIN_PLACES) {
     throw new Error(`코스는 최소 ${COURSE_MIN_PLACES}개의 장소가 필요합니다.`)
   }
 
-  const newCourse = {
-    id: crypto.randomUUID(),
-    ...data,
-    createdAt: new Date().toISOString(),
+  const email = getLoggedInUserEmail();
+
+  // 🌟 [치명적 원인 해결] 백엔드가 원했던 idolId(혹은 idol_id) 및 userEmail 데이터를 바디에 명확히 탑재합니다!
+  const payload = {
+    title: data.title,
+    idolId: data.idolId,                     // 👈 이게 빠져있었습니다!
+    userEmail: data.userEmail || email,      // 👈 바디에도 안전하게 포함
+    spotIds: data.places.map((place) => Number(place.id))
   }
 
-  if (BASE_URL) {
-    const res = await fetch(`${BASE_URL}/courses`, {
+  try {
+    const res = await fetch(`${API_BASE_URL}/courses`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(newCourse),
+      headers: { 
+        'Content-Type': 'application/json',
+        ...getAuthHeaders()
+      },
+      body: JSON.stringify(payload),
     })
-    if (!res.ok) throw new Error('코스 생성 실패')
-    return res.json()
+    
+    if (!res.ok) {
+      console.warn(`서버 오류 코드: ${res.status} - 로컬 스토리지에 임시 저장 처리합니다.`);
+      throw new Error()
+    }
+    
+    return await res.json()
+  } catch {
+    // 서버 통신 에러 시 로컬 저장 백업 기능 유지
+    const newCourse = {
+      id: crypto.randomUUID(),
+      ...data,
+      createdAt: new Date().toISOString(),
+    }
+    const courses = getLocalCourses()
+    saveLocalCourses([...courses, newCourse])
+    return newCourse
   }
-
-  const courses = getLocalCourses()
-  const updated = [...courses, newCourse]
-  saveLocalCourses(updated)
-  return newCourse
 }
 
 /**
  * 코스 삭제
- * @param {string} courseId
  */
 export const deleteCourse = async (courseId) => {
-  if (BASE_URL) {
-    const res = await fetch(`${BASE_URL}/courses/${courseId}`, { method: 'DELETE' })
-    if (!res.ok) throw new Error('코스 삭제 실패')
-    return
+  try {
+    const res = await fetch(`${API_BASE_URL}/courses/${courseId}`, { method: 'DELETE' })
+    if (!res.ok) throw new Error()
+  } catch {
+    saveLocalCourses(getLocalCourses().filter((c) => c.id !== courseId))
   }
-  saveLocalCourses(getLocalCourses().filter((c) => c.id !== courseId))
 }
 
 /**
  * 코스 공유 링크 생성
- * @param {string} courseId
- * @returns {string}
  */
 export const generateShareLink = (courseId) => {
   return `${window.location.origin}/course/${courseId}`

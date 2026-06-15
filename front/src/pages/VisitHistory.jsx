@@ -1,110 +1,246 @@
+import { useEffect, useState } from "react";
 import styled from "styled-components";
+import { useNavigate } from "react-router-dom";
+import axios from "axios";
 
-const Overlay = styled.div`
-  position: fixed;
-  inset: 0;
-  background: rgba(40, 40, 40, 0.45);
+const Page = styled.main`
+  min-height: 100vh;
+  background: #f5f5f8;
+  color: #2d2f36;
+`;
+
+const TopBar = styled.div`
   display: flex;
   align-items: center;
-  justify-content: center;
-  z-index: 800;
-`;
-
-const ModalCard = styled.div`
+  gap: 12px;
+  padding: 16px 20px;
   background: #ffffff;
-  border-radius: 20px;
-  padding: 24px 24px 20px;
-  width: 500px;
-  max-width: 94vw;
-  max-height: 88vh;
-  overflow-y: auto;
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.22);
+  border-bottom: 1px solid rgba(45, 47, 54, 0.1);
+  position: sticky;
+  top: 0;
+  z-index: 100;
 `;
 
-/* 제목 */
-const Title = styled.p`
-  color: #e8c664;
-  font-family: "YPairing", sans-serif;
-  font-size: 20px;
-  font-style: normal;
-  font-weight: 400;
-  line-height: normal;
-  margin-bottom: 14px;
+const BackBtn = styled.button`
+  border: none;
+  background: transparent;
+  color: #e8d664;
+  font-size: 22px;
+  cursor: pointer;
+  line-height: 1;
 `;
 
-const IdolHighlight = styled.strong`
-  color: #e8b664;
-  font-family: "YPairing", sans-serif;
-  font-size: 32px;
-  font-style: normal;
-  font-weight: 400;
-  line-height: normal;
+const PageTitle = styled.h1`
+  font-size: 16px;
+  font-weight: 700;
+  color: #2d2f36;
+  margin: 0;
 `;
 
-const GridWrap = styled.div`
-  border-radius: 10px 10px 0 0;
-  background: rgba(230, 227, 208, 0.34);
-  padding: 16px;
+const Content = styled.div`
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 24px 20px 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 `;
 
-const Grid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
+const SectionTitle = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+
+  h2 {
+    font-size: 18px;
+    font-weight: 700;
+    margin: 0;
+  }
+`;
+
+const RefreshBtn = styled.button`
+  background: #ffffff;
+  border: 1px solid rgba(45, 47, 54, 0.1);
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  color: #7e838f;
+  transition: all 0.2s;
+
+  &:hover {
+    background: #f5f5f8;
+    color: #2d2f36;
+  }
+`;
+
+const EmptyCard = styled.div`
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 40px 20px;
+  text-align: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+`;
+
+const EmptyIcon = styled.div`
+  font-size: 40px;
+  margin-bottom: 12px;
+`;
+
+const EmptyText = styled.p`
+  font-size: 14px;
+  color: #7e838f;
+  margin: 0;
+  line-height: 1.5;
+`;
+
+const VisitList = styled.div`
+  display: flex;
+  flex-direction: column;
   gap: 12px;
 `;
 
-const Card = styled.button`
-  border: none;
-  border-radius: 12px;
-  overflow: hidden;
-  padding: 0;
+const VisitCard = styled.div`
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 18px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: transform 0.2s ease;
   cursor: pointer;
-  background: #f0f0f0;
-  aspect-ratio: 3 / 4;
-  display: block;
-  transition:
-    transform 0.18s,
-    box-shadow 0.18s;
 
   &:hover {
-    transform: scale(1.04);
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
-  }
-
-  img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    object-position: top center;
-    display: block;
+    transform: translateY(-2px);
   }
 `;
 
-export default function IdolSelectModal({ isOpen, idols, onSelect }) {
-  // 🌟 순수하게 부모가 내려준 isOpen 스위치로만 켜고 끄도록 롤백합니다.
-  if (!isOpen) return null;
+const PlaceName = styled.h3`
+  font-size: 16px;
+  font-weight: 700;
+  margin: 0;
+  color: #2d2f36;
+`;
+
+const MemberName = styled.span`
+  font-size: 11px;
+  font-weight: 600;
+  color: #e8d664;
+  background: rgba(232, 214, 100, 0.1);
+  padding: 2px 6px;
+  border-radius: 4px;
+  width: fit-content;
+`;
+
+const VisitDate = styled.span`
+  font-size: 12px;
+  color: #a1a7b5;
+`;
+
+const LoadingText = styled.div`
+  text-align: center;
+  color: #a1a7b5;
+  padding: 20px;
+  font-size: 14px;
+`;
+
+export default function VisitHistory() {
+  const navigate = useNavigate();
+  const [visits, setVisits] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchVisitHistory = () => {
+    let userEmail = "test15@gmail.com";
+
+    try {
+      const savedUser = localStorage.getItem("user");
+      if (savedUser) {
+        const userObj = JSON.parse(savedUser);
+        userEmail = userObj.email || userObj.user_email || userEmail;
+      }
+    } catch (e) {
+      console.error("유저 세션 파싱 에러:", e);
+    }
+
+    setLoading(true);
+
+    axios
+      .get(`/api/users/visit-history/${userEmail}`)
+      .then((res) => {
+        setVisits(res.data || []);
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error("방문 기록 데이터 로드 실패:", err);
+        setLoading(false);
+      });
+  };
+
+  useEffect(() => {
+    fetchVisitHistory();
+  }, []);
+
+  // 🎯 DB 구조를 bjm-1 형태로 바꿨기 때문에 다이렉트로 꽂아 이동합니다!
+  const handleCardClick = (item) => {
+    if (!item) return;
+
+    const finalPlaceId = item.spot_id || item.place_id || item.placeId;
+
+    if (finalPlaceId && String(finalPlaceId) !== "undefined") {
+      navigate(`/place/${finalPlaceId}`);
+    } else {
+      alert("장소 고유 키가 존재하지 않는 기록입니다.");
+    }
+  };
 
   return (
-    <Overlay>
-      <ModalCard onClick={(e) => e.stopPropagation()}>
-        <GridWrap>
-          <Title>
-            따라가고 싶은 <IdolHighlight>아이돌</IdolHighlight> 선택! ⭐
-          </Title>
-          <Grid>
-            {idols.map((idol) => (
-              <Card
-                key={idol.id}
-                type="button"
-                onClick={() => onSelect(idol)}
-                title={`${idol.groupLabel} ${idol.name}`}
-              >
-                <img src={idol.image} alt={idol.name} />
-              </Card>
-            ))}
-          </Grid>
-        </GridWrap>
-      </ModalCard>
-    </Overlay>
+    <Page>
+      <TopBar>
+        <BackBtn onClick={() => navigate(-1)}>←</BackBtn>
+        <PageTitle>방문 기록</PageTitle>
+      </TopBar>
+
+      <Content>
+        <SectionTitle>
+          <h2>📸 내가 다녀온 성지 순례</h2>
+          <RefreshBtn onClick={fetchVisitHistory}>새로고침 🔄</RefreshBtn>
+        </SectionTitle>
+
+        {loading ? (
+          <LoadingText>기록을 불러오는 중입니다... ⏳</LoadingText>
+        ) : (
+          <>
+            {visits.length === 0 ? (
+              <EmptyCard>
+                <EmptyIcon>🎒</EmptyIcon>
+                <EmptyText>
+                  아직 방문 인증한 장소가 없어요.
+                  <br />
+                  지도를 보고 나만의 발자국을 남겨보세요!
+                </EmptyText>
+              </EmptyCard>
+            ) : (
+              <VisitList>
+                {visits.map((item, index) => (
+                  <VisitCard
+                    key={item.id || index}
+                    onClick={() => handleCardClick(item)}
+                  >
+                    {item.member_name && (
+                      <MemberName>{item.member_name}</MemberName>
+                    )}
+                    <PlaceName>{item.place_name}</PlaceName>
+                    <VisitDate>방문 일시: {item.date}</VisitDate>
+                  </VisitCard>
+                ))}
+              </VisitList>
+            )}
+          </>
+        )}
+      </Content>
+    </Page>
   );
 }

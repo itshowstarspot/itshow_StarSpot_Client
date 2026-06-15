@@ -1,14 +1,7 @@
-/**
- * 장소 관련 API 서비스
- * 실제 API 연동 시 BASE_URL 및 fetch 구현체 교체
- *
- * 장소 데이터 추가/수정 → src/data/places.js
- */
-
 import { places as mockPlaces } from '../data/places'
 
-// 백엔드 진짜 API 주소 고정
-const BASE_URL = 'http://localhost:5000/api';
+// 백엔드 API 주소 및 환경 변수 고정
+const BASE_URL = '/api';
 const KAKAO_REST_KEY = import.meta.env.VITE_KAKAO_REST_KEY;
 
 /** 카카오 응답 → 앱 내부 Place 형식으로 변환 */
@@ -51,31 +44,24 @@ async function kakaoSearchKeyword(query, { x, y, radius = 5000, size = 15 } = {}
   return data.documents ?? []
 }
 
-/**
- * 아이돌별 장소 목록 조회
- * @param {string} idolId
- * @returns {Promise<Place[]>}
- */
+/** 아이돌별 장소 목록 조회 */
 export const fetchPlacesByIdol = async (idolId) => {
   if (BASE_URL) {
     const res = await fetch(`${BASE_URL}/spots`); 
     if (!res.ok) throw new Error('장소 목록 조회 실패');
-
     const allSpots = await res.json();
 
     return allSpots.map((spot) => ({
-      id: String(spot.id),
-      name: spot.placeName,          
+      // 🔥 [수정] 백엔드에서 넘겨주는 ID 컬럼명(placeId 등)을 우선적으로 받도록 안전장치 마련
+      id: String(spot.placeId || spot.id || spot.spotId), 
+      name: spot.placeName || spot.place_name || spot.name,          
       address: spot.address,
       category: spot.category || '기타',
-      lat: Number(spot.latitude),    
-      lng: Number(spot.longitude),   
+      lat: Number(spot.latitude || spot.lat),    
+      lng: Number(spot.longitude || spot.lng),   
       description: spot.description || '',
-      
-      // [★수정★] 상세 모달창 연동을 위해 image와 imageUrl을 모두 뚫어줍니다.
       image: spot.imageUrl || '',
       imageUrl: spot.imageUrl || '',
-      
       hours: spot.operatingHours || '',
       holiday: spot.holiday || ''
     }));
@@ -83,16 +69,35 @@ export const fetchPlacesByIdol = async (idolId) => {
   return mockPlaces.filter((p) => p.idolId === idolId);
 }
 
-/**
- * 장소 검색 (카카오 키워드 검색 우선, 없으면 mock)
- */
+/** 장소 검색 API */
 export const searchPlaces = async (query, idolId) => {
   if (BASE_URL) {
-    const params = new URLSearchParams({ query })
-    if (idolId) params.append('idolId', idolId)
-    const res = await fetch(`${BASE_URL}/places/search?${params}`)
-    if (!res.ok) throw new Error('장소 검색 실패')
-    return res.json()
+    const params = new URLSearchParams();
+    if (query && query.trim() !== '') {
+      params.append('idolId', query.trim());
+    } else if (idolId) {
+      params.append('idolId', idolId);
+    }
+
+    const res = await fetch(`${BASE_URL}/places?${params}`);
+    if (!res.ok) throw new Error('장소 검색 실패');
+    
+    const spots = await res.json();
+    return spots.map(spot => ({
+      // 🔥 [수정] 동일하게 안전한 ID 매핑 적용
+      id: String(spot.placeId || spot.id || spot.spotId),
+      name: spot.placeName || spot.name,
+      placeName: spot.placeName || spot.name,
+      address: spot.address,
+      category: spot.category || '기타',
+      lat: Number(spot.latitude || spot.lat),
+      lng: Number(spot.longitude || spot.lng),
+      description: spot.description || '',
+      image: spot.imageUrl || '',
+      imageUrl: spot.imageUrl || '',
+      hours: spot.operatingHours || '',
+      holiday: spot.holiday || ''
+    }));
   }
 
   if (KAKAO_REST_KEY) {
@@ -109,31 +114,31 @@ export const searchPlaces = async (query, idolId) => {
   )
 }
 
-/**
- * 장소 상세 조회
- */
+/** 장소 상세 조회 */
 export const fetchPlaceDetail = async (placeId) => {
+  // 🛡️ [추가 예외 처리] placeId가 아예 없거나 문자열 "undefined"이면 요청 자체를 차단
+  if (!placeId || placeId === 'undefined') {
+    console.error("⚠️ 유효하지 않은 placeId로 상세 조회가 요청되었습니다.");
+    return null; 
+  }
+
   if (BASE_URL) {
     try {
-      // [★체크★] 중복되던 /api를 걷어내어 정상적인 백엔드 주소 라우팅 보장
       const res = await fetch(`${BASE_URL}/places/${placeId}`);
       if (!res.ok) throw new Error('장소 상세 정보 조회 실패');
-      
       const spot = await res.json();
       
       return {
-        id: String(spot.id),
+        // 🔥 [수정] 동일하게 안전한 ID 매핑 적용
+        id: String(spot.placeId || spot.id || spot.spotId),
         name: spot.placeName || spot.name,
         address: spot.address,
         category: spot.category || '기타',
         lat: Number(spot.latitude || spot.lat),
         lng: Number(spot.longitude || spot.lng),
         description: spot.description || '',
-        
-        // [★체크★] 모달창 상단 회색 영역을 채워줄 이미지 속성 매핑
         image: spot.imageUrl || '',
         imageUrl: spot.imageUrl || '',
-        
         hours: spot.operatingHours || spot.hours || '',
         holiday: spot.holiday || ''
       };
@@ -145,11 +150,34 @@ export const fetchPlaceDetail = async (placeId) => {
   return mockPlaces.find((p) => p.id === placeId);
 };
 
-/**
- * 카카오 키워드로 장소 검색
- */
+/** 카카오 키워드로 장소 검색 */
 export const searchPlacesByKakao = async (query, { lat, lng } = {}) => {
   if (!KAKAO_REST_KEY) throw new Error('VITE_KAKAO_REST_KEY가 없습니다.')
   const docs = await kakaoSearchKeyword(query, { x: lng, y: lat })
   return docs.map((item) => kakaoToPlace(item))
 }
+
+/** 외부 지도 플랫폼 길찾기 URL 생성 및 이동 함수 */
+export const openExternalMapRoute = (start, end, platform = 'kakao') => {
+  if (!end || !end.lat || !end.lng) {
+    alert('도착지 정보가 올바르지 않습니다.');
+    return;
+  }
+
+  const startName = start?.name || '출발지';
+  const endName = end.name || '목적지';
+
+  if (platform === 'naver') {
+    const naverUrl = start?.lat && start?.lng
+      ? `https://map.naver.com/v5/dir/${start.lng},${start.lat},${encodeURIComponent(startName)}/${end.lng},${end.lat},${encodeURIComponent(endName)}/-/transit`
+      : `https://map.naver.com/v5/search/${encodeURIComponent(endName)}`;
+    
+    window.open(naverUrl, '_blank');
+  } else {
+    const kakaoUrl = start?.lat && start?.lng
+      ? `https://map.kakao.com/link/from/${encodeURIComponent(startName)},${start.lat},${start.lng}/to/${encodeURIComponent(endName)},${end.lat},${end.lng}`
+      : `https://map.kakao.com/link/to/${encodeURIComponent(endName)},${end.lat},${end.lng}`;
+    
+    window.open(kakaoUrl, '_blank');
+  }
+};

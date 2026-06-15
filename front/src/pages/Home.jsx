@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
 import styled from "styled-components";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import Sidebar from "../components/sidebar/Sidebar";
 import ActivePanel from "../components/sidebar/ActivePanel";
 import MapView from "../components/layout/MapView";
@@ -11,9 +12,9 @@ import { usePlaces } from "../hooks/usePlaces";
 import { useCourse } from "../hooks/useCourse";
 import { getPendingReview } from "../stores/reviewStore";
 import { CATEGORIES } from "../constants/categories";
+import { fetchPlaceDetail } from "../services/placeService";
 import axios from "axios";
 
-/* ── 전체 레이아웃 ── */
 const Page = styled.div`
   display: flex;
   width: 100vw;
@@ -22,7 +23,6 @@ const Page = styled.div`
   background: #f5f5f8;
 `;
 
-/* ── 지도 영역 ── */
 const MapArea = styled.div`
   flex: 1;
   position: relative;
@@ -31,7 +31,6 @@ const MapArea = styled.div`
   flex-direction: column;
 `;
 
-/* ── 모바일 패널 토글 버튼 ── */
 const PanelToggleBtn = styled.button`
   display: none;
   position: absolute;
@@ -48,7 +47,6 @@ const PanelToggleBtn = styled.button`
   font-weight: 700;
   cursor: pointer;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
-
   @media (max-width: 768px) {
     display: block;
   }
@@ -78,14 +76,13 @@ const FilterChip = styled.button`
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   transition: all 0.15s;
   white-space: nowrap;
+}
 `;
 
-/* ── 모바일 패널 오버레이 배경 ── */
 const PanelOverlay = styled.div`
   display: none;
-
   @media (max-width: 768px) {
-    display: ${({ $open }) => ($open ? "block" : "none")};
+    display: block;
     position: fixed;
     inset: 0;
     background: rgba(0, 0, 0, 0.35);
@@ -94,6 +91,9 @@ const PanelOverlay = styled.div`
 `;
 
 export default function Home({ selectedIdol, onIdolChange, skipIdolPrompt }) {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
+
   const [activeNav, setActiveNav] = useState("search");
   const [panelOpen, setPanelOpen] = useState(false);
   const [selectedPlaceId, setSelectedPlaceId] = useState(
@@ -102,7 +102,61 @@ export default function Home({ selectedIdol, onIdolChange, skipIdolPrompt }) {
   const [categoryFilter, setCategoryFilter] = useState(null);
   const [selectedCourse, setSelectedCourse] = useState(null);
 
-  // 🌟 [안전화] 로컬스토리지 파싱 로직의 최상단 스코프 고정
+  /* ── 길찾기 및 위치 상태 관리 ── */
+  const [myLocation, setMyLocation] = useState(null);
+  const [mapCenter, setMapCenter] = useState(null);
+  const [routeCoords, setRouteCoords] = useState(null);
+  const [courseRoute, setCourseRoute] = useState(null);
+
+  /* ── 외부 링크 및 내부 길찾기 전환 파이프라인 정비 ── */
+  useEffect(() => {
+    const mode = searchParams.get("mode");
+    const placeId = searchParams.get("placeId");
+
+    if (!placeId || placeId === "undefined" || String(placeId).trim() === "") {
+      return;
+    }
+
+    if (mode === "route") {
+      setActiveNav("route");
+
+      fetchPlaceDetail(placeId)
+        .then((place) => {
+          if (place) {
+            const finalLat = Number(place.lat || place.latitude);
+            const finalLng = Number(place.lng || place.longitude);
+            const finalName = place.name || place.placeName || "선택된 장소";
+
+            const parsedId =
+              place.id || place._id || place.spotId || place.placeId || placeId;
+
+            if (!isNaN(finalLat) && !isNaN(finalLng)) {
+              const destinationData = {
+                id: Date.now(),
+                lat: finalLat,
+                lng: finalLng,
+                name: finalName,
+                isDirectTrigger: true,
+              };
+
+              setRouteCoords(destinationData);
+              setMapCenter({ lat: finalLat, lng: finalLng });
+              setSearchParams({}, { replace: true });
+            }
+          }
+        })
+        .catch((err) =>
+          console.error("❌ 홈페이지 길찾기 데이터 빌드 실패:", err),
+        );
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (activeNav !== "route") {
+      setRouteCoords(null);
+    }
+  }, [activeNav]);
+
   const hasIdolInStorage = useMemo(() => {
     const savedUserStr = localStorage.getItem("user");
     if (!savedUserStr) return null;
@@ -110,16 +164,14 @@ export default function Home({ selectedIdol, onIdolChange, skipIdolPrompt }) {
       const userObj = JSON.parse(savedUserStr);
       const idolName =
         userObj.favorite_idol || userObj.favoriteIdol || userObj.favorite;
-      if (idolName && idolName !== "선택 안 됨" && idolName !== "null") {
+      if (idolName && idolName !== "선택 안 됨" && idolName !== "null")
         return idolName;
-      }
       return null;
     } catch {
       return null;
     }
   }, []);
 
-  // 🌟 [안전화] 동기화 누수를 방지하기 위한 이중 바리케이드 초기 셋업
   const [isModalOpen, setIsModalOpen] = useState(() => {
     const savedIdol = localStorage.getItem("selected_idol");
     if (savedIdol) return false;
@@ -127,7 +179,6 @@ export default function Home({ selectedIdol, onIdolChange, skipIdolPrompt }) {
     return !skipIdolPrompt;
   });
 
-  // 상위 주입 상태 동기화용 변수 계산
   const currentIdolId = useMemo(() => {
     if (selectedIdol?.id) return selectedIdol.id;
     if (hasIdolInStorage) {
@@ -139,21 +190,16 @@ export default function Home({ selectedIdol, onIdolChange, skipIdolPrompt }) {
     return null;
   }, [selectedIdol, hasIdolInStorage]);
 
-  // 커스텀 훅 호출 (Hook 규칙 준수)
   const { filteredPlaces } = usePlaces(currentIdolId);
   const { removeCourse } = useCourse();
 
-  // 부모 상태(App.jsx)와 동기화 시켜주는 useEffect 및 캐시 복구 강제화
   useEffect(() => {
     if (hasIdolInStorage) {
       const matchedIdol = idols.find(
         (i) => i.name === hasIdolInStorage || i.id === hasIdolInStorage,
       );
       if (matchedIdol) {
-        if (matchedIdol.id !== selectedIdol?.id) {
-          onIdolChange(matchedIdol);
-        }
-        // 기존 회원이 로그인 시 selected_idol 스토리지가 비어있다면 자동 복구 유도
+        if (matchedIdol.id !== selectedIdol?.id) onIdolChange(matchedIdol);
         if (!localStorage.getItem("selected_idol")) {
           localStorage.setItem("selected_idol", JSON.stringify(matchedIdol));
         }
@@ -169,7 +215,29 @@ export default function Home({ selectedIdol, onIdolChange, skipIdolPrompt }) {
     [filteredPlaces, categoryFilter],
   );
 
-  const handlePlaceClick = useCallback((id) => setSelectedPlaceId(id), []);
+  // 🎯 [수정 완료] 이제 검색창이나 마커에서 장소를 클릭하면 외부 페이지로 튕기지 않고 화면 중앙에 원래 모달을 활성화합니다!
+  const handlePlaceClick = useCallback((placeOrId) => {
+    if (!placeOrId) return;
+
+    let id = "";
+    if (typeof placeOrId === "object") {
+      id =
+        placeOrId.id || placeOrId.spotId || placeOrId._id || placeOrId.placeId;
+    } else {
+      id = placeOrId;
+    }
+
+    if (id && String(id) !== "undefined" && String(id).trim() !== "") {
+      // 💡 핵심 교체: 페이지 전환(navigate)을 완전히 걷어내고 모달 스테이트를 오픈합니다!
+      setSelectedPlaceId(String(id));
+    } else {
+      console.error(
+        "❌ 유효하지 않은 장소 ID가 포착되어 모달을 열 수 없습니다:",
+        placeOrId,
+      );
+    }
+  }, []);
+
   const handleCourseOpen = useCallback(
     (course) => setSelectedCourse(course),
     [],
@@ -178,7 +246,6 @@ export default function Home({ selectedIdol, onIdolChange, skipIdolPrompt }) {
   const handleIdolSelect = async (idol) => {
     onIdolChange(idol);
     setIsModalOpen(false);
-
     const savedUser = localStorage.getItem("user");
     if (!savedUser) return;
 
@@ -190,26 +257,22 @@ export default function Home({ selectedIdol, onIdolChange, skipIdolPrompt }) {
     try {
       const userId = userObj.id || userObj.user_id;
       const userEmail = userObj.email || userObj.user_email;
-
-      await axios.put(`http://localhost:5000/api/users/profile`, {
-        userId: userId,
+      await axios.put(`/api/users/profile`, {
+        userId,
         email: userEmail,
         favorite_idol: idol.name,
       });
-      console.log("백엔드 DB에 최애 아이돌 동기화 성공! 🔄⭐");
     } catch (err) {
-      console.error("백엔드 DB 최애 아이돌 업데이트 실패:", err);
+      console.error("백엔드 업데이트 실패:", err);
     }
   };
 
-  // 🌟 최종 차단 플래그 연산
   const hasAnyIdol =
     selectedIdol || localStorage.getItem("selected_idol") || hasIdolInStorage;
   const shouldOpenIdolModal = hasAnyIdol ? false : isModalOpen;
 
   return (
     <Page>
-      {/* ─── 사이드바 ─── */}
       <Sidebar
         activeNav={activeNav}
         onNavSelect={setActiveNav}
@@ -221,12 +284,24 @@ export default function Home({ selectedIdol, onIdolChange, skipIdolPrompt }) {
           selectedIdol={selectedIdol}
           onPlaceClick={handlePlaceClick}
           onCourseOpen={handleCourseOpen}
+          onRouteSearch={setRouteCoords}
+          mapCenter={mapCenter}
+          myLocation={myLocation}
+          routeCoords={routeCoords}
+          courseRoute={courseRoute}
+          onCourseRouteClear={() => setCourseRoute(null)}
         />
       </Sidebar>
 
-      {/* ─── 지도 ─── */}
       <MapArea>
-        <MapView places={displayPlaces} onPlaceClick={handlePlaceClick} />
+        <MapView
+          places={displayPlaces}
+          onPlaceClick={handlePlaceClick}
+          routeCoords={routeCoords}
+          onMapCenterChange={setMapCenter}
+          onMyLocationChange={setMyLocation}
+        />
+
         <FilterBar>
           {CATEGORIES.map((cat) => (
             <FilterChip
@@ -244,15 +319,13 @@ export default function Home({ selectedIdol, onIdolChange, skipIdolPrompt }) {
           📍 장소 목록
         </PanelToggleBtn>
 
-        {/* ─── 장소 상세 모달 ─── */}
-        {selectedPlaceId && (
+        {selectedPlaceId && selectedPlaceId !== "undefined" && (
           <PlaceDetailModal
             placeId={selectedPlaceId}
             onClose={() => setSelectedPlaceId(null)}
           />
         )}
 
-        {/* ─── 코스 상세 모달 ─── */}
         {selectedCourse && (
           <CourseDetailModal
             course={selectedCourse}
@@ -261,13 +334,17 @@ export default function Home({ selectedIdol, onIdolChange, skipIdolPrompt }) {
               removeCourse(id);
               setSelectedCourse(null);
             }}
+            onCourseRoute={(places) => {
+              setCourseRoute({ id: Date.now(), places });
+              setActiveNav("route");
+              setSelectedCourse(null);
+            }}
           />
         )}
       </MapArea>
 
       <PanelOverlay $open={panelOpen} onClick={() => setPanelOpen(false)} />
 
-      {/* ─── 아이돌 선택 모달 (새 회원 타겟 완전 분기 완료) ─── */}
       {shouldOpenIdolModal && (
         <IdolSelectModal
           isOpen={shouldOpenIdolModal}
