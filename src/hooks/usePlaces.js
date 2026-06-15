@@ -2,7 +2,6 @@ import { useEffect, useState, useCallback } from 'react'
 import { fetchPlacesByIdol, searchPlaces } from '../services/placeService'
 import axios from 'axios'
 
-/** 영문 카테고리를 프론트엔드용 한글 카테고리로 변환해주는 매핑 함수 */
 function mapEngCategoryToKor(engCategory) {
   if (!engCategory) return '기타';
   const clean = engCategory.trim().toLowerCase();
@@ -12,38 +11,30 @@ function mapEngCategoryToKor(engCategory) {
   return '기타';
 }
 
-/** * 🎯 아티스트 식별자 통합 매핑 사전
- * SQL DB에 들어있는 대소문자 규격('Izna', '방탄소년단', '이영지')과 완벽 매칭하도록 정비
- */
+// 🎯 대소문자 및 매칭 억까를 방지하기 위해 완전 차단 주머니 구성
 const IDOL_NAME_MAP = {
-  // 방탄소년단 정국 관련
-  'jungkook': { group: '방탄소년단', member: '정국' },
-  'bts': { group: '방탄소년단', member: '정국' },
-  '방탄소년단': { group: '방탄소년단', member: '정국' },
-  '정국': { group: '방탄소년단', member: '정국' },
+  'jungkook': { group: ['방탄소년단', 'bts'], member: ['정국', 'jungkook'] },
+  'bts': { group: ['방탄소년단', 'bts'], member: ['정국', 'jungkook'] },
+  '방탄소년단': { group: ['방탄소년단', 'bts'], member: ['정국', 'jungkook'] },
+  '정국': { group: ['방탄소년단', 'bts'], member: ['정국', 'jungkook'] },
   
-  // izna 방지민 관련 (대소문자 무관하게 SQL 데이터인 'Izna'에 맞춤)
-  'jimin': { group: 'Izna', member: '방지민' },
-  'jimin_bang': { group: 'Izna', member: '방지민' },
-  'jiminb': { group: 'Izna', member: '방지민' },
-  'bangjimin': { group: 'Izna', member: '방지민' },
-  'izna': { group: 'Izna', member: '방지민' },
-  '방지민': { group: 'Izna', member: '방지민' },
+  // 🎯 Izna, izna, 방지민, 지민 모두 엮이도록 완전 동기화
+  'jimin_bang': { group: ['izna', '이즈나'], member: ['방지민', '지민', 'jimin'] },
+  'jimin': { group: ['izna', '이즈나'], member: ['방지민', '지민', 'jimin'] },
+  'izna': { group: ['izna', '이즈나'], member: ['방지민', '지민', 'jimin'] },
+  '방지민': { group: ['izna', '이즈나'], member: ['방지민', '지민', 'jimin'] },
   
-  // 에스파 카리나 관련
-  'karina': { group: 'aespa', member: '카리나' },
-  'aespa': { group: 'aespa', member: '카리나' },
-  '카리나': { group: 'aespa', member: '카리나' },
+  'karina': { group: ['aespa', '에스파'], member: ['카리나', 'karina'] },
+  'aespa': { group: ['aespa', '에스파'], member: ['카리나', 'karina'] },
+  '카리나': { group: ['aespa', '에스파'], member: ['카리나', 'karina'] },
   
-  // 데이식스 영케이 관련
-  'youngk': { group: 'day6', member: '영케이' },
-  'day6': { group: 'day6', member: '영케이' },
-  '영케이': { group: 'day6', member: '영케이' },
+  'youngk': { group: ['day6', '데이식스'], member: ['영케이', 'young k', 'youngk'] },
+  'day6': { group: ['day6', '데이식스'], member: ['영케이', 'young k', 'youngk'] },
+  '영케이': { group: ['day6', '데이식스'], member: ['영케이', 'young k', 'youngk'] },
   
-  // 이영지 관련
-  'youngji': { group: '이영지', member: null },
-  'leeyoungji': { group: '이영지', member: null },
-  '이영지': { group: '이영지', member: null }
+  'leeyoungji': { group: ['이영지', 'leeyoungji'], member: ['이영지', 'youngji'] },
+  'youngji': { group: ['이영지', 'leeyoungji'], member: ['이영지', 'youngji'] },
+  '이영지': { group: ['이영지', 'leeyoungji'], member: ['이영지', 'youngji'] }
 };
 
 export const usePlaces = (idolId) => {
@@ -54,16 +45,31 @@ export const usePlaces = (idolId) => {
   const [category, setCategory] = useState('전체')
   const [query, setQuery] = useState('')
 
-  // 데이터 규격 및 이미지 변수명 방어선 일원화
   const transformPlaceData = useCallback((dataArray) => {
     return (Array.isArray(dataArray) ? dataArray : []).map(place => {
       const lat = place.latitude || place.lat;
       const lng = place.longitude || place.lng;
-      const img = place.image_url || place.imageUrl || place.image || place.spot_image || place.img;
+      const img = place.image_url || place.imageUrl || place.image || place.spot_image || place.img || place.photo_path;
+
+      const finalName = 
+        place.placeName || 
+        place.place_name || 
+        place.location_name || 
+        place.name || 
+        place.title || 
+        '성지 순례지';
+      
+      const finalContent = place.description || place.content || '아티스트의 발자취가 담긴 성지입니다.';
 
       return {
         ...place,
-        name: place.place_name || place.name || '이름 없음',
+        name: finalName,            
+        title: finalName,           
+        place_name: finalName,      
+        placeName: finalName,       
+        location_name: finalName,   
+        content: finalContent,      
+        description: finalContent,  
         category: mapEngCategoryToKor(place.category),
         latitude: lat ? parseFloat(lat) : 37.5665,
         longitude: lng ? parseFloat(lng) : 126.9780,
@@ -78,7 +84,7 @@ export const usePlaces = (idolId) => {
     });
   }, []);
 
-  // 아티스트 완전 동기화 필터 (대소문자 무관하게 완전 철벽 방어)
+  // 🎯 어떤 문자열 조합이 들어오든 철저하게 그물망식으로 필터링하는 로직 고도화
   const filterExactIdol = useCallback((dataArray, currentIdolId) => {
     if (!currentIdolId || !dataArray || dataArray.length === 0) return [];
     
@@ -89,69 +95,65 @@ export const usePlaces = (idolId) => {
       return dataArray.filter(place => {
         const dbGroup = place.group_name ? String(place.group_name).toLowerCase().trim() : "";
         const dbMember = place.member_name ? String(place.member_name).toLowerCase().trim() : "";
+        const dbIdolName = place.idol_name ? String(place.idol_name).toLowerCase().trim() : "";
         
-        const targetGroup = mapping.group.toLowerCase();
-        const targetMember = mapping.member ? mapping.member.toLowerCase() : null;
-
-        if (targetMember) {
-          return dbGroup === targetGroup && dbMember === targetMember;
-        } else {
-          return dbGroup === targetGroup;
-        }
+        // 그룹명이 상호 매칭되거나 (izna <-> Izna)
+        const matchGroup = mapping.group.some(g => dbGroup.includes(g) || g.includes(dbGroup) || dbIdolName.includes(g));
+        // 멤버명이 상호 매칭되거나 (방지민, 지민 <-> 방지민)
+        const matchMember = mapping.member ? mapping.member.some(m => dbMember.includes(m) || m.includes(dbMember) || dbIdolName.includes(m)) : false;
+        
+        return matchGroup || matchMember;
       });
     }
 
     return dataArray.filter(place => {
       const gName = place.group_name ? String(place.group_name).toLowerCase() : "";
       const mName = place.member_name ? String(place.member_name).toLowerCase() : "";
-      return gName.includes(key) || mName.includes(key) || key.includes(gName) || key.includes(mName);
+      const iName = place.idol_name ? String(place.idol_name).toLowerCase() : "";
+      return gName.includes(key) || mName.includes(key) || iName.includes(key);
     });
   }, []);
 
   const loadPlaces = useCallback(async () => {
-    const savedUser = JSON.parse(localStorage.getItem("user") || "{}");
-    const userEmail = savedUser?.email || savedUser?.user_email || "";
-    
-    if (!idolId && !userEmail) return
+    if (!idolId) return;
     
     setIsLoading(true)
     setError(null)
-    
     let rawData = [];
 
     try {
-      // 1. 🎯 [수정 완료] 백엔드에 전송할 때 현재 활성화된 idolId를 무조건 파라미터로 함께 주입!
-      if (userEmail) {
-        const response = await axios.get('http://localhost:5000/api/spots/favorite-idol', {
-          params: { 
-            email: userEmail,
-            idolId: idolId // 👈 백엔드가 이영지로 롤백하지 못하게 확실히 잠금
-          }
-        });
-        
-        if (response.data && response.data.success && Array.isArray(response.data.data)) {
-          rawData = response.data.data;
-        } else if (Array.isArray(response.data)) {
-          rawData = response.data;
-        }
-      } 
+      const key = String(idolId).toLowerCase().trim();
+      const mapping = IDOL_NAME_MAP[key];
       
-      // 2. 백업 예비 조회선 실행
-      if (rawData.length === 0 && idolId) {
+      // 백엔드로 보낼 파라미터 조율: '방지민' 전송 보장
+      let finalIdolParam = idolId;
+      if (mapping) {
+        finalIdolParam = (mapping.member && mapping.member[0]) || mapping.group[0];
+      }
+
+      const response = await axios.get('http://localhost:5000/api/places', {
+        params: { idolId: finalIdolParam }
+      });
+      
+      if (Array.isArray(response.data)) {
+        rawData = response.data;
+      }
+      
+      if (rawData.length === 0) {
+        const savedUser = JSON.parse(localStorage.getItem("user") || "{}");
+        const userEmail = savedUser?.email || savedUser?.user_email || "";
         const fallbackData = await fetchPlacesByIdol(idolId, userEmail);
         if (Array.isArray(fallbackData)) {
           rawData = fallbackData;
         }
       }
 
-      // 3. 필터링 및 매핑 데이터 가공
       const processedData = filterExactIdol(rawData, idolId);
       const mappedData = transformPlaceData(processedData);
       
-      console.log(`[usePlaces 갱신 완료] 타겟 아티스트: "${idolId}" | 출력 성지: ${mappedData.length}개`);
       setPlaces(mappedData)
     } catch (err) {
-      console.error("장소 데이터 바인딩 실패:", err);
+      console.error("장소 데이터 바인딩 프로세스 오류:", err);
       setError(err.message)
     } finally {
       setIsLoading(false)
@@ -162,19 +164,17 @@ export const usePlaces = (idolId) => {
     loadPlaces()
   }, [loadPlaces])
 
-  // 카테고리 + 검색어 필터 적용
   useEffect(() => {
     let result = [...places]
     if (category !== '전체') {
       result = result.filter((p) => p.category === category)
     }
     if (query.trim()) {
-      result = result.filter((p) => p.name && p.name.includes(query.trim()))
+      result = result.filter((p) => p.name && p.name.toLowerCase().includes(query.trim().toLowerCase()))
     }
     setFilteredPlaces(result)
   }, [places, category, query])
 
-  // 검색 로직
   const search = useCallback(async (searchQuery) => {
     if (!searchQuery.trim()) {
       setFilteredPlaces(places)

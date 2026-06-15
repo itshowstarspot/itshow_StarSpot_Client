@@ -64,10 +64,21 @@ const CardImage = styled.div`
 `
 
 const CardBody = styled.div`
-  padding: 10px 12px 12px;
+  padding: 12px;
   display: flex;
   flex-direction: column;
   gap: 6px;
+`
+
+/* 🎯 이름 스타일을 카드 메인 제목답게 더 크고 진하게 강조 */
+const Name = styled.h4`
+  font-size: 16px;
+  font-weight: 800;
+  color: #1a1a1a; /* 노란색 대신 가독성 좋은 진한 색상으로 변경 */
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 `
 
 const Description = styled.p`
@@ -84,40 +95,38 @@ const Description = styled.p`
 const Footer = styled.div`
   display: flex;
   align-items: center;
-  justify-content: space-between;
-`
-
-const Name = styled.span`
-  font-size: 15px;
-  font-weight: 700;
-  color: #e8b664;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  justify-content: flex-end; /* 더보기 버튼을 우측 끝으로 밀기 */
+  margin-top: 4px;
 `
 
 const MoreBtn = styled.button`
   background: transparent;
   border: none;
-  color: rgba(45, 47, 54, 0.35);
+  color: #e8b664; /* 더보기 버튼에 포인트를 줌 */
   font-size: 11px;
+  font-weight: 700;
   cursor: pointer;
   padding: 0;
   flex-shrink: 0;
   transition: color 0.15s;
 
-  &:hover { color: #e8b664; }
+  &:hover { color: #d09f4c; }
 `
 
+// 🛠️ [순서 교정] 이름이 가장 먼저 보이고 설명이 그 아래에 깔리도록 변경했습니다!
 const Inner = ({ image, name, description, onClick, actions }) => (
   <>
     <CardImage>
       {image && <img src={image} alt={name} loading="lazy" />}
     </CardImage>
     <CardBody>
+      {/* 1. 장소 이름이 최상단에 듬직하게 위치합니다. */}
+      <Name title={name}>{name || '성지 순례지'}</Name>
+      
+      {/* 2. 장소 설명 후기가 그 아래에 예쁘게 배치됩니다. */}
       <Description>{description}</Description>
+      
       <Footer>
-        <Name title={name}>{name}</Name>
         <MoreBtn type="button" onClick={(e) => { e.stopPropagation(); onClick?.() }}>
           더보기
         </MoreBtn>

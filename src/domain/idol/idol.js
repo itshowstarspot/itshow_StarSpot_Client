@@ -28,7 +28,7 @@ export const idols = [
     groupColor: '#5B4FD4',
   },
   {
-    id: 'bangjeemin',
+    id: 'jimin_bang',
     groupLabel: 'izna',
     name: 'BANG JEEMIN',
     image: bangJeemin,

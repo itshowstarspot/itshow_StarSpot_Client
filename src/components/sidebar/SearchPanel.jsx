@@ -174,10 +174,15 @@ export default function SearchPanel({ idolId, onPlaceClick }) {
         )}
         {!isLoading && sortedPlaces.map((place, idx) => (
           <PlaceCard
-            key={place.id}
-            image={place.image}
-            name={place.name}
-            description={place.description || place.address}
+            key={place.id || idx}
+            image={place.image_url || place.image}
+            
+            // 🎯 이제 usePlaces가 진짜 이름을 정상적으로 발굴하므로 순수하게 데이터를 꽂아줍니다!
+            name={place.name} 
+            
+            // 🎯 백엔드에서 온 진짜 설명글 매핑
+            description={place.content} 
+            
             onClick={() => onPlaceClick?.(place.id)}
             badge={sort === SORT_DISTANCE ? `${idx + 1}번째 가까운 장소` : undefined}
           />
