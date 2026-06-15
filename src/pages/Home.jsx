@@ -357,7 +357,7 @@ export default function Home({ selectedIdol, onIdolChange, skipIdolPrompt }) {
               $active={categoryFilter === cat}
               onClick={() => setCategoryFilter(categoryFilter === cat ? null : cat)}
             >
-              2026 {cat}
+            {cat}
             </FilterChip>
           ))}
         </FilterBar>
