@@ -131,7 +131,7 @@ export const usePlaces = (idolId) => {
         finalIdolParam = (mapping.member && mapping.member[0]) || mapping.group[0];
       }
 
-      const response = await axios.get('http://localhost:5000/api/places', {
+      const response = await axios.get('/api/places', {
         params: { idolId: finalIdolParam }
       });
       

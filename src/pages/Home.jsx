@@ -327,6 +327,7 @@ export default function Home({ selectedIdol, onIdolChange, skipIdolPrompt }) {
         <ActivePanel
           navId={activeNav}
           selectedIdol={selectedIdol}
+          idolId={currentIdolId}
           onPlaceClick={handlePlaceClick}
           onCourseOpen={handleCourseOpen}
           onRouteSearch={setRouteCoords}
@@ -354,7 +355,7 @@ export default function Home({ selectedIdol, onIdolChange, skipIdolPrompt }) {
               $active={categoryFilter === cat}
               onClick={() => setCategoryFilter(categoryFilter === cat ? null : cat)}
             >
-              2026 {cat}
+            {cat}
             </FilterChip>
           ))}
         </FilterBar>

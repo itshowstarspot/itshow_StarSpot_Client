@@ -39,3 +39,4 @@ dist-ssr
 # SSH 키
 *.pem
 *.key
+*.sh
