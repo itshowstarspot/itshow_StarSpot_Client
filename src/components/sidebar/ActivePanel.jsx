@@ -6,6 +6,7 @@ import SearchPanel from "./SearchPanel";
 export default function ActivePanel({
   navId,
   selectedIdol,
+  courseVersion,
   onPlaceClick,
   onCourseOpen,
   onRouteSearch,
@@ -33,7 +34,11 @@ export default function ActivePanel({
       );
     case "course":
       return (
-        <CoursePanel onCourseOpen={onCourseOpen} idolId={selectedIdol?.id} />
+        <CoursePanel
+          onCourseOpen={onCourseOpen}
+          idolId={selectedIdol?.id}
+          courseVersion={courseVersion || 0}
+        />
       );
     default:
       return (

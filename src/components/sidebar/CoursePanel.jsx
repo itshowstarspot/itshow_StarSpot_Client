@@ -379,10 +379,7 @@ const SaveBtn = styled.button`
     cursor: default;
   }
 `;
-
-// ... 상단 스타일드 컴포넌트 정의 부분은 기존과 완전히 동일합니다 ...
-
-export default function CoursePanel({ onCourseOpen, idolId }) {
+export default function CoursePanel({ onCourseOpen, idolId, courseVersion }) {
   const {
     courses,
     isLoading,
@@ -394,8 +391,6 @@ export default function CoursePanel({ onCourseOpen, idolId }) {
     addPlace,
     removePlace,
     reorderPlaces,
-    // ⭕ 훅 내부에서 선택된 장소 상태를 통째로 비워주는 함수가 있다면 가져옵니다.
-    // (만약 함수명이 다르면 useCourse.js의 setSelectedPlaces([]) 처리 함수명으로 맞춰주세요)
     clearPlaces,
   } = useCourse();
   const { places } = usePlaces(idolId);
@@ -405,10 +400,11 @@ export default function CoursePanel({ onCourseOpen, idolId }) {
   const [localError, setLocalError] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
 
-  // 컴포넌트 내부에 추가해서 콘솔창을 확인해보세요!
   useEffect(() => {
-    loadCourses();
-  }, [loadCourses]);
+    if (typeof loadCourses === "function") {
+      loadCourses();
+    }
+  }, [loadCourses, courseVersion]);
 
   const sortedPlaces = useMemo(() => {
     return (places || []).map((p) => ({
@@ -427,17 +423,13 @@ export default function CoursePanel({ onCourseOpen, idolId }) {
         p.address?.toLowerCase().includes(q),
     );
   }, [sortedPlaces, searchQuery]);
-
-  /* ── ⭕ 1. 코스 저장 핸들러 수정 (조건 미달 시 알림창 띄우기) ── */
   const handleSave = async () => {
-    // 1) 코스 이름이 비어있을 때 알림창 띄우고 중단
     if (!title.trim()) {
       alert("⚠️ 코스 이름을 입력해주세요!");
       setLocalError("코스 이름을 입력해주세요.");
       return;
     }
 
-    // 2) 선택된 장소가 2개 미만일 때 알림창 띄우고 중단
     if (selectedPlaces.length < 2) {
       alert("📍 장소를 최소 2개 이상 선택해주세요!");
       setLocalError("장소를 2개 이상 선택해주세요.");
@@ -447,7 +439,6 @@ export default function CoursePanel({ onCourseOpen, idolId }) {
     const spotIds = selectedPlaces.map((p) => p.id);
     const result = await submitCourse({ title: title.trim(), spotIds, idolId });
     if (result) {
-      // 성공 시 모든 데이터 완전 초기화
       setTitle("");
       setLocalError("");
       setSearchQuery("");
@@ -457,29 +448,31 @@ export default function CoursePanel({ onCourseOpen, idolId }) {
     }
   };
 
-  /* ── ⭕ 2. 돌아가기(취소) 핸들러 수정 (이전 장소 기록 강제 청소) ── */
   const handleCancel = () => {
     setTitle("");
     setLocalError("");
     setSearchQuery("");
 
-    // useCourse 훅에 초기화 함수가 있으면 실행하고,
-    // 없는 경우를 대비해 순서 리스트에 남아있는 장소들을 강제로 하나씩 지워주는 안전장치(Fallback)를 걸어둡니다.
     if (typeof clearPlaces === "function") {
       clearPlaces();
     } else if (selectedPlaces && selectedPlaces.length > 0) {
-      // 훅에 clear 함수가 구현 안 되어있을 때를 위한 수동 청소 방어 코드
       [...selectedPlaces].forEach((p) => removePlace(p.id));
     }
 
     setView("list");
   };
 
-  /* ── 목록 화면 (view === "list") 완벽 연동본 ── */
   if (view === "list") {
-    // 로컬 스토리지 등에서 현재 로그인한 유저 이메일 동적 획득
+  let loggedInUser = null;
+  try {
     const storedUser = localStorage.getItem("user");
-    const loggedInUser = storedUser ? JSON.parse(storedUser)?.email : null;
+    if (storedUser) {
+      const parsed = JSON.parse(storedUser);
+      loggedInUser = parsed?.email || parsed?.userEmail || null;
+    }
+  } catch (e) {
+    console.error("로컬스토리지 유저 파싱 에러:", e);
+  }
 
     return (
       <Panel>
@@ -497,15 +490,13 @@ export default function CoursePanel({ onCourseOpen, idolId }) {
           )}
 
           {!isLoading &&
-            courses &&
+            Array.isArray(courses) &&
             courses.map((course, index) => {
               const courseKey = course.id || `course-idx-${index}`;
 
-              // 💡 [중요] 백엔드 사양(getCourses)에 맞춰 장소 배열을 안전하게 가져옵니다.
               const currentPlaces = course.places || course.spots || [];
-              const placeCount = currentPlaces.length;
+              const placeCount = currentPlaces ? currentPlaces.length : 0;
 
-              // DB의 user_email 컬럼을 백엔드가 userEmail로 매핑해 준 것을 대조
               const creatorEmail = course.userEmail || course.user_email;
               const isOwner = creatorEmail === loggedInUser;
 
@@ -518,7 +509,6 @@ export default function CoursePanel({ onCourseOpen, idolId }) {
                       alignItems: "flex-end",
                     }}
                   >
-                    {/* 내 코스인지 추천 코스인지 라벨 분류 */}
                     <FolderTab
                       style={{
                         background: isOwner
@@ -541,7 +531,6 @@ export default function CoursePanel({ onCourseOpen, idolId }) {
                       }}
                     >
                       {placeCount}개 장소{" "}
-                      {/* 💡 이제 0개가 아니라 실제 개수가 뜹니다! */}
                     </span>
                   </div>
 
@@ -555,15 +544,14 @@ export default function CoursePanel({ onCourseOpen, idolId }) {
                         : "rgba(45, 47, 54, 0.02)",
                     }}
                   >
-                    {/* DB의 title 컬럼 데이터를 정상 출력 */}
                     <CardTitle>{course.title || "코스 이름 없음"}</CardTitle>
 
                     <CardDesc>
                       {placeCount > 0
                         ? currentPlaces
                             .map((p) => p.placeName || p.place_name || p.name)
-                            .filter(Boolean) // 이름이 있는 것만 필터링
-                            .join(" → ") // 💡 잠수교 → 커피탐이나 → 도쿄수플레 형태로 출력!
+                            .filter(Boolean)
+                            .join(" → ")
                         : "등록된 장소가 없습니다."}
                     </CardDesc>
 
@@ -621,7 +609,6 @@ export default function CoursePanel({ onCourseOpen, idolId }) {
     );
   }
 
-  /* ── 코스 생성 화면 ── */
   return (
     <Panel>
       <Header>
@@ -642,7 +629,6 @@ export default function CoursePanel({ onCourseOpen, idolId }) {
           }}
         />
 
-        {/* 장소 검색 및 목록 UI (기존 코드 유지) */}
         <PlacePickerLabel>
           장소 선택 ({selectedPlaces.length}개 선택됨)
         </PlacePickerLabel>
@@ -706,7 +692,6 @@ export default function CoursePanel({ onCourseOpen, idolId }) {
           })}
         </PlacePickList>
 
-        {/* 순서 조정 리스트 */}
         {selectedPlaces.length > 0 && (
           <>
             <PlacePickerLabel>순서 조정</PlacePickerLabel>
@@ -743,8 +728,6 @@ export default function CoursePanel({ onCourseOpen, idolId }) {
 
         {(localError || error) && <ErrorMsg>{localError || error}</ErrorMsg>}
 
-        {/* ── ⭕ 3. 버튼 비활성화 해제 ── */}
-        {/* 누락 사항이 있어도 버튼이 항상 눌리게 만들고, 누르면 handleSave 내부에서 유효성 검사를 진행하여 alert를 띄웁니다. */}
         <SaveBtn onClick={handleSave} disabled={isLoading}>
           {isLoading ? "저장 중..." : "코스 저장"}
         </SaveBtn>

@@ -105,6 +105,7 @@ export default function Home({ selectedIdol, onIdolChange, skipIdolPrompt }) {
   const [mapCenter, setMapCenter] = useState(null);
   const [routeCoords, setRouteCoords] = useState(null);
   const [courseRoute, setCourseRoute] = useState(null);
+  const [courseVersion, setCourseVersion] = useState(0);
 
   useEffect(() => {
     const courseId = searchParams.get("courseId");
@@ -199,7 +200,6 @@ export default function Home({ selectedIdol, onIdolChange, skipIdolPrompt }) {
     }
   }, []);
 
-  // ✅ [복구완료 1] jimin_bang 규격 원천 보장
   const currentIdolId = useMemo(() => {
     if (selectedIdol?.id) {
       return selectedIdol.id === 'bangjeemin' ? 'jimin_bang' : selectedIdol.id;
@@ -233,9 +233,8 @@ export default function Home({ selectedIdol, onIdolChange, skipIdolPrompt }) {
   }, [selectedIdol, hasIdolInStorage]);
 
   const { filteredPlaces } = usePlaces(currentIdolId, currentUserEmail);
-  const { removeCourse } = useCourse();
+  const { removeCourse, updateCourse, loadCourses } = useCourse();
 
-  // ✅ [복구완료 2] 정밀 세션 동기화 (프로필 흑화 현상 방지)
   useEffect(() => {
     if (hasIdolInStorage) {
       const lower = hasIdolInStorage.toLowerCase().trim();
@@ -303,7 +302,7 @@ export default function Home({ selectedIdol, onIdolChange, skipIdolPrompt }) {
     try {
       const userId = userObj.id || userObj.user_id;
       const userEmail = userObj.email || userObj.user_email;
-      await axios.put(`/api/users/profile`, {
+      await axios.put(`/api/courses/${updatedCourse.id}/update`, {
         userId,
         email: userEmail,
         favorite_idol: idol.name,
@@ -327,6 +326,7 @@ export default function Home({ selectedIdol, onIdolChange, skipIdolPrompt }) {
         <ActivePanel
           navId={activeNav}
           selectedIdol={selectedIdol}
+          courseVersion={courseVersion}
           idolId={currentIdolId}
           onPlaceClick={handlePlaceClick}
           onCourseOpen={handleCourseOpen}
@@ -373,7 +373,33 @@ export default function Home({ selectedIdol, onIdolChange, skipIdolPrompt }) {
         {selectedCourse && (
           <CourseDetailModal
             course={selectedCourse}
+            isOpen={!!selectedCourse}
             onClose={() => setSelectedCourse(null)}
+            onSave={async (updatedCourse) => {
+              if (String(updatedCourse.id).startsWith('rec-')) {
+                alert("추천 코스는 수정할 수 없습니다!");
+                return;
+              }
+
+              try {
+                const storedUser = localStorage.getItem('user');
+                const userEmail = storedUser ? JSON.parse(storedUser)?.email : null;
+                
+                await axios.post(`/api/courses-update-bypass/${updatedCourse.id}`, {
+                  title: updatedCourse.title,
+                  spotIds: updatedCourse.places.map(p => p.id),
+                  userEmail
+                });
+
+                setCourseVersion(prev => prev + 1); 
+                setSelectedCourse(null);
+                alert("코스가 성공적으로 수정되었습니다!");
+              } catch (err) {
+                console.error("코스 수정 실패:", err);
+                alert("수정 실패: " + err.message);
+              }
+            }}
+
             onDelete={(id) => {
               removeCourse(id);
               setSelectedCourse(null);

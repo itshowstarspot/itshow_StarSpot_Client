@@ -5,12 +5,13 @@ import Button from "../components/common/Button";
 import EmptyState from "../components/common/EmptyState";
 import LoadingSpinner from "../components/common/LoadingSpinner";
 import CourseCard from "../components/course/CourseCard";
-import CoursePlaceItem from "../components/course/CoursePlaceItem";
 import Modal from "../components/common/Modal";
 import { useCourse } from "../hooks/useCourse";
 import { usePlaces } from "../hooks/usePlaces";
 import { COURSE_MIN_PLACES } from "../domain/course/course";
 import { fetchRecommendedCourses } from "../services/courseService";
+import CourseDetailModal from "../components/sidebar/CourseDetailModal";
+import CoursePlaceItem from "../components/course/CoursePlaceItem";
 
 const Page = styled.main`
   min-height: 100vh;
@@ -146,7 +147,6 @@ const ShareToast = styled.div`
 export default function Course({ selectedIdol }) {
   const navigate = useNavigate();
 
-  // 훅에서 필수 자원 모두 획득
   const {
     courses,
     selectedPlaces,
@@ -154,6 +154,7 @@ export default function Course({ selectedIdol }) {
     removePlace,
     reorderPlaces,
     submitCourse,
+    updateCourse,
     loadCourses,
     removeCourse,
     shareCourse,
@@ -168,6 +169,9 @@ export default function Course({ selectedIdol }) {
   const [showToast, setShowToast] = useState(false);
   const [recommendedCourses, setRecommendedCourses] = useState([]);
   const [recLoading, setRecLoading] = useState(false);
+  const [selectedCourse, setSelectedCourse] = useState(null);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
+  
   const toastTimerRef = useRef(null);
 
   useEffect(() => {
@@ -194,43 +198,43 @@ export default function Course({ selectedIdol }) {
     toastTimerRef.current = setTimeout(() => setShowToast(false), 2500);
   };
 
-  // 🌟 침묵 타파용 추적 로그 심은 제출 함수
-  const handleSubmit = async () => {
-    console.log("=== [디버깅] 코스 생성 버튼 최종 클릭됨 ===");
-    console.log("입력한 코스 제목:", courseTitle);
-    console.log("현재 훅이 인지한 선택 장소 배열:", selectedPlaces);
-    console.log("선택 장소 개수:", selectedPlaces?.length);
-
-    if (!courseTitle.trim()) {
-      console.warn("❌ 차단 필터링: 코스 제목이 누락되었습니다.");
-      return;
+  const handleUpdate = async (updatedCourse) => {
+    console.log("=== [디버깅] 코스 수정 요청 ===", updatedCourse);
+    
+    const result = await updateCourse(updatedCourse.id, {
+      title: updatedCourse.title,
+      places: updatedCourse.places,
+    });
+    
+    if (result) {
+      setIsDetailOpen(false);
+      setSelectedCourse(null);
+      alert("코스가 성공적으로 수정되었습니다!");
+    } else {
+      alert("코스 수정에 실패했습니다.");
     }
+  };
+
+  const handleSubmit = async () => {
+    if (!courseTitle.trim()) return;
 
     try {
-      console.log("🚀 useCourse 훅의 submitCourse 전송 함수를 호출합니다...");
       const result = await submitCourse({
         title: courseTitle,
         idolId: selectedIdol?.id,
       });
 
-      console.log("🎯 훅 처리 결과 수신:", result);
       if (result) {
         setCourseTitle("");
         setIsCreating(false);
       }
     } catch (err) {
-      console.error("🔥 UI 단에서 포착된 최상위 코스 생성 에러:", err);
+      console.error("코스 생성 에러:", err);
     }
   };
 
-  // 안전장치 계산 변수
-  const validPlacesCount = Array.isArray(selectedPlaces)
-    ? selectedPlaces.length
-    : 0;
-
-  // 버튼 강제 활성화 검증식 (최소 제한 수치보다 크거나 같으면 무조건 해제)
-  const isFormValid =
-    courseTitle.trim().length > 0 && validPlacesCount >= COURSE_MIN_PLACES;
+  const validPlacesCount = Array.isArray(selectedPlaces) ? selectedPlaces.length : 0;
+  const isFormValid = courseTitle.trim().length > 0 && validPlacesCount >= COURSE_MIN_PLACES;
 
   return (
     <Page>
@@ -249,7 +253,7 @@ export default function Course({ selectedIdol }) {
       </TopBar>
 
       <Content>
-        {/* 🌟 추천 코스 (이전 UI/UX 레이아웃 구조 완벽 복구 완료) */}
+        {/* 추천 코스 */}
         <div>
           <SectionTitle>⭐ 추천 코스</SectionTitle>
           {recLoading && <LoadingSpinner />}
@@ -266,9 +270,9 @@ export default function Course({ selectedIdol }) {
             ).map((course) => (
               <CourseCard
                 key={course.id}
-                title={course.title} // 제목 전달
-                places={course.places} // 장소 배열 전달
-                description={course.description} // (필요시) 설명 전달
+                title={course.title}
+                places={course.places}
+                description={course.description}
               />
             ))}
           </CourseList>
@@ -292,6 +296,10 @@ export default function Course({ selectedIdol }) {
                 places={course.places}
                 onShare={() => handleShare(course.id)}
                 onDelete={() => removeCourse(course.id)}
+                onClick={() => {
+                  setSelectedCourse(course);
+                  setIsDetailOpen(true);
+                }}
               />
             ))}
           </CourseList>
@@ -301,22 +309,13 @@ export default function Course({ selectedIdol }) {
       {/* 코스 생성 모달 */}
       <Modal isOpen={isCreating} onClose={() => setIsCreating(false)}>
         <h2 style={{ color: "#2d2f36", marginBottom: 16 }}>새 코스 만들기</h2>
-
         <TitleInput
           placeholder="코스 이름 입력"
           value={courseTitle}
           onChange={(e) => setCourseTitle(e.target.value)}
           maxLength={50}
         />
-
-        <p
-          style={{
-            fontSize: 14,
-            fontWeight: 700,
-            color: "#2d2f36",
-            marginBottom: 10,
-          }}
-        >
+        <p style={{ fontSize: 14, fontWeight: 700, color: "#2d2f36", marginBottom: 10 }}>
           장소 선택 (최소 {COURSE_MIN_PLACES}개)
         </p>
 
@@ -325,16 +324,12 @@ export default function Course({ selectedIdol }) {
         ) : (
           <PlacePickerGrid>
             {places.map((place) => {
-              const isSelected =
-                Array.isArray(selectedPlaces) &&
-                selectedPlaces.some((p) => p.id === place.id);
+              const isSelected = Array.isArray(selectedPlaces) && selectedPlaces.some((p) => p.id === place.id);
               return (
                 <PlacePickBtn
                   key={place.id}
                   $selected={isSelected}
-                  onClick={() =>
-                    isSelected ? removePlace(place.id) : addPlace(place)
-                  }
+                  onClick={() => isSelected ? removePlace(place.id) : addPlace(place)}
                 >
                   {isSelected ? "✓ " : ""}
                   {place.name}
@@ -346,26 +341,16 @@ export default function Course({ selectedIdol }) {
 
         {validPlacesCount > 0 && (
           <div style={{ marginTop: 16 }}>
-            <p
-              style={{
-                fontSize: 14,
-                fontWeight: 700,
-                color: "#2d2f36",
-                marginBottom: 10,
-              }}
-            >
-              순서 조정
-            </p>
+            <p style={{ fontSize: 14, fontWeight: 700, color: "#2d2f36", marginBottom: 10 }}>순서 조정</p>
             <SelectedList>
-              {Array.isArray(selectedPlaces) &&
-                selectedPlaces.map((place, idx) => (
-                  <CoursePlaceItem
-                    key={place.id}
-                    index={idx}
-                    place={place}
-                    onRemove={() => removePlace(place.id)}
-                  />
-                ))}
+              {Array.isArray(selectedPlaces) && selectedPlaces.map((place, idx) => (
+                <CoursePlaceItem
+                  key={place.id}
+                  index={idx}
+                  place={place}
+                  onRemove={() => removePlace(place.id)}
+                />
+              ))}
             </SelectedList>
           </div>
         )}
@@ -373,23 +358,33 @@ export default function Course({ selectedIdol }) {
         {error && <ErrorMsg>{error}</ErrorMsg>}
 
         <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
-          <Button
-            variant="secondary"
-            fullWidth
-            onClick={() => setIsCreating(false)}
-          >
-            취소
-          </Button>
-          <Button
-            fullWidth
-            onClick={handleSubmit}
-            disabled={!isFormValid || isLoading}
-          >
+          <Button variant="secondary" fullWidth onClick={() => setIsCreating(false)}>취소</Button>
+          <Button fullWidth onClick={handleSubmit} disabled={!isFormValid || isLoading}>
             {isLoading ? "생성 중..." : "코스 생성"}
           </Button>
         </div>
       </Modal>
 
+      {/* 코스 상세 및 관리 모달 */}
+      {isDetailOpen && selectedCourse && (
+        <CourseDetailModal
+          course={selectedCourse}
+          isOpen={isDetailOpen}
+          onClose={() => {
+            setIsDetailOpen(false);
+            setSelectedCourse(null);
+          }}
+          onSave={handleUpdate} 
+          onDelete={(id) => {
+            removeCourse(id);
+            setIsDetailOpen(false);
+            setSelectedCourse(null);
+          }}
+          onCourseRoute={(places) => {
+            console.log("길찾기 장소 리스트:", places);
+          }}
+        />
+      )}
       {showToast && <ShareToast>🔗 링크가 클립보드에 복사되었어요!</ShareToast>}
     </Page>
   );

@@ -10,7 +10,7 @@ export function useCourse() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // 1. 내 코스 목록 불러오기 (GET /api/courses)
+  //  코스 목록 불러오기
   const loadCourses = useCallback(async () => {
     setIsLoading(true);
     setError(null);
@@ -19,6 +19,7 @@ export function useCourse() {
       const user = storedUser ? JSON.parse(storedUser) : null;
       const userEmail = user?.email;
 
+      // 쿼리 스트링 파라미터로 올바르게 전송
       const params = userEmail ? { userEmail } : {};
       const response = await axios.get(`${API_BASE_URL}/courses`, { params });
 
@@ -32,7 +33,7 @@ export function useCourse() {
     }
   }, []);
 
-  // 2. 코스 생성 시 장소 추가
+  // 코스 생성 시 장소 추가
   const addPlace = useCallback((place) => {
     setSelectedPlaces((prev) => {
       if (prev.some((p) => p.id === place.id)) return prev;
@@ -42,7 +43,7 @@ export function useCourse() {
     });
   }, []);
 
-  // 3. 코스 생성 시 장소 제거
+  // 코스 생성 시 장소 제거
   const removePlace = useCallback((placeId) => {
     setSelectedPlaces((prev) => {
       const next = prev.filter((p) => p.id !== placeId);
@@ -51,7 +52,7 @@ export function useCourse() {
     });
   }, []);
 
-  // 4. 장소 순서 조정
+  // 장소 순서 조정
   const reorderPlaces = useCallback((startIndex, endIndex) => {
     setSelectedPlaces((prev) => {
       const result = Array.from(prev);
@@ -61,20 +62,14 @@ export function useCourse() {
     });
   }, []);
 
-  // 5. 코스 서버 전송 처리 (POST /api/courses)
+  // 코스 서버 전송 처리 (POST /api/courses)
   const submitCourse = useCallback(async ({ title }) => {
     setIsLoading(true);
     setError(null);
 
     const storedUser = localStorage.getItem('user');
     const user = storedUser ? JSON.parse(storedUser) : null;
-    const userEmail = user?.email || 'test14@gmail.com'; // 폴백 이메일
-
-    console.log('[useCourse.submitCourse] 백엔드 전송 전 최종 검증:', {
-      title,
-      userEmail,
-      selectedPlaces
-    });
+    const userEmail = user?.email || 'test14@gmail.com';
 
     if (selectedPlaces.length === 0) {
       const errMsg = '선택된 장소가 없습니다. 최소 1개 이상의 장소를 선택해 주세요.';
@@ -85,7 +80,6 @@ export function useCourse() {
     }
 
     try {
-      // 백엔드가 요구하는 형태인 순수한 숫자형 spotIds 배열 추출
       const spotIds = selectedPlaces.map(p => {
         const rawId = String(p.id);
         const onlyNumbers = rawId.replace(/[^0-9]/g, '');
@@ -102,10 +96,8 @@ export function useCourse() {
         headers: { 'Content-Type': 'application/json' },
       });
 
-      console.log('🎯 [useCourse] 코스 생성 성공 서버 응답:', response.data);
-      
-      setSelectedPlaces([]); // 선택 슬롯 초기화
-      await loadCourses();   // 목록 즉시 새로고침
+      setSelectedPlaces([]); 
+      await loadCourses();   
       return true;
     } catch (err) {
       console.error('🔥 [useCourse] 서버 전송 오류 발생:', err);
@@ -116,7 +108,46 @@ export function useCourse() {
     }
   }, [selectedPlaces, loadCourses]);
 
-  // 6. 코스 삭제 (DELETE /api/courses/:id)
+  // 코스 수정
+  const updateCourse = useCallback(async (courseId, { title, places }) => {
+    setIsLoading(true);
+    setError(null);
+
+    const storedUser = localStorage.getItem('user');
+    const user = storedUser ? JSON.parse(storedUser) : null;
+    const userEmail = user?.email;
+
+    try {
+      const spotIds = places.map(p => {
+        const rawId = String(p.id);
+        const onlyNumbers = rawId.replace(/[^0-9]/g, '');
+        return onlyNumbers ? Number(onlyNumbers) : null;
+      }).filter(id => id !== null);
+
+      const requestBody = {
+        title: title,
+        spotIds: spotIds,
+        userEmail: userEmail,
+      };
+
+      const response = await axios.post(`${API_BASE_URL}/courses-update-bypass/${courseId}`, requestBody, {
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      console.log('🎯 [useCourse] 코스 수정 성공:', response.data);
+      
+      await loadCourses();
+      return true;
+    } catch (err) {
+      console.error('🔥 [useCourse] 코스 수정 오류 발생:', err);
+      setError(err.response?.data?.message || '코스 수정 중 오류가 발생했습니다.');
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [loadCourses]);
+
+  // 코스 삭제
   const removeCourse = useCallback(async (courseId) => {
     if (!window.confirm('정말 이 코스를 삭제하시겠습니까?')) return;
 
@@ -134,8 +165,8 @@ export function useCourse() {
       alert(err.response?.data?.message || '삭제 중 오류가 발생했습니다.');
     }
   }, [loadCourses]);
-
-  // 7. 코스 링크 공유
+  
+  // 코스 링크 공유
   const shareCourse = useCallback((courseId) => {
     const shareUrl = `${window.location.origin}/course/share/${courseId}`;
     navigator.clipboard.writeText(shareUrl)
@@ -152,6 +183,7 @@ export function useCourse() {
     removePlace,
     reorderPlaces,
     submitCourse,
+    updateCourse, 
     loadCourses,
     removeCourse,
     shareCourse

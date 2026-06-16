@@ -9,7 +9,14 @@ const Card = styled.div`
   display: flex;
   flex-direction: column;
   gap: 10px;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
   ${({ $recommended }) => $recommended && 'background: linear-gradient(135deg, #fffef5 0%, #fff 100%);'}
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.06);
+  }
 `
 
 const RecommendedBadge = styled.span`
@@ -81,9 +88,9 @@ const Actions = styled.div`
 /**
  * 코스 카드 컴포넌트
  */
-export default function CourseCard({ title, description, places = [], isRecommended, onShare, onDelete }) {
+export default function CourseCard({ title, description, places = [], isRecommended, onShare, onDelete, onClick }) {
   return (
-    <Card $recommended={isRecommended}>
+    <Card $recommended={isRecommended} onClick={onClick}>
       <Header>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
           {isRecommended && <RecommendedBadge>⭐ 추천 코스</RecommendedBadge>}
@@ -104,8 +111,30 @@ export default function CourseCard({ title, description, places = [], isRecommen
       </PlaceList>
 
       <Actions>
-        {onShare && <Button variant="secondary" size="sm" onClick={onShare}>공유</Button>}
-        {onDelete && <Button variant="danger" size="sm" onClick={onDelete}>삭제</Button>}
+        {onShare && (
+          <Button 
+            variant="secondary" 
+            size="sm" 
+            onClick={(e) => {
+              e.stopPropagation(); 
+              onShare();
+            }}
+          >
+            공유
+          </Button>
+        )}
+        {onDelete && (
+          <Button 
+            variant="danger" 
+            size="sm" 
+            onClick={(e) => {
+              e.stopPropagation(); 
+              onDelete();
+            }}
+          >
+            삭제
+          </Button>
+        )}
       </Actions>
     </Card>
   )
