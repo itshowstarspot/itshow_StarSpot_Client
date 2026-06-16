@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import styled from 'styled-components'
 import EmptyState from '../common/EmptyState'
 import { useFavorites } from '../../hooks/useFavorites'
@@ -170,13 +170,20 @@ export default function FavoritesPanel({ idolId, onPlaceClick }) {
   const { favorites, toggleFavorite } = useFavorites()
   const { places } = usePlaces(idolId)
 
-  const favPlaces = filter === '전체선택'
-    ? places
-    : places.filter((p) => favorites.includes(p.id))
+  const favPlaces = useMemo(() => {
+    if (filter === '전체선택') return places;
+    const numericFavorites = favorites.map(Number);
+    return places.filter((p) => numericFavorites.includes(Number(p.id)));
+  }, [places, favorites, filter]);
 
-  const displayed = query
-    ? favPlaces.filter((p) => p.name.includes(query) || p.description?.includes(query))
-    : favPlaces
+  const displayed = useMemo(() => {
+    if (!query.trim()) return favPlaces;
+    const lowerQuery = query.toLowerCase();
+    return favPlaces.filter((p) => 
+      p.name?.toLowerCase().includes(lowerQuery) || 
+      p.address?.toLowerCase().includes(lowerQuery)
+    );
+  }, [favPlaces, query]);
 
   return (
     <Panel>
@@ -214,11 +221,11 @@ export default function FavoritesPanel({ idolId, onPlaceClick }) {
               {place.image && <img src={place.image} alt={place.name} loading="lazy" />}
             </FavImage>
             <FavBody>
-              <FavDesc>{place.description || place.address}</FavDesc>
+              <FavDesc>{place.address}</FavDesc>
               <FavFooter>
                 <FavName>{place.name}</FavName>
                 <StarBtn onClick={(e) => { e.stopPropagation(); toggleFavorite(place.id) }}>
-                  {favorites.includes(place.id) ? '★' : '☆'}
+                  {favorites.map(Number).includes(Number(place.id)) ? '★' : '☆'}
                 </StarBtn>
               </FavFooter>
             </FavBody>
