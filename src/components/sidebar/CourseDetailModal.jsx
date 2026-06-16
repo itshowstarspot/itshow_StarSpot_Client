@@ -289,7 +289,6 @@ export default function CourseDetailModal({
   onClose,
   onSave,
   onDelete,
-  onCourseRoute,
 }) {
   const [title, setTitle] = useState("");
   const [places, setPlaces] = useState([]);
@@ -309,11 +308,9 @@ export default function CourseDetailModal({
 
   if (!course) return null;
 
-  // 로그인한 사용자 이메일
   const storedUser = localStorage.getItem("user");
   const loggedInEmail = storedUser ? JSON.parse(storedUser)?.email : null;
 
-  // 공유 코스 판별: 코스 작성자와 현재 사용자가 다르면 공유 코스
   const isShared = !!(course.userEmail && loggedInEmail && course.userEmail !== loggedInEmail);
 
   const reorder = (from, to) => {
@@ -398,7 +395,6 @@ export default function CourseDetailModal({
                 <PlaceName>{place.name || place.placeName}</PlaceName>
                 <PlaceAddr>{place.address}</PlaceAddr>
               </PlaceInfo>
-              {/* 공유 코스에선 순서 변경 불가 */}
               {!isShared && (
                 <ArrowBtns>
                   <ArrowBtn disabled={i === 0} onClick={() => reorder(i, i - 1)}>▲</ArrowBtn>
@@ -414,26 +410,13 @@ export default function CourseDetailModal({
             <StatusMsg $error={statusMsg.error}>{statusMsg.text}</StatusMsg>
           )}
 
-          {/* 길찾기 — 내 코스 / 공유 코스 모두 표시 */}
-          {places.length >= 2 && onCourseRoute && (
-            <SubmitBtn
-              style={{ background: "#4a9d8f" }}
-              onClick={() => {
-                onCourseRoute(places);
-                handleCloseAndReset();
-              }}
-            >
-              🗺️ 코스 길찾기
-            </SubmitBtn>
-          )}
+          {/* ✂️ 기존 "🗺️ 코스 길찾기" 버튼 컴포넌트 삭제 완료 */}
 
           {isShared ? (
-            /* 공유 코스 전용 버튼 */
             <AddBtn onClick={handleAddToMyCourses} disabled={isAdding}>
               {isAdding ? "추가 중..." : "⭐ 내 코스에 추가하기"}
             </AddBtn>
           ) : (
-            /* 내 코스 전용 버튼 */
             <>
               {course.id && (
                 <ShareBtn onClick={handleShare}>🔗 코스 공유하기</ShareBtn>
