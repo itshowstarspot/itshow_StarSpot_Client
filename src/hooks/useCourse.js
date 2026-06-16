@@ -149,22 +149,26 @@ export function useCourse() {
 
   // 코스 삭제
   const removeCourse = useCallback(async (courseId) => {
-    if (!window.confirm('정말 이 코스를 삭제하시겠습니까?')) return;
+  if (!window.confirm('정말 이 코스를 삭제하시겠습니까?')) return false;
 
-    const storedUser = localStorage.getItem('user');
-    const user = storedUser ? JSON.parse(storedUser) : null;
-    const userEmail = user?.email;
+  const storedUser = localStorage.getItem('user');
+  const user = storedUser ? JSON.parse(storedUser) : null;
+  const userEmail = user?.email;
 
-    try {
-      await axios.delete(`${API_BASE_URL}/courses/${courseId}`, {
-        data: { userEmail },
-      });
-      await loadCourses();
-    } catch (err) {
-      console.error('[useCourse] 코스 삭제 실패:', err);
-      alert(err.response?.data?.message || '삭제 중 오류가 발생했습니다.');
-    }
-  }, [loadCourses]);
+  try {
+    await axios.delete(`${API_BASE_URL}/courses/${courseId}`, {
+      data: { userEmail },
+    });
+
+    setCourses((prev) => prev.filter((course) => course.id !== courseId));
+    
+    return true;
+  } catch (err) {
+    console.error('[useCourse] 코스 삭제 실패:', err);
+    alert(err.response?.data?.message || '삭제 중 오류가 발생했습니다.');
+    return false;
+  }
+}, []);
   
   // 코스 링크 공유
   const shareCourse = useCallback((courseId) => {

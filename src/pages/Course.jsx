@@ -295,7 +295,11 @@ export default function Course({ selectedIdol }) {
                 title={course.title}
                 places={course.places}
                 onShare={() => handleShare(course.id)}
-                onDelete={() => removeCourse(course.id)}
+                onDelete={async () => {
+                  // 카드 자체에서 바로 삭제 누를 때도 즉각 반영되도록 처리
+                  const isDeleted = await removeCourse(course.id);
+                  if (isDeleted) await loadCourses();
+                }}
                 onClick={() => {
                   setSelectedCourse(course);
                   setIsDetailOpen(true);
@@ -375,10 +379,18 @@ export default function Course({ selectedIdol }) {
             setSelectedCourse(null);
           }}
           onSave={handleUpdate} 
-          onDelete={(id) => {
-            removeCourse(id);
-            setIsDetailOpen(false);
-            setSelectedCourse(null);
+          onDelete={async (id) => {
+            // 인자로 넘어오는 id가 없으면 안전하게 selectedCourse.id로 대체
+            const targetId = id || selectedCourse.id;
+            
+            const isDeleted = await removeCourse(targetId); 
+            
+            if (isDeleted) {
+              // 최신 서버 데이터를 명시적으로 다시 불러와 화면 불일치를 완벽히 방지합니다.
+              await loadCourses();
+              setIsDetailOpen(false);
+              setSelectedCourse(null);
+            }
           }}
           onCourseRoute={(places) => {
             console.log("길찾기 장소 리스트:", places);
