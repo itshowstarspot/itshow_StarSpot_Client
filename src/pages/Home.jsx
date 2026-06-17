@@ -288,6 +288,7 @@ export default function Home({ selectedIdol, onIdolChange, skipIdolPrompt }) {
   const handleCourseOpen = useCallback((course) => setSelectedCourse(course), []);
 
   const handleIdolSelect = async (idol) => {
+    if (!idol) { setIsModalOpen(false); return; }
     onIdolChange(idol);
     setIsModalOpen(false);
     const savedUser = localStorage.getItem("user");
@@ -297,11 +298,12 @@ export default function Home({ selectedIdol, onIdolChange, skipIdolPrompt }) {
     userObj.favorite_idol = idol.name;
     localStorage.setItem("user", JSON.stringify(userObj));
     localStorage.setItem("selected_idol", JSON.stringify(idol));
+    localStorage.setItem("starspot.selectedIdol", JSON.stringify(idol));
 
     try {
       const userId = userObj.id || userObj.user_id;
       const userEmail = userObj.email || userObj.user_email;
-      await axios.put(`/api/courses/${updatedCourse.id}/update`, {
+      await axios.put(`/api/users/profile`, {
         userId,
         email: userEmail,
         favorite_idol: idol.name,
