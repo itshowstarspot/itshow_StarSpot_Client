@@ -100,6 +100,8 @@ function createMyLocationEl() {
   return wrap;
 }
 
+const FALLBACK_LOCATION = { lat: 37.4664, lng: 126.9324 };
+
 export default function MapView({
   places = [],
   onPlaceClick,
@@ -124,7 +126,6 @@ export default function MapView({
   const [error, setError] = useState(null);
   const [locating, setLocating] = useState(false);
 
-  // 리렌더링마다 함수가 새로 생성되어 useEffect를 오염시키는 것을 막기 위한 Ref 보관 기법
   const onMapCenterChangeRef = useRef(onMapCenterChange);
   const onMyLocationChangeRef = useRef(onMyLocationChange);
 
@@ -135,19 +136,22 @@ export default function MapView({
 
   /* 지도 초기화 및 위치 추적 */
   useEffect(() => {
-    let watchId = null;
-
+    // 데스크탑 환경이므로 실시간 watchId는 필요 없음
     loadKakaoMapSdk()
       .then(() => {
         if (!containerRef.current || mapRef.current) return;
 
+        // 1. 처음 지도가 켜질 때부터 무조건 학교 중심(FALLBACK_LOCATION)으로 시작!
+        const fallbackPos = new window.kakao.maps.LatLng(FALLBACK_LOCATION.lat, FALLBACK_LOCATION.lng);
+        
         const map = new window.kakao.maps.Map(containerRef.current, {
-          center: new window.kakao.maps.LatLng(37.5665, 126.978),
-          level: 5,
+          center: fallbackPos,
+          level: 4, // 숫자가 작을수록 확대 (학교가 잘 보이게 4 정도로 조정)
         });
         mapRef.current = map;
         setIsReady(true);
 
+        // 지도 움직일 때 부모에게 센터 알리는 이벤트
         window.kakao.maps.event.addListener(map, "idle", () => {
           const center = map.getCenter();
           if (onMapCenterChangeRef.current) {
@@ -158,61 +162,29 @@ export default function MapView({
           }
         });
 
-        if (!navigator.geolocation) return;
+        // 2. 💡 [핵심] GPS를 호출하지 않고, 켜지자마자 학교 위치에 파란색 내 위치 마커를 강제로 꼽습니다.
+        currentPosRef.current = fallbackPos;
 
-        let isCentered = false;
-        let bestAccuracy = Infinity;
+        if (onMyLocationChangeRef.current) {
+          onMyLocationChangeRef.current({ lat: FALLBACK_LOCATION.lat, lng: FALLBACK_LOCATION.lng });
+        }
 
-        watchId = navigator.geolocation.watchPosition(
-          ({ coords }) => {
-            const { latitude, longitude, accuracy } = coords;
+        const el = createMyLocationEl();
+        const overlay = new window.kakao.maps.CustomOverlay({
+          position: fallbackPos,
+          content: el,
+          yAnchor: 0.5,
+          xAnchor: 0.5,
+        });
+        overlay.setMap(map);
+        myLocationRef.current = overlay;
 
-            const threshold = isCentered ? 50 : 200;
-            if (accuracy > threshold) return;
-            if (accuracy > bestAccuracy) return;
-            bestAccuracy = accuracy;
-
-            const pos = new window.kakao.maps.LatLng(latitude, longitude);
-            currentPosRef.current = pos;
-
-            if (onMyLocationChangeRef.current) {
-              onMyLocationChangeRef.current({ lat: latitude, lng: longitude });
-            }
-
-            if (myLocationRef.current) {
-              myLocationRef.current.setPosition(pos);
-            } else {
-              const el = createMyLocationEl();
-              const overlay = new window.kakao.maps.CustomOverlay({
-                position: pos,
-                content: el,
-                yAnchor: 0.5,
-                xAnchor: 0.5,
-              });
-              overlay.setMap(mapRef.current);
-              myLocationRef.current = overlay;
-            }
-
-            if (!isCentered) {
-              mapRef.current.setCenter(pos);
-              isCentered = true;
-            }
-          },
-          (err) => {
-            console.warn(
-              "[MapView] 위치 정보를 가져올 수 없습니다:",
-              err.message,
-            );
-          },
-          { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 },
-        );
       })
       .catch((err) => setError(err.message));
 
-    return () => {
-      if (watchId !== null) navigator.geolocation.clearWatch(watchId);
-    };
-  }, []); // 지도 초기 로드 시 딱 한 번만 바인딩되도록 비워줍니다.
+    // 감시하던 watchId가 없으므로 클린업 함수는 비워둡니다.
+    return () => {};
+  }, []);
 
   /* 장소 핀 마커 */
   useEffect(() => {
@@ -254,25 +226,14 @@ export default function MapView({
         infoEl.appendChild(nameEl);
         if (clickedPlace.address) infoEl.appendChild(addrEl);
         infoEl.appendChild(closeEl);
-        // ⭕ [수정 완료] 다양한 ID 속성을 지원하고, 최종 검증을 거쳐 부모에게 전달합니다.
+        
         infoEl.addEventListener("click", () => {
           if (!clickedPlace) return;
 
-          // 데이터의 고유 ID 값을 다각도로 찾아내기 (id, spotId, _id 등)
-          const finalId =
-            clickedPlace.id ||
-            clickedPlace.spotId ||
-            clickedPlace._id ||
-            clickedPlace.placeId;
-
-          if (finalId && String(finalId) !== "undefined") {
-            onPlaceClick?.(finalId);
+          if (onPlaceClick) {
+            onPlaceClick(clickedPlace); 
           } else {
-            console.error(
-              "❌ 클릭한 장소의 고유 ID를 찾을 수 없습니다. 데이터 구조를 확인하세요:",
-              clickedPlace,
-            );
-            alert("장소 정보가 올바르지 않습니다.");
+            console.warn("부모 컴포넌트에서 장소 클릭 함수(onPlaceClick)를 전달받지 못했습니다.");
           }
         });
 
@@ -305,7 +266,7 @@ export default function MapView({
       places.forEach((p) => {
         if (p.lat && p.lng) bounds.extend(new kakao.LatLng(p.lat, p.lng));
       });
-      map.setBounds(bounds);
+      // map.setBounds(bounds);
     }
   }, [isReady, places, onPlaceClick, routeCoords]);
 
@@ -361,7 +322,7 @@ export default function MapView({
     }
 
     const polyline = new kakao.Polyline({
-      path: polylinePath,
+      path: [startPos, endPos], // 락 차단을 방지하기 위해 기본 심플 트래킹으로 강제 연동
       strokeWeight: 6,
       strokeColor: "#4285F4",
       strokeOpacity: 0.85,
@@ -375,11 +336,13 @@ export default function MapView({
 
   const handleGoToMyLocation = () => {
     if (!mapRef.current) return;
+    
     if (currentPosRef.current) {
       mapRef.current.setCenter(currentPosRef.current);
       mapRef.current.setLevel(3);
       return;
     }
+    
     if (!navigator.geolocation) return;
     setLocating(true);
     navigator.geolocation.getCurrentPosition(
@@ -399,7 +362,10 @@ export default function MapView({
         setLocating(false);
       },
       (err) => {
-        console.warn("[MapView] 위치 가져오기 실패:", err.message);
+        console.log("[MapView] 내 위치 이동 실패: 기본 위치로 대치합니다.", err.message);
+        const fallbackPos = new window.kakao.maps.LatLng(FALLBACK_LOCATION.lat, FALLBACK_LOCATION.lng);
+        mapRef.current.setCenter(fallbackPos);
+        mapRef.current.setLevel(3);
         setLocating(false);
       },
       { enableHighAccuracy: true, timeout: 8000 },

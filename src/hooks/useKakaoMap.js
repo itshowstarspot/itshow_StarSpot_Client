@@ -14,28 +14,33 @@ export const useKakaoMap = ({
     const init = async () => {
       try {
         await loadKakaoMapSdk()
+        if (!containerRef.current || mapRef.current) return
 
-        if (!containerRef.current) return
-
-        // 이미 같은 컨테이너에 맵이 초기화된 경우 재사용
-        if (mapRef.current) {
-          setIsReady(true)
-          return
-        }
-
-        mapRef.current = new window.kakao.maps.Map(containerRef.current, {
+        const mapInstance = new window.kakao.maps.Map(containerRef.current, {
           center: new window.kakao.maps.LatLng(center.lat, center.lng),
           level,
+          clickable: true 
         })
-
+        
+        mapRef.current = mapInstance
         setIsReady(true)
       } catch (err) {
         setError(err.message)
       }
     }
-
     init()
   }, [])
 
-  return { containerRef, mapRef, isReady, error }
+  useEffect(() => {
+    if (!mapRef.current || !window.kakao) return
+    const moveLatLon = new window.kakao.maps.LatLng(center.lat, center.lng)
+    mapRef.current.setCenter(moveLatLon)
+  }, [center.lat, center.lng])
+
+  useEffect(() => {
+    if (!mapRef.current) return
+    mapRef.current.setLevel(level)
+  }, [level])
+
+  return { containerRef, mapRef, map: mapRef.current, isReady, error }
 }

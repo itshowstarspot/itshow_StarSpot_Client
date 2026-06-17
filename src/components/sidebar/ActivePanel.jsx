@@ -38,7 +38,7 @@ export default function ActivePanel({
           onCourseOpen={onCourseOpen}
           idolId={selectedIdol?.id}
           courseVersion={courseVersion || 0}
-        />
+          />
       );
     default:
       return (
