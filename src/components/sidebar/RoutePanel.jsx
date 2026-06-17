@@ -384,7 +384,14 @@ export default function RoutePanel({
     lastCourseRouteId.current = courseRoute.id;
     onCourseRouteClear?.();
 
-    const validPlaces = places.filter((p) => p.latitude && p.longitude).slice(0, 6);
+    const validPlaces = places
+      .filter((p) => (p.latitude || p.lat) && (p.longitude || p.lng))
+      .map((p) => ({
+        ...p,
+        latitude: Number(p.latitude ?? p.lat),
+        longitude: Number(p.longitude ?? p.lng),
+      }))
+      .slice(0, 6);
     if (validPlaces.length < 2) {
       alert("경로를 계산할 좌표 정보가 부족해요.");
       return;
@@ -398,7 +405,7 @@ export default function RoutePanel({
       setStartQuery("📍 내 현재 위치");
       setStartCoord({ lat: originLat, lng: originLng });
       setEndQuery(destination.placeName || destination.name || "도착지");
-      setEndCoord({ lat: Number(destination.latitude), lng: Number(destination.longitude) });
+      setEndCoord({ lat: destination.latitude, lng: destination.longitude });
 
       try {
         const params = {

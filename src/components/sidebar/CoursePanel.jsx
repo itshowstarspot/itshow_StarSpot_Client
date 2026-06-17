@@ -4,6 +4,7 @@ import EmptyState from "../common/EmptyState";
 import LoadingSpinner from "../common/LoadingSpinner";
 import { useCourse } from "../../hooks/useCourse";
 import { usePlaces } from "../../hooks/usePlaces";
+import { fetchRecommendedCourses } from "../../services/courseService";
 
 /* ─── 공통 레이아웃 ─── */
 const Panel = styled.div`
@@ -359,6 +360,30 @@ const ErrorMsg = styled.div`
   margin-bottom: 8px;
 `;
 
+const TabRow = styled.div`
+  display: flex;
+  gap: 0;
+  border-bottom: 2px solid rgba(45, 47, 54, 0.08);
+  margin-bottom: 10px;
+`;
+
+const Tab = styled.button`
+  flex: 1;
+  height: 34px;
+  border: none;
+  background: transparent;
+  font-size: 12px;
+  font-weight: 700;
+  color: ${({ $active }) => ($active ? "#e8b664" : "rgba(45,47,54,0.4)")};
+  border-bottom: 2px solid ${({ $active }) => ($active ? "#e8b664" : "transparent")};
+  margin-bottom: -2px;
+  cursor: pointer;
+  transition: all 0.15s;
+  &:hover {
+    color: #e8b664;
+  }
+`;
+
 const SaveBtn = styled.button`
   width: 100%;
   height: 40px;
@@ -395,16 +420,28 @@ export default function CoursePanel({ onCourseOpen, idolId, courseVersion }) {
   } = useCourse();
   const { places } = usePlaces(idolId);
 
-  const [view, setView] = useState("list"); // 'list' | 'create'
+  const [view, setView] = useState("list"); // 'list' | 'recommend' | 'create'
+  const [tab, setTab] = useState("my"); // 'my' | 'recommend'
   const [title, setTitle] = useState("");
   const [localError, setLocalError] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [recommendedCourses, setRecommendedCourses] = useState([]);
+  const [recLoading, setRecLoading] = useState(false);
 
   useEffect(() => {
     if (typeof loadCourses === "function") {
       loadCourses();
     }
   }, [loadCourses, courseVersion]);
+
+  useEffect(() => {
+    if (tab !== "recommend") return;
+    setRecLoading(true);
+    fetchRecommendedCourses(idolId)
+      .then((data) => setRecommendedCourses(Array.isArray(data) ? data : []))
+      .catch(() => setRecommendedCourses([]))
+      .finally(() => setRecLoading(false));
+  }, [tab, idolId]);
 
   const sortedPlaces = useMemo(() => {
     return (places || []).map((p) => ({
@@ -463,42 +500,41 @@ export default function CoursePanel({ onCourseOpen, idolId, courseVersion }) {
   };
 
   if (view === "list") {
-  let loggedInUser = null;
-  try {
     const storedUser = localStorage.getItem("user");
-    if (storedUser) {
-      const parsed = JSON.parse(storedUser);
-      loggedInUser = parsed?.email || parsed?.userEmail || null;
-    }
-  } catch (e) {
-    console.error("로컬스토리지 유저 파싱 에러:", e);
-  }
+    const loggedInUser = storedUser ? JSON.parse(storedUser)?.email : null;
+
+    const activeCourses = tab === "my" ? courses : recommendedCourses;
+    const activeLoading = tab === "my" ? isLoading : recLoading;
 
     return (
       <Panel>
         <Header>
           <TopRow>
-            <SectionLabel>등록한 코스</SectionLabel>
+            <SectionLabel>코스</SectionLabel>
             <NewBtn onClick={() => setView("create")}>+ 새 코스</NewBtn>
           </TopRow>
+          <TabRow>
+            <Tab $active={tab === "my"} onClick={() => setTab("my")}>내 코스</Tab>
+            <Tab $active={tab === "recommend"} onClick={() => setTab("recommend")}>추천 코스</Tab>
+          </TabRow>
           <Divider />
         </Header>
         <CardList>
-          {isLoading && <LoadingSpinner />}
-          {!isLoading && (!courses || courses.length === 0) && (
-            <EmptyState icon="🗺️" message="아직 만든 코스가 없어요." />
+          {activeLoading && <LoadingSpinner />}
+          {!activeLoading && (!activeCourses || activeCourses.length === 0) && (
+            <EmptyState icon="🗺️" message={tab === "my" ? "아직 만든 코스가 없어요." : "추천 코스가 없어요."} />
           )}
 
-          {!isLoading &&
-            Array.isArray(courses) &&
-            courses.map((course, index) => {
+          {!activeLoading &&
+            activeCourses &&
+            activeCourses.map((course, index) => {
               const courseKey = course.id || `course-idx-${index}`;
 
               const currentPlaces = course.places || course.spots || [];
               const placeCount = currentPlaces ? currentPlaces.length : 0;
 
               const creatorEmail = course.userEmail || course.user_email;
-              const isOwner = creatorEmail === loggedInUser;
+              const isOwner = !course.isRecommended && creatorEmail === loggedInUser;
 
               return (
                 <FolderWrapper key={courseKey}>

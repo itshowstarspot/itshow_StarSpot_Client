@@ -183,9 +183,8 @@ export default function Home({ selectedIdol, onIdolChange, skipIdolPrompt }) {
   }, []);
 
   const [isModalOpen, setIsModalOpen] = useState(() => {
-    const savedIdol = localStorage.getItem("selected_idol");
-    if (savedIdol) return false;
-    if (hasIdolInStorage) return false;
+    if (localStorage.getItem("selected_idol")) return false;
+    if (localStorage.getItem("user")) return false;
     return !skipIdolPrompt;
   });
 
@@ -312,8 +311,10 @@ export default function Home({ selectedIdol, onIdolChange, skipIdolPrompt }) {
     }
   };
 
-  const hasAnyIdol = selectedIdol || localStorage.getItem("selected_idol") || hasIdolInStorage;
-  const shouldOpenIdolModal = hasAnyIdol ? false : isModalOpen;
+  const isLoggedIn = !!localStorage.getItem("user");
+  const hasAnyIdol =
+    selectedIdol || localStorage.getItem("selected_idol") || hasIdolInStorage;
+  const shouldOpenIdolModal = isLoggedIn || hasAnyIdol ? false : isModalOpen;
 
   return (
     <Page>
