@@ -228,12 +228,23 @@ function LoginForm({ onLogin }) {
           loggedInUser.favorite_idol || loggedInUser.favoriteIdol;
 
         if (favoriteName) {
+          const KOREAN_NAMES = {
+            jungkook:   '정국',
+            jimin_bang: '방지민',
+            karina:     '카리나',
+            youngk:     '영케이',
+            leeyoungji: '이영지',
+          };
           const matchedIdol = idols.find(
-            (i) => i.name === favoriteName || i.id === favoriteName,
+            (i) =>
+              i.name === favoriteName ||
+              i.id === favoriteName ||
+              KOREAN_NAMES[i.id] === favoriteName,
           );
 
           if (matchedIdol) {
             localStorage.setItem("selected_idol", JSON.stringify(matchedIdol));
+            localStorage.setItem("starspot.selectedIdol", JSON.stringify(matchedIdol));
           }
         }
 
