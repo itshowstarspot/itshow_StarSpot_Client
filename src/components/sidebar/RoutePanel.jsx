@@ -11,20 +11,32 @@ const PanelWrapper = styled.div`
   overflow: hidden;
 `;
 
+const ScrollableContent = styled.div`
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scroll-behavior: smooth;
+  &::-webkit-scrollbar { width: 4px; }
+  &::-webkit-scrollbar-track { background: transparent; }
+  &::-webkit-scrollbar-thumb {
+    background: rgba(45, 47, 54, 0.15);
+    border-radius: 4px;
+  }
+`;
+
 const SearchHeader = styled.div`
-  padding: 24px 20px 16px 20px;
+  padding: 16px 18px 12px;
   background: #ffffff;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 10px;
   position: relative;
   border-bottom: 1px solid #f1f3f5;
-  flex-shrink: 0;
 `;
 
 const PanelTitle = styled.h3`
-  margin: 0 0 4px 0;
-  font-size: 22px;
+  margin: 0;
+  font-size: 20px;
   font-weight: 700;
   color: #c09d32;
   display: flex;
@@ -39,7 +51,7 @@ const FormContainer = styled.div`
   background: #ffffff;
   border: 2px solid #e8d664;
   border-radius: 12px;
-  padding: 16px 14px;
+  padding: 12px 12px;
   gap: 12px;
   box-shadow: 0 4px 12px rgba(232, 214, 100, 0.1);
 `;
@@ -47,7 +59,7 @@ const FormContainer = styled.div`
 const InputGroupWrapper = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 10px;
   flex: 1;
 `;
 
@@ -103,9 +115,9 @@ const InputWrapper = styled.div`
 
 const StyledInput = styled.input`
   flex: 1;
-  padding: 8px 2px;
+  padding: 6px 2px;
   border: none;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 500;
   color: #1a1a1a;
   outline: none;
@@ -141,7 +153,7 @@ const SwapButton = styled.button`
 
 const SearchButton = styled.button`
   width: 100%;
-  padding: 14px;
+  padding: 11px;
   background: #e8d664;
   color: #ffffff;
   border: none;
@@ -162,11 +174,9 @@ const SearchButton = styled.button`
 `;
 
 const ResultContainer = styled.div`
-  padding: 0 20px 24px 20px;
+  padding: 0 18px 24px;
   display: flex;
   flex-direction: column;
-  overflow-y: auto;
-  flex: 1;
 `;
 
 const SummaryBox = styled.div`
@@ -319,12 +329,85 @@ const SuggestionItem = styled.li`
   }
 `;
 
+const WaypointBlock = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  position: relative;
+`;
+
+const WaypointRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 6px;
+`;
+
+const WaypointLabel = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+`;
+
+const WaypointNum = styled.span`
+  font-size: 12px;
+  font-weight: 700;
+  color: #4a9d8f;
+`;
+
+const RemoveWpBtn = styled.button`
+  background: none;
+  border: none;
+  color: rgba(45, 47, 54, 0.35);
+  font-size: 14px;
+  cursor: pointer;
+  padding: 0 2px;
+  line-height: 1;
+  &:hover { color: #e85050; }
+`;
+
+const WaypointScrollArea = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow-x: visible;
+  padding-right: 2px;
+`;
+
+const AddWaypointBtn = styled.button`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 100%;
+  height: 30px;
+  border: 1.5px dashed rgba(74, 157, 143, 0.4);
+  border-radius: 8px;
+  background: transparent;
+  color: #4a9d8f;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+  &:hover {
+    border-color: #4a9d8f;
+    background: rgba(74, 157, 143, 0.05);
+  }
+  &:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+  }
+`;
+
 const TabButtonGroup = styled.div`
   display: flex;
   gap: 8px;
-  padding: 14px 20px 4px 20px;
+  padding: 10px 18px 8px;
   background: #ffffff;
-  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  border-bottom: 1px solid #f1f3f5;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
 `;
 
 const TabButton = styled.button`
@@ -356,8 +439,9 @@ export default function RoutePanel({
   const [endQuery, setEndQuery] = useState("");
   const [startCoord, setStartCoord] = useState(null);
   const [endCoord, setEndCoord] = useState(null);
+  const [waypoints, setWaypoints] = useState([]); // [{ id, query, coord }]
   const [suggestions, setSuggestions] = useState([]);
-  const [activeField, setActiveField] = useState(null);
+  const [activeField, setActiveField] = useState(null); // 'start' | 'end' | 'wp-{id}'
 
   const [isLoading, setIsLoading] = useState(false);
   const [hasRouteResult, setHasRouteResult] = useState(false);
@@ -398,60 +482,92 @@ export default function RoutePanel({
     }
 
     const destination = validPlaces[validPlaces.length - 1];
-    const waypoints = validPlaces.slice(0, -1);
+    const courseWaypoints = validPlaces.slice(0, -1); // 첫 장소부터 끝 직전까지
+
+    // 경유지 상태에 개별 장소 이름+좌표 미리 채우기
+    const destName = destination.placeName || destination.place_name || destination.name || "도착지";
+    setEndQuery(destName);
+    setEndCoord({ lat: destination.latitude, lng: destination.longitude });
+    setWaypoints(
+      courseWaypoints.map((p, i) => ({
+        id: Date.now() + i,
+        query: p.placeName || p.place_name || p.name || `경유지 ${i + 1}`,
+        coord: { lat: p.latitude, lng: p.longitude },
+      }))
+    );
 
     const doRoute = async (originLat, originLng) => {
       setIsLoading(true);
       setStartQuery("📍 내 현재 위치");
       setStartCoord({ lat: originLat, lng: originLng });
-      setEndQuery(destination.placeName || destination.name || "도착지");
-      setEndCoord({ lat: destination.latitude, lng: destination.longitude });
 
       try {
-        const params = {
-          origin: `${originLng},${originLat}`,
-          destination: `${destination.longitude},${destination.latitude}`,
-          priority: "RECOMMEND",
-        };
-        if (waypoints.length > 0) {
-          params.waypoints = waypoints.map((p) => `${p.longitude},${p.latitude}`).join("|");
-        }
+        let linePath = [];
+        let totalMinutes = 0;
+        let distanceKm = "0";
+        let fareStr = "";
 
-        const res = await axios.get("https://apis-navi.kakaomobility.com/v1/directions", {
-          headers: { Authorization: `KakaoAK ${import.meta.env.VITE_KAKAO_REST_KEY}` },
-          params,
-        });
-
-        const route = res.data.routes?.[0];
-        if (!route) { alert("경로를 찾을 수 없습니다."); return; }
-
-        const linePath = [];
-        route.sections.forEach((section) => {
-          section.roads.forEach((road) => {
-            road.vertexes.forEach((v, i) => {
-              if (i % 2 === 0) linePath.push({ lng: v, lat: road.vertexes[i + 1] });
+        // 카카오 우선 시도
+        try {
+          const params = {
+            origin: `${originLng},${originLat}`,
+            destination: `${destination.longitude},${destination.latitude}`,
+            priority: "RECOMMEND",
+          };
+          if (courseWaypoints.length > 0) {
+            params.waypoints = courseWaypoints.map((p) => `${p.longitude},${p.latitude}`).join("|");
+          }
+          const res = await axios.get("/api/kakao/directions", { params });
+          const route = res.data.routes?.[0];
+          if (!route) throw new Error("카카오 경로 없음");
+          totalMinutes = Math.ceil(route.summary.duration / 60);
+          distanceKm = (route.summary.distance / 1000).toFixed(1);
+          fareStr = `택시비 약 ${(route.summary.fare?.taxi ?? 0).toLocaleString()}원`;
+          route.sections.forEach((section) => {
+            section.roads.forEach((road) => {
+              road.vertexes.forEach((v, i) => {
+                if (i % 2 === 0) linePath.push({ lng: v, lat: road.vertexes[i + 1] });
+              });
             });
           });
-        });
+        } catch (kakaoErr) {
+          console.warn("카카오 코스 경로 실패, T-Map 폴백:", kakaoErr.message);
+          const carBody = {
+            startX: String(originLng), startY: String(originLat),
+            endX: String(destination.longitude), endY: String(destination.latitude),
+          };
+          if (courseWaypoints.length > 0) {
+            carBody.passList = courseWaypoints.map((p) => `${p.longitude},${p.latitude}`).join("_");
+          }
+          const carRes = await axios.post("/api/car/routes", carBody);
+          if (!carRes.data.totalTime) { alert("경로를 찾을 수 없습니다."); return; }
+          totalMinutes = Math.ceil(carRes.data.totalTime / 60);
+          distanceKm = ((carRes.data.totalDistance || 0) / 1000).toFixed(1);
+          fareStr = `택시비 약 ${(carRes.data.totalFare || 0).toLocaleString()}원`;
+          linePath = carRes.data.linePath || [];
+        }
 
-        const totalMinutes = Math.ceil(route.summary.duration / 60);
-        const distanceKm = (route.summary.distance / 1000).toFixed(1);
+        const walkDistKm = parseFloat(
+          Math.sqrt(
+            Math.pow((destination.latitude - originLat) * 111, 2) +
+            Math.pow((destination.longitude - originLng) * 88, 2)
+          ).toFixed(2)
+        );
+        const walkMins = Math.max(1, Math.round(walkDistKm * 15));
 
         setRouteSummary({
           transit: null,
-          car: {
-            totalMinutes,
-            arrivalTimeStr: getArrivalTimeStr(totalMinutes),
-            fareStr: `택시비 약 ${(route.summary.fare?.taxi ?? 0).toLocaleString()}원`,
-            distanceKm,
+          car: { totalMinutes, arrivalTimeStr: getArrivalTimeStr(totalMinutes), fareStr, distanceKm },
+          walk: {
+            totalMinutes: walkMins,
+            arrivalTimeStr: getArrivalTimeStr(walkMins),
+            fareStr: `약 ${Math.round(walkMins * 3.8)} kcal 소모`,
+            distanceKm: walkDistKm,
           },
-          walk: null,
         });
-        
+
         setActiveTab("car");
-        setStartQuery("📍 내 현재 위치");
-        setEndQuery(`코스 (${validPlaces.length}개 장소)`);
-        onRouteSearch({ start: { lat: originLat, lng: originLng }, end: { lat: Number(destination.latitude), lng: Number(destination.longitude) }, path: linePath });
+        onRouteSearch({ start: { lat: originLat, lng: originLng }, end: { lat: destination.latitude, lng: destination.longitude }, path: linePath });
         setHasRouteResult(true);
       } catch (err) {
         console.error("코스 경로 탐색 실패:", err);
@@ -470,11 +586,7 @@ export default function RoutePanel({
     setStartQuery("📍 내 위치 가져오는 중...");
     navigator.geolocation.getCurrentPosition(
       (pos) => doRoute(pos.coords.latitude, pos.coords.longitude),
-      (err) => {
-        setStartQuery("");
-        if (err.code === 1) alert("GPS 권한을 허용해주세요.");
-        else alert("현재 위치를 가져올 수 없어요.");
-      },
+      () => doRoute(37.4794, 126.9536),
       { timeout: 10000, enableHighAccuracy: false, maximumAge: 60000 },
     );
   }, [courseRoute, myLocation]);
@@ -502,10 +614,7 @@ export default function RoutePanel({
         const lat = pos.coords.latitude;
         const lng = pos.coords.longitude;
         try {
-          const addrRes = await axios.get("https://dapi.kakao.com/v2/local/geo/coord2address.json", {
-            headers: { Authorization: `KakaoAK ${import.meta.env.VITE_KAKAO_REST_KEY}` },
-            params: { x: lng, y: lat },
-          });
+          const addrRes = await axios.get("/api/kakao/geo/coord2address", { params: { x: lng, y: lat } });
           const doc = addrRes.data.documents?.[0];
           const name = doc?.road_address?.address_name || doc?.address?.address_name || "내 현재 위치";
           setStartQuery("📍 " + name);
@@ -514,16 +623,18 @@ export default function RoutePanel({
         setStartCoord(targetStart);
         triggerAutoFindRoute(targetStart, targetEnd);
       },
-      (err) => {
-        setStartQuery("");
-        alert("현재 위치를 가져올 수 없어요.");
+      () => {
+        const fallback = { lat: 37.4794, lng: 126.9536 };
+        setStartQuery("📍 미림마이스터고등학교");
+        setStartCoord(fallback);
+        triggerAutoFindRoute(fallback, targetEnd);
       },
       { timeout: 10000, enableHighAccuracy: false, maximumAge: 60000 },
     );
   }, [routeCoords, myLocation]);
 
   // 비동기 경로 데이터 결합 처리
-  const triggerAutoFindRoute = async (start, end) => {
+  const triggerAutoFindRoute = async (start, end, extraWaypoints = []) => {
     if (isLoading) return;
     setIsLoading(true);
 
@@ -548,11 +659,11 @@ export default function RoutePanel({
       const transitData = res.data;
       
       if (transitData && transitData.totalTime) {
-        const totalMinutes = parseInt(transitData.totalTime) || 0;
+        const totalMinutes = Number(transitData.totalTime) || 0;
         masterSummary.transit = {
           totalMinutes,
           arrivalTimeStr: getArrivalTimeStr(totalMinutes),
-          fareStr: transitData.totalFare ? `${transitData.totalFare.toLocaleString()}원` : "비용 미정",
+          fareStr: transitData.totalFare ? `${Number(transitData.totalFare).toLocaleString()}원` : "비용 미정",
           detailPath: transitData.path || [],
         };
       }
@@ -560,70 +671,108 @@ export default function RoutePanel({
       console.error("대중교통 탐색 실패:", err); 
     }
 
-    // 2️⃣ 차량 탐색
+    // 2️⃣ 차량 탐색 (카카오 우선, 실패 시 T-Map 폴백)
+    let carLinePath = [start, end];
     try {
-      const res = await axios.get("https://apis-navi.kakaomobility.com/v1/directions", {
-        headers: { Authorization: `KakaoAK ${import.meta.env.VITE_KAKAO_REST_KEY}` },
-        params: { origin: `${start.lng},${start.lat}`, destination: `${end.lng},${end.lat}`, priority: "RECOMMEND" },
-      });
-      const route = res.data.routes?.[0];
-      if (route) {
-        const totalMinutes = Math.ceil(route.summary.duration / 60);
-        masterSummary.car = {
-          totalMinutes,
-          arrivalTimeStr: getArrivalTimeStr(totalMinutes),
-          fareStr: `택시비 약 ${(route.summary.fare?.taxi ?? 0).toLocaleString()}원`,
-          distanceKm: (route.summary.distance / 1000).toFixed(1),
-        };
+      const carParams = {
+        origin: `${start.lng},${start.lat}`,
+        destination: `${end.lng},${end.lat}`,
+        priority: "RECOMMEND",
+      };
+      if (extraWaypoints.length > 0) {
+        carParams.waypoints = extraWaypoints.map((w) => `${w.coord.lng},${w.coord.lat}`).join("|");
       }
-    } catch (err) { console.error("차량 탐색 실패:", err); }
-
-    // 3️⃣ 도보 탐색
-    const dLat = (end.lat - start.lat) * 111;
-    const dLng = (end.lng - start.lng) * 88;
-    const distanceKm = parseFloat(window.Math.sqrt(dLat * dLat + dLng * dLng).toFixed(1));
-    const totalMinutes = Math.round(distanceKm * 15);
-    if (totalMinutes > 0) {
-      masterSummary.walk = {
+      const res = await axios.get("/api/kakao/directions", { params: carParams });
+      const route = res.data.routes?.[0];
+      if (!route) throw new Error("카카오 경로 없음");
+      const totalMinutes = Math.ceil(route.summary.duration / 60);
+      masterSummary.car = {
         totalMinutes,
         arrivalTimeStr: getArrivalTimeStr(totalMinutes),
-        fareStr: `약 ${Math.round(totalMinutes * 3.8)} kcal 소모`,
-        distanceKm,
+        fareStr: `택시비 약 ${(route.summary.fare?.taxi ?? 0).toLocaleString()}원`,
+        distanceKm: (route.summary.distance / 1000).toFixed(1),
       };
+      const extracted = [];
+      route.sections?.forEach((section) => {
+        section.roads?.forEach((road) => {
+          road.vertexes?.forEach((v, i) => {
+            if (i % 2 === 0) extracted.push({ lng: v, lat: road.vertexes[i + 1] });
+          });
+        });
+      });
+      if (extracted.length > 0) carLinePath = extracted;
+    } catch (kakaoErr) {
+      console.warn("카카오 차량 탐색 실패, T-Map으로 재시도:", kakaoErr.message);
+      try {
+        const carBody = {
+          startX: String(start.lng), startY: String(start.lat),
+          endX: String(end.lng), endY: String(end.lat),
+        };
+        if (extraWaypoints.length > 0) {
+          carBody.passList = extraWaypoints.map((w) => `${w.coord.lng},${w.coord.lat}`).join("_");
+        }
+        const carRes = await axios.post("/api/car/routes", carBody);
+        if (carRes.data.totalTime) {
+          const totalMinutes = Math.ceil(carRes.data.totalTime / 60);
+          masterSummary.car = {
+            totalMinutes,
+            arrivalTimeStr: getArrivalTimeStr(totalMinutes),
+            fareStr: `택시비 약 ${(carRes.data.totalFare || 0).toLocaleString()}원`,
+            distanceKm: ((carRes.data.totalDistance || 0) / 1000).toFixed(1),
+          };
+          if (carRes.data.linePath?.length > 0) carLinePath = carRes.data.linePath;
+        }
+      } catch (tmapErr) { console.error("T-Map 차량 탐색도 실패:", tmapErr); }
     }
 
+    // 3️⃣ 도보 탐색 (항상 표시)
+    const dLat = (end.lat - start.lat) * 111;
+    const dLng = (end.lng - start.lng) * 88;
+    const distanceKm = parseFloat(Math.sqrt(dLat * dLat + dLng * dLng).toFixed(2));
+    const totalMinutes = Math.max(1, Math.round(distanceKm * 15));
+    masterSummary.walk = {
+      totalMinutes,
+      arrivalTimeStr: getArrivalTimeStr(totalMinutes),
+      fareStr: `약 ${Math.round(totalMinutes * 3.8)} kcal 소모`,
+      distanceKm,
+    };
+
     setRouteSummary(masterSummary);
-    
-    // 데이터 유무에 따른 유연한 기본 포커싱 분기 처리
+
     if (!masterSummary.transit && masterSummary.car) {
       setActiveTab("car");
     } else {
       setActiveTab("transit");
     }
 
-    onRouteSearch({ start, end, path: [start, end] });
+    onRouteSearch({ start, end, path: carLinePath });
     setHasRouteResult(true);
     setIsLoading(false);
   };
 
   // 추천 검색어 디바운스
   useEffect(() => {
-    const query = activeField === "start" ? startQuery : endQuery;
+    let query = "";
+    if (activeField === "start") query = startQuery;
+    else if (activeField === "end") query = endQuery;
+    else if (activeField?.startsWith("wp-")) {
+      const id = Number(activeField.replace("wp-", ""));
+      query = waypoints.find((w) => w.id === id)?.query || "";
+    }
     if (!query || query.length < 2 || query.startsWith("📍") || query.startsWith("내 위치")) {
       setSuggestions([]);
       return;
     }
     const delayDebounce = setTimeout(async () => {
       try {
-        const res = await axios.get(`https://dapi.kakao.com/v2/local/search/keyword.json`, {
-          headers: { Authorization: `KakaoAK ${import.meta.env.VITE_KAKAO_REST_KEY}` },
+        const res = await axios.get(`/api/kakao/search/keyword`, {
           params: { query, x: centerLng, y: centerLat, radius: 20000 },
         });
         setSuggestions(res.data.documents || []);
       } catch (err) { console.error(err); }
     }, 200);
     return () => clearTimeout(delayDebounce);
-  }, [startQuery, endQuery, activeField, centerLng, centerLat]);
+  }, [startQuery, endQuery, waypoints, activeField, centerLng, centerLat]);
 
   const handlePickMyLocation = (field) => {
     if (!navigator.geolocation) { alert("이 브라우저는 GPS를 지원하지 않아요."); return; }
@@ -638,20 +787,53 @@ export default function RoutePanel({
         const lat = pos.coords.latitude;
         const lng = pos.coords.longitude;
         try {
-          const addrRes = await axios.get(`https://dapi.kakao.com/v2/local/geo/coord2address.json`, {
-            headers: { Authorization: `KakaoAK ${import.meta.env.VITE_KAKAO_REST_KEY}` },
-            params: { x: lng, y: lat },
-          });
+          const addrRes = await axios.get(`/api/kakao/geo/coord2address`, { params: { x: lng, y: lat } });
           const doc = addrRes.data.documents?.[0];
           const finalName = doc?.road_address?.address_name || doc?.address?.address_name || "내 현재 위치";
           setQuery("📍 " + finalName);
         } catch { setQuery("📍 내 현재 위치"); }
         setCoord({ lat, lng });
       },
-      (err) => {
-        setQuery("");
-        alert("현재 위치를 가져올 수 없어요.");
+      () => {
+        setQuery("📍 미림마이스터고등학교");
+        setCoord({ lat: 37.4794, lng: 126.9536 });
       },
+      { timeout: 10000, enableHighAccuracy: false, maximumAge: 60000 },
+    );
+  };
+
+  // 경유지 추가
+  const addWaypoint = () => {
+    if (waypoints.length >= 5) { alert("경유지는 최대 5개까지 추가할 수 있어요."); return; }
+    setWaypoints((prev) => [...prev, { id: Date.now(), query: "", coord: null }]);
+    setHasRouteResult(false);
+  };
+
+  const removeWaypoint = (id) => {
+    setWaypoints((prev) => prev.filter((w) => w.id !== id));
+    setHasRouteResult(false);
+  };
+
+  const updateWaypointQuery = (id, value) => {
+    setWaypoints((prev) => prev.map((w) => w.id === id ? { ...w, query: value, coord: null } : w));
+    setActiveField(`wp-${id}`);
+    setHasRouteResult(false);
+  };
+
+  const setWaypointCoord = (id, name, coord) => {
+    setWaypoints((prev) => prev.map((w) => w.id === id ? { ...w, query: name, coord } : w));
+  };
+
+  const handlePickMyLocationForWaypoint = (id) => {
+    if (!navigator.geolocation) { alert("이 브라우저는 GPS를 지원하지 않아요."); return; }
+    setWaypoints((prev) => prev.map((w) => w.id === id ? { ...w, query: "📍 위치 가져오는 중...", coord: null } : w));
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        setWaypointCoord(id, "📍 내 현재 위치", { lat, lng });
+      },
+      () => setWaypointCoord(id, "📍 미림마이스터고등학교", { lat: 37.4794, lng: 126.9536 }),
       { timeout: 10000, enableHighAccuracy: false, maximumAge: 60000 },
     );
   };
@@ -666,15 +848,30 @@ export default function RoutePanel({
   const handleSelectPlace = (place) => {
     const coord = { lat: parseFloat(place.y), lng: parseFloat(place.x) };
     setHasRouteResult(false);
-    if (activeField === "start") { setStartQuery(place.place_name); setStartCoord(coord); }
-    else { setEndQuery(place.place_name); setEndCoord(coord); }
+    if (activeField === "start") {
+      setStartQuery(place.place_name); setStartCoord(coord);
+    } else if (activeField === "end") {
+      setEndQuery(place.place_name); setEndCoord(coord);
+    } else if (activeField?.startsWith("wp-")) {
+      const id = Number(activeField.replace("wp-", ""));
+      setWaypointCoord(id, place.place_name, coord);
+    }
     setSuggestions([]);
     setActiveField(null);
   };
 
   const handleFindRoute = async () => {
     if (!startCoord || !endCoord) { alert("출발지와 목적지를 모두 지정해 주세요."); return; }
-    triggerAutoFindRoute(startCoord, endCoord);
+    const unfilledWp = waypoints.find((w) => !w.coord);
+    if (unfilledWp) { alert("경유지 좌표를 목록에서 선택해주세요."); return; }
+    triggerAutoFindRoute(startCoord, endCoord, waypoints.filter((w) => w.coord));
+  };
+
+  const formatDuration = (mins) => {
+    if (mins < 60) return `${mins}분`;
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    return m === 0 ? `${h}시간` : `${h}시간 ${m}분`;
   };
 
   const getArrivalTimeStr = (mins) => {
@@ -732,6 +929,43 @@ export default function RoutePanel({
               )}
             </InputBlock>
 
+            {/* 경유지 목록 + 추가 버튼 — 스크롤 영역 */}
+            <WaypointScrollArea>
+              {waypoints.map((wp, idx) => (
+                <WaypointBlock key={wp.id}>
+                  <WaypointLabel>
+                    <WaypointNum>경유 {idx + 1}</WaypointNum>
+                    <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                      <InlinePickButton onClick={() => handlePickMyLocationForWaypoint(wp.id)} style={{ fontSize: "11px" }}>내위치</InlinePickButton>
+                      <RemoveWpBtn onClick={() => removeWaypoint(wp.id)}>✕</RemoveWpBtn>
+                    </div>
+                  </WaypointLabel>
+                  <InputWrapper>
+                    <StyledInput
+                      placeholder="경유지를 입력하세요"
+                      value={wp.query}
+                      onChange={(e) => updateWaypointQuery(wp.id, e.target.value)}
+                      onFocus={() => { setActiveField(`wp-${wp.id}`); setHasRouteResult(false); }}
+                    />
+                  </InputWrapper>
+                  {activeField === `wp-${wp.id}` && suggestions.length > 0 && (
+                    <SuggestionList>
+                      {suggestions.map((p, i) => (
+                        <SuggestionItem key={i} onClick={() => handleSelectPlace(p)}>
+                          <strong>{p.place_name}</strong>
+                          <span style={{ fontSize: "11px", color: "#888888" }}>{p.address_name}</span>
+                        </SuggestionItem>
+                      ))}
+                    </SuggestionList>
+                  )}
+                </WaypointBlock>
+              ))}
+
+              <AddWaypointBtn onClick={addWaypoint} disabled={waypoints.length >= 5}>
+                + 경유지 추가 {waypoints.length > 0 ? `(${waypoints.length}/5)` : ""}
+              </AddWaypointBtn>
+            </WaypointScrollArea>
+
             <InputBlock>
               <BlockHeader>
                 <NodeBadge>도착</NodeBadge>
@@ -773,21 +1007,26 @@ export default function RoutePanel({
       </SearchHeader>
 
       {hasRouteResult && (
-        <TabButtonGroup>
-          <TabButton $active={activeTab === "transit"} onClick={() => setActiveTab("transit")}>대중교통</TabButton>
-          <TabButton $active={activeTab === "car"} onClick={() => setActiveTab("car")}>자동차</TabButton>
-          <TabButton $active={activeTab === "walk"} onClick={() => setActiveTab("walk")}>도보</TabButton>
-        </TabButtonGroup>
-      )}
-
-      {hasRouteResult && (
-        <ResultContainer>
+        <ScrollableContent>
+          <TabButtonGroup>
+            <TabButton $active={activeTab === "transit"} onClick={() => setActiveTab("transit")}>대중교통</TabButton>
+            <TabButton $active={activeTab === "car"} onClick={() => setActiveTab("car")}>자동차</TabButton>
+            <TabButton $active={activeTab === "walk"} onClick={() => setActiveTab("walk")}>도보</TabButton>
+          </TabButtonGroup>
+          <ResultContainer>
           {/* 1️⃣ 대중교통 전용 타임라인 */}
+          {activeTab === "transit" && !routeSummary.transit && (
+            <div style={{ padding: "24px 0", textAlign: "center", color: "#aaa", fontSize: "14px" }}>
+              <div style={{ fontSize: "32px", marginBottom: "8px" }}>🚌</div>
+              <div>대중교통 경로를 찾을 수 없습니다</div>
+              <div style={{ fontSize: "12px", marginTop: "4px", color: "#ccc" }}>자동차 또는 도보 탭을 이용해주세요</div>
+            </div>
+          )}
           {activeTab === "transit" && routeSummary.transit && (
             <div>
               <SummaryBox>
                 <MainTimeInfo>
-                  <span className="accent-time">추천 {routeSummary.transit.totalMinutes}분</span>
+                  <span className="accent-time">추천 {formatDuration(routeSummary.transit.totalMinutes)}</span>
                   <span className="arrival-time">{routeSummary.transit.arrivalTimeStr}</span>
                   <span className="fee">{routeSummary.transit.fareStr} (교통비)</span>
                 </MainTimeInfo>
@@ -839,7 +1078,7 @@ export default function RoutePanel({
             <div>
               <SummaryBox>
                 <MainTimeInfo>
-                  <span className="accent-time" style={{ color: '#fd7e14' }}>내비 {routeSummary.car.totalMinutes}분</span>
+                  <span className="accent-time" style={{ color: '#fd7e14' }}>내비 {formatDuration(routeSummary.car.totalMinutes)}</span>
                   <span className="arrival-time">{routeSummary.car.arrivalTimeStr}</span>
                   <span className="fee">{routeSummary.car.distanceKm} km</span>
                 </MainTimeInfo>
@@ -877,7 +1116,7 @@ export default function RoutePanel({
             <div>
               <SummaryBox>
                 <MainTimeInfo>
-                  <span className="accent-time" style={{ color: '#40c057' }}>도보 {routeSummary.walk.totalMinutes}분</span>
+                  <span className="accent-time" style={{ color: '#40c057' }}>도보 {formatDuration(routeSummary.walk.totalMinutes)}</span>
                   <span className="arrival-time">{routeSummary.walk.arrivalTimeStr}</span>
                   <span className="fee">{routeSummary.walk.distanceKm} km</span>
                 </MainTimeInfo>
@@ -909,7 +1148,8 @@ export default function RoutePanel({
               </TimelineContainer>
             </div>
           )}
-        </ResultContainer>
+          </ResultContainer>
+        </ScrollableContent>
       )}
     </PanelWrapper>
   );

@@ -44,36 +44,43 @@ function loadImage(src) {
   });
 }
 
+const NEW_FRAMES = ["_4.", "_5.", "_6."];
+const isNewFrame = (src) => NEW_FRAMES.some((s) => src?.includes(s));
+
 function getFrameAdjustment(frameSrc) {
   if (frameSrc?.includes("frame_karina_1")) {
-    return {
-      scale: 1,
-      xOffset: -KARINA_ONE_FRAME_LEFT_OFFSET,
-    };
+    return { scale: 1, xOffset: -KARINA_ONE_FRAME_LEFT_OFFSET };
+  }
+
+  if (isNewFrame(frameSrc) && frameSrc?.includes("frame_karina_")) {
+    return { scale: 2.5, xOffset: -KARINA_ONE_FRAME_LEFT_OFFSET };
+  }
+
+  if (isNewFrame(frameSrc) && frameSrc?.includes("frame_youngk_")) {
+    return { scale: 2.5, xOffset: -YOUNGK_FRAME_LEFT_OFFSET };
   }
 
   if (frameSrc?.includes("frame_youngk_")) {
-    return {
-      scale: YOUNGK_FRAME_SCALE,
-      xOffset: -YOUNGK_FRAME_LEFT_OFFSET,
-    };
+    return { scale: YOUNGK_FRAME_SCALE, xOffset: -YOUNGK_FRAME_LEFT_OFFSET };
   }
 
   if (frameSrc?.includes("frame_jungkook_")) {
-    return {
-      scale: 1,
-      xOffset: -JUNGKOOK_FRAME_LEFT_OFFSET,
-    };
+    return { scale: 2.5, xOffset: -JUNGKOOK_FRAME_LEFT_OFFSET };
+  }
+
+  if (isNewFrame(frameSrc) && frameSrc?.includes("frame_youngji_")) {
+    return { scale: 2.5, xOffset: -YOUNGJI_FRAME_LEFT_OFFSET };
   }
 
   if (
     frameSrc?.includes("frame_youngji_1") ||
     frameSrc?.includes("frame_youngji_2")
   ) {
-    return {
-      scale: 1,
-      xOffset: -YOUNGJI_FRAME_LEFT_OFFSET,
-    };
+    return { scale: 1, xOffset: -YOUNGJI_FRAME_LEFT_OFFSET };
+  }
+
+  if (isNewFrame(frameSrc) && frameSrc?.includes("frame_jeemin_")) {
+    return { scale: 2.5, xOffset: -JEEMIN_FRAME_LEFT_OFFSET };
   }
 
   if (
@@ -90,10 +97,7 @@ function getFrameAdjustment(frameSrc) {
   }
 
   if (frameSrc?.includes("frame_jeemin_")) {
-    return {
-      scale: JEEMIN_FRAME_SCALE,
-      xOffset: -JEEMIN_FRAME_LEFT_OFFSET,
-    };
+    return { scale: JEEMIN_FRAME_SCALE, xOffset: -JEEMIN_FRAME_LEFT_OFFSET };
   }
 
   return { scale: 1, xOffset: 0 };
@@ -241,11 +245,23 @@ export default function Photo({ selectedIdol }) {
         canvas.height = video.videoHeight || 540;
       }
 
-      // 좌우 반전 (셀카 모드)
+      // 좌우 반전 (셀카 모드) — 비율 유지 cover 크롭
+      const vw = video.videoWidth;
+      const vh = video.videoHeight;
+      const cw = canvas.width;
+      const ch = canvas.height;
+      const videoRatio = vw / vh;
+      const canvasRatio = cw / ch;
+      let sx, sy, sw, sh;
+      if (videoRatio > canvasRatio) {
+        sh = vh; sw = vh * canvasRatio; sx = (vw - sw) / 2; sy = 0;
+      } else {
+        sw = vw; sh = vw / canvasRatio; sx = 0; sy = (vh - sh) / 2;
+      }
       ctx.save();
       ctx.translate(canvas.width, 0);
       ctx.scale(-1, 1);
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      ctx.drawImage(video, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
       ctx.restore();
 
       animationRef.current = requestAnimationFrame(renderFrame);
@@ -270,11 +286,27 @@ export default function Photo({ selectedIdol }) {
       canvas.height = OUTPUT_HEIGHT;
       const ctx = canvas.getContext("2d");
 
-      // 카메라 (미러 반전 해제)
+      // 카메라 (미러 반전 해제) — 비율 유지 cover 크롭
+      const vw = video.videoWidth || OUTPUT_WIDTH;
+      const vh = video.videoHeight || OUTPUT_HEIGHT;
+      const videoRatio = vw / vh;
+      const canvasRatio = OUTPUT_WIDTH / OUTPUT_HEIGHT;
+      let sx, sy, sw, sh;
+      if (videoRatio > canvasRatio) {
+        sh = vh;
+        sw = vh * canvasRatio;
+        sx = (vw - sw) / 2;
+        sy = 0;
+      } else {
+        sw = vw;
+        sh = vw / canvasRatio;
+        sx = 0;
+        sy = (vh - sh) / 2;
+      }
       ctx.save();
       ctx.translate(OUTPUT_WIDTH, 0);
       ctx.scale(-1, 1);
-      ctx.drawImage(video, 0, 0, OUTPUT_WIDTH, OUTPUT_HEIGHT);
+      ctx.drawImage(video, sx, sy, sw, sh, 0, 0, OUTPUT_WIDTH, OUTPUT_HEIGHT);
       ctx.restore();
 
       // 프레임 오버레이
@@ -367,11 +399,11 @@ export default function Photo({ selectedIdol }) {
               frameSrc.includes("frame_youngji_2")
                 ? "is-youngji-shift"
                 : "",
-              frameSrc.includes("frame_jungkook_") ? "is-jungkook-shift" : "",
-              frameSrc.includes("frame_youngk_") ? "is-youngk-shift" : "",
+              NEW_FRAMES.some((s) => frameSrc.includes(s)) ? "is-new-frame-large" : "",
+              frameSrc.includes("frame_jungkook_") ? "is-jungkook-large" : "",
+              frameSrc.includes("frame_youngk_") && !NEW_FRAMES.some((s) => frameSrc.includes(s)) ? "is-youngk-shift" : "",
               frameSrc.includes("frame_karina_1") ? "is-karina-one" : "",
-              frameSrc.includes("frame_karina_2") ||
-              frameSrc.includes("frame_karina_3")
+              (frameSrc.includes("frame_karina_2") || frameSrc.includes("frame_karina_3")) && !NEW_FRAMES.some((s) => frameSrc.includes(s))
                 ? "is-karina-wide"
                 : "",
             ]

@@ -93,6 +93,15 @@
   right: 0.5208%;
 }
 
+.photo-frame-overlay.is-jungkook-large {
+  width: 130%;
+  right: 0.5208%;
+}
+
+.photo-frame-overlay.is-new-frame-large {
+  width: 130%;
+}
+
 .photo-frame-overlay.is-youngk-shift {
   right: -2.0833%;
 }

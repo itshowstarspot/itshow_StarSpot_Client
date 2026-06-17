@@ -184,8 +184,10 @@ export default function Home({ selectedIdol, onIdolChange, skipIdolPrompt }) {
 
   const [isModalOpen, setIsModalOpen] = useState(() => {
     if (localStorage.getItem("selected_idol")) return false;
-    if (hasIdolInStorage) return false;
-    return !skipIdolPrompt;
+    const userStr = localStorage.getItem("user");
+    if (!userStr) return !skipIdolPrompt;
+    try { const u = JSON.parse(userStr); if (u.favorite_idol || u.favoriteIdol) return false; } catch {}
+    return true;
   });
 
   const currentUserEmail = useMemo(() => {

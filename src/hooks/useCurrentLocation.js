@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 
-const DEFAULT_LOCATION = { lat: 37.5665, lng: 126.978 }
+const DEFAULT_LOCATION = { lat: 37.4794, lng: 126.9536 } // 미림마이스터고
 
 /**
  * 사용자의 현재 위치를 가져오는 커스텀 훅
