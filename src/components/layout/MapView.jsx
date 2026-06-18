@@ -158,6 +158,22 @@ export default function MapView({
           }
         });
 
+        // 미림마이스터고를 내 위치로 고정 표시
+        const mirimPos = new window.kakao.maps.LatLng(37.4665, 126.9329);
+        currentPosRef.current = mirimPos;
+        if (onMyLocationChangeRef.current) {
+          onMyLocationChangeRef.current({ lat: 37.4665, lng: 126.9329 });
+        }
+        const mirimEl = createMyLocationEl();
+        const mirimOverlay = new window.kakao.maps.CustomOverlay({
+          position: mirimPos,
+          content: mirimEl,
+          yAnchor: 0.5,
+          xAnchor: 0.5,
+        });
+        mirimOverlay.setMap(map);
+        myLocationRef.current = mirimOverlay;
+
         if (!navigator.geolocation) return;
 
         let isCentered = false;
