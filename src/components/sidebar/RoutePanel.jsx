@@ -463,12 +463,12 @@ export default function RoutePanel({
   const [activeTab, setActiveTab] = useState("transit");
 
   const isIslandRoute = isIsland(startCoord) || isIsland(endCoord);
+  const hideWalkTab = isIslandRoute || parseFloat(routeSummary.walk?.distanceKm ?? 0) >= 50;
 
   useEffect(() => {
-    if (isIslandRoute && (activeTab === "car" || activeTab === "walk")) {
-      setActiveTab("transit");
-    }
-  }, [isIslandRoute, activeTab]);
+    if (isIslandRoute && activeTab === "car") setActiveTab("transit");
+    if (hideWalkTab && activeTab === "walk") setActiveTab("transit");
+  }, [isIslandRoute, hideWalkTab, activeTab]);
 
   const [routeSummary, setRouteSummary] = useState({
     transit: null,
@@ -1036,7 +1036,7 @@ export default function RoutePanel({
             {!isIslandRoute && (
               <TabButton $active={activeTab === "car"} onClick={() => setActiveTab("car")}>자동차</TabButton>
             )}
-            {!isIslandRoute && (
+            {!hideWalkTab && (
               <TabButton $active={activeTab === "walk"} onClick={() => setActiveTab("walk")}>도보</TabButton>
             )}
           </TabButtonGroup>
