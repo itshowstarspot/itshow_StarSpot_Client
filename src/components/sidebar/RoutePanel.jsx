@@ -462,6 +462,12 @@ export default function RoutePanel({
   const [hasRouteResult, setHasRouteResult] = useState(false);
   const [activeTab, setActiveTab] = useState("transit");
 
+  const [routeSummary, setRouteSummary] = useState({
+    transit: null,
+    car: null,
+    walk: null,
+  });
+
   const isIslandRoute = isIsland(startCoord) || isIsland(endCoord);
   const hideWalkTab = isIslandRoute || parseFloat(routeSummary.walk?.distanceKm ?? 0) >= 50;
 
@@ -469,12 +475,6 @@ export default function RoutePanel({
     if (isIslandRoute && activeTab === "car") setActiveTab("transit");
     if (hideWalkTab && activeTab === "walk") setActiveTab("transit");
   }, [isIslandRoute, hideWalkTab, activeTab]);
-
-  const [routeSummary, setRouteSummary] = useState({
-    transit: null,
-    car: null,
-    walk: null,
-  });
 
   const lastProcessedTriggerId = useRef(null);
   const lastCourseRouteId = useRef(null);
