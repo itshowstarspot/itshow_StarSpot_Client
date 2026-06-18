@@ -427,6 +427,21 @@ const TabButton = styled.button`
   }
 `;
 
+const ISLANDS = [
+  { lat: 33.55, lng: 126.55, dLat: 0.5, dLng: 0.6 },  // 제주도
+  { lat: 37.5,  lng: 130.87, dLat: 0.15, dLng: 0.2 }, // 울릉도
+  { lat: 37.24, lng: 131.87, dLat: 0.1,  dLng: 0.1 }, // 독도
+];
+
+function isIsland(coord) {
+  if (!coord) return false;
+  return ISLANDS.some(
+    (island) =>
+      Math.abs(coord.lat - island.lat) < island.dLat &&
+      Math.abs(coord.lng - island.lng) < island.dLng,
+  );
+}
+
 export default function RoutePanel({
   onRouteSearch,
   mapCenter,
@@ -445,7 +460,15 @@ export default function RoutePanel({
 
   const [isLoading, setIsLoading] = useState(false);
   const [hasRouteResult, setHasRouteResult] = useState(false);
-  const [activeTab, setActiveTab] = useState("transit"); 
+  const [activeTab, setActiveTab] = useState("transit");
+
+  const isIslandRoute = isIsland(startCoord) || isIsland(endCoord);
+
+  useEffect(() => {
+    if (isIslandRoute && (activeTab === "car" || activeTab === "walk")) {
+      setActiveTab("transit");
+    }
+  }, [isIslandRoute, activeTab]);
 
   const [routeSummary, setRouteSummary] = useState({
     transit: null,
@@ -1010,8 +1033,12 @@ export default function RoutePanel({
         <ScrollableContent>
           <TabButtonGroup>
             <TabButton $active={activeTab === "transit"} onClick={() => setActiveTab("transit")}>대중교통</TabButton>
-            <TabButton $active={activeTab === "car"} onClick={() => setActiveTab("car")}>자동차</TabButton>
-            <TabButton $active={activeTab === "walk"} onClick={() => setActiveTab("walk")}>도보</TabButton>
+            {!isIslandRoute && (
+              <TabButton $active={activeTab === "car"} onClick={() => setActiveTab("car")}>자동차</TabButton>
+            )}
+            {!isIslandRoute && (
+              <TabButton $active={activeTab === "walk"} onClick={() => setActiveTab("walk")}>도보</TabButton>
+            )}
           </TabButtonGroup>
           <ResultContainer>
           {/* 1️⃣ 대중교통 전용 타임라인 */}
