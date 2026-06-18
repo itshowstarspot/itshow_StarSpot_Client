@@ -6,22 +6,12 @@ import { getPhotoFrameSrc } from "../utils/photoFrames";
 import { SESSION_KEY_REVIEW_PLACE } from "../constants/storageKeys";
 
 const MAX_SHOTS = 5;
-const COUNTDOWN_SECONDS = 5;
+const COUNTDOWN_SECONDS = 3;
 const OUTPUT_WIDTH = 1920;
 const OUTPUT_HEIGHT = 1080;
 const FRAME_BOX_WIDTH = 1032;
 const FRAME_BOX_HEIGHT = 1080;
 const FRAME_RIGHT_OFFSET = 90;
-const KARINA_ONE_FRAME_LEFT_OFFSET = 30;
-const KARINA_WIDE_FRAME_SCALE = 1;
-const JEEMIN_FRAME_SCALE = 0.9;
-const JEEMIN_SMALL_FRAME_SCALE = 0.8;
-const JEEMIN_FRAME_LEFT_OFFSET = 70;
-const JEEMIN_ONE_EXTRA_LEFT_OFFSET = 30;
-const YOUNGJI_FRAME_LEFT_OFFSET = 50;
-const JUNGKOOK_FRAME_LEFT_OFFSET = 100;
-const YOUNGK_FRAME_LEFT_OFFSET = 50;
-const YOUNGK_FRAME_SCALE = 1;
 
 function StarIcon({ filled }) {
   return (
@@ -44,102 +34,12 @@ function loadImage(src) {
   });
 }
 
-const NEW_FRAMES = ["_4.", "_5.", "_6."];
-const isNewFrame = (src) => NEW_FRAMES.some((s) => src?.includes(s));
-
-function getFrameAdjustment(frameSrc) {
-  if (frameSrc?.includes("frame_karina_1")) {
-    return { scale: 1, xOffset: -KARINA_ONE_FRAME_LEFT_OFFSET };
-  }
-
-  if (isNewFrame(frameSrc) && frameSrc?.includes("frame_karina_")) {
-    return { scale: 2.5, xOffset: -KARINA_ONE_FRAME_LEFT_OFFSET };
-  }
-
-  if (isNewFrame(frameSrc) && frameSrc?.includes("frame_youngk_")) {
-    return { scale: 2.5, xOffset: -YOUNGK_FRAME_LEFT_OFFSET };
-  }
-
-  if (frameSrc?.includes("frame_youngk_")) {
-    return { scale: YOUNGK_FRAME_SCALE, xOffset: -YOUNGK_FRAME_LEFT_OFFSET };
-  }
-
-  if (frameSrc?.includes("frame_jungkook_")) {
-    return { scale: 2.5, xOffset: -JUNGKOOK_FRAME_LEFT_OFFSET };
-  }
-
-  if (isNewFrame(frameSrc) && frameSrc?.includes("frame_youngji_")) {
-    return { scale: 2.5, xOffset: -YOUNGJI_FRAME_LEFT_OFFSET };
-  }
-
-  if (
-    frameSrc?.includes("frame_youngji_1") ||
-    frameSrc?.includes("frame_youngji_2")
-  ) {
-    return { scale: 1, xOffset: -YOUNGJI_FRAME_LEFT_OFFSET };
-  }
-
-  if (isNewFrame(frameSrc) && frameSrc?.includes("frame_jeemin_")) {
-    return { scale: 2.5, xOffset: -JEEMIN_FRAME_LEFT_OFFSET };
-  }
-
-  if (
-    frameSrc?.includes("frame_jeemin_1") ||
-    frameSrc?.includes("frame_jeemin_3")
-  ) {
-    return {
-      scale: JEEMIN_SMALL_FRAME_SCALE,
-      xOffset: -(
-        JEEMIN_FRAME_LEFT_OFFSET +
-        (frameSrc.includes("frame_jeemin_1") ? JEEMIN_ONE_EXTRA_LEFT_OFFSET : 0)
-      ),
-    };
-  }
-
-  if (frameSrc?.includes("frame_jeemin_")) {
-    return { scale: JEEMIN_FRAME_SCALE, xOffset: -JEEMIN_FRAME_LEFT_OFFSET };
-  }
-
-  return { scale: 1, xOffset: 0 };
-}
-
-function drawFrameOverlay(ctx, frameImg, frameSrc) {
-  if (
-    frameSrc?.includes("frame_karina_2") ||
-    frameSrc?.includes("frame_karina_3")
-  ) {
-    const height = OUTPUT_HEIGHT * KARINA_WIDE_FRAME_SCALE;
-    const width = height * (frameImg.naturalWidth / frameImg.naturalHeight);
-    const x = OUTPUT_WIDTH - width + FRAME_RIGHT_OFFSET;
-    const y = OUTPUT_HEIGHT - height;
-
-    ctx.drawImage(frameImg, x, y, width, height);
-    return;
-  }
-
-  const sourceWidth = frameImg.naturalWidth;
-  const sourceHeight = frameImg.naturalHeight;
-  const sourceRatio = sourceWidth / sourceHeight;
-  const targetRatio = FRAME_BOX_WIDTH / FRAME_BOX_HEIGHT;
-  const { scale, xOffset } = getFrameAdjustment(frameSrc);
-
-  let drawWidth = FRAME_BOX_WIDTH;
-  let drawHeight = FRAME_BOX_HEIGHT;
-
-  if (sourceRatio > targetRatio) {
-    drawHeight = FRAME_BOX_WIDTH / sourceRatio;
-  } else {
-    drawWidth = FRAME_BOX_HEIGHT * sourceRatio;
-  }
-
-  drawWidth *= scale;
-  drawHeight *= scale;
-
-  const boxX = OUTPUT_WIDTH - FRAME_BOX_WIDTH + FRAME_RIGHT_OFFSET + xOffset;
-  const boxY = OUTPUT_HEIGHT - FRAME_BOX_HEIGHT;
-  const drawX = boxX + FRAME_BOX_WIDTH - drawWidth;
-  const drawY = boxY + FRAME_BOX_HEIGHT - drawHeight;
-
+function drawFrameOverlay(ctx, frameImg) {
+  const sourceRatio = frameImg.naturalWidth / frameImg.naturalHeight;
+  const drawHeight = OUTPUT_HEIGHT;
+  const drawWidth = drawHeight * sourceRatio;
+  const drawX = OUTPUT_WIDTH - drawWidth;
+  const drawY = 0;
   ctx.drawImage(frameImg, drawX, drawY, drawWidth, drawHeight);
 }
 
@@ -311,7 +211,7 @@ export default function Photo({ selectedIdol }) {
 
       // 프레임 오버레이
       if (frameImgRef.current) {
-        drawFrameOverlay(ctx, frameImgRef.current, frameSrc);
+        drawFrameOverlay(ctx, frameImgRef.current);
       }
 
       const imageData = canvas.toDataURL("image/jpeg", 0.88);
@@ -387,28 +287,7 @@ export default function Photo({ selectedIdol }) {
         {/* 프레임 오버레이 */}
         {frameSrc && (
           <img
-            className={[
-              "photo-frame-overlay",
-              frameSrc.includes("frame_jeemin_") ? "is-jeemin" : "",
-              frameSrc.includes("frame_jeemin_1") ||
-              frameSrc.includes("frame_jeemin_3")
-                ? "is-jeemin-small"
-                : "",
-              frameSrc.includes("frame_jeemin_1") ? "is-jeemin-one" : "",
-              frameSrc.includes("frame_youngji_1") ||
-              frameSrc.includes("frame_youngji_2")
-                ? "is-youngji-shift"
-                : "",
-              NEW_FRAMES.some((s) => frameSrc.includes(s)) ? "is-new-frame-large" : "",
-              frameSrc.includes("frame_jungkook_") ? "is-jungkook-large" : "",
-              frameSrc.includes("frame_youngk_") && !NEW_FRAMES.some((s) => frameSrc.includes(s)) ? "is-youngk-shift" : "",
-              frameSrc.includes("frame_karina_1") ? "is-karina-one" : "",
-              (frameSrc.includes("frame_karina_2") || frameSrc.includes("frame_karina_3")) && !NEW_FRAMES.some((s) => frameSrc.includes(s))
-                ? "is-karina-wide"
-                : "",
-            ]
-              .filter(Boolean)
-              .join(" ")}
+            className="photo-frame-overlay"
             src={frameSrc}
             alt=""
           />

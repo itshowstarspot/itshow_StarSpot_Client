@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
 import "./PhotoSelect.css";
 import MapView from "../components/layout/MapView";
@@ -32,6 +32,8 @@ function StarIcon() {
 
 export default function PhotoSelect({ selectedIdol }) {
   const navigate = useNavigate();
+  const location = useLocation();
+  const routeSpotId = location.state?.spotId;
   const [activeNav, setActiveNav] = useState("search");
   const [capturedPhotos] = useState(readCapturedPhotos);
   const [selectedId, setSelectedId] = useState(null);
@@ -41,9 +43,9 @@ export default function PhotoSelect({ selectedIdol }) {
   // ── reviewFlow: 리뷰용 사진 선택 모드 상태 관리 ──
   const [reviewFlow] = useState(() => {
     try {
-      return !!sessionStorage.getItem(SESSION_KEY_REVIEW_PLACE);
+      return !!(sessionStorage.getItem(SESSION_KEY_REVIEW_PLACE) || routeSpotId);
     } catch {
-      return false;
+      return !!routeSpotId;
     }
   });
 
@@ -51,9 +53,9 @@ export default function PhotoSelect({ selectedIdol }) {
     try {
       const saved = sessionStorage.getItem(SESSION_KEY_REVIEW_PLACE);
       if (saved) sessionStorage.removeItem(SESSION_KEY_REVIEW_PLACE);
-      return saved || null;
+      return saved || routeSpotId || null;
     } catch {
-      return null;
+      return routeSpotId || null;
     }
   });
 
@@ -233,7 +235,7 @@ export default function PhotoSelect({ selectedIdol }) {
             className="photo-modal-close"
             type="button"
             aria-label="닫기"
-            onClick={() => setIsModalOpen(false)}
+            onClick={() => { clearCapturedPhotos(); navigate("/home"); }}
           >
             <CloseIcon />
           </button>
