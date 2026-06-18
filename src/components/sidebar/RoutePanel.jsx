@@ -450,9 +450,9 @@ export default function RoutePanel({
   courseRoute,
   onCourseRouteClear,
 }) {
-  const [startQuery, setStartQuery] = useState("");
+  const [startQuery, setStartQuery] = useState("미림마이스터고등학교");
   const [endQuery, setEndQuery] = useState("");
-  const [startCoord, setStartCoord] = useState(null);
+  const [startCoord, setStartCoord] = useState({ lat: 37.4866, lng: 127.0171 });
   const [endCoord, setEndCoord] = useState(null);
   const [waypoints, setWaypoints] = useState([]); // [{ id, query, coord }]
   const [suggestions, setSuggestions] = useState([]);
