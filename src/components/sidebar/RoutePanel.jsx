@@ -450,11 +450,9 @@ export default function RoutePanel({
   courseRoute,
   onCourseRouteClear,
 }) {
-  const MIRIM = { lat: 37.4786, lng: 126.9520 };
-
-  const [startQuery, setStartQuery] = useState("📍 내 현재 위치");
+  const [startQuery, setStartQuery] = useState("");
   const [endQuery, setEndQuery] = useState("");
-  const [startCoord, setStartCoord] = useState(MIRIM);
+  const [startCoord, setStartCoord] = useState(null);
   const [endCoord, setEndCoord] = useState(null);
   const [waypoints, setWaypoints] = useState([]); // [{ id, query, coord }]
   const [suggestions, setSuggestions] = useState([]);
@@ -477,12 +475,6 @@ export default function RoutePanel({
     if (isIslandRoute && activeTab === "car") setActiveTab("transit");
     if (hideWalkTab && activeTab === "walk") setActiveTab("transit");
   }, [isIslandRoute, hideWalkTab, activeTab]);
-
-  // 마운트 시 미림마이스터고 마커 표시
-  useEffect(() => {
-    onRouteSearch({ start: MIRIM });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const lastProcessedTriggerId = useRef(null);
   const lastCourseRouteId = useRef(null);
@@ -608,9 +600,18 @@ export default function RoutePanel({
       }
     };
 
-    setStartQuery("📍 내 현재 위치");
-    setStartCoord(MIRIM);
-    doRoute(MIRIM.lat, MIRIM.lng);
+    if (myLocation?.lat && myLocation?.lng) {
+      doRoute(myLocation.lat, myLocation.lng);
+      return;
+    }
+
+    if (!navigator.geolocation) { alert("이 브라우저는 GPS를 지원하지 않아요."); return; }
+    setStartQuery("📍 내 위치 가져오는 중...");
+    navigator.geolocation.getCurrentPosition(
+      (pos) => doRoute(pos.coords.latitude, pos.coords.longitude),
+      () => doRoute(37.4665, 126.9329),
+      { timeout: 10000, enableHighAccuracy: false, maximumAge: 60000 },
+    );
   }, [courseRoute, myLocation]);
 
   useEffect(() => {
@@ -621,9 +622,38 @@ export default function RoutePanel({
     setEndQuery(routeCoords.name);
     setEndCoord(targetEnd);
 
-    setStartQuery("📍 내 현재 위치");
-    setStartCoord(MIRIM);
-    triggerAutoFindRoute(MIRIM, targetEnd);
+    if (myLocation?.lat && myLocation?.lng) {
+      const targetStart = { lat: myLocation.lat, lng: myLocation.lng };
+      setStartQuery("📍 내 현재 위치");
+      setStartCoord(targetStart);
+      triggerAutoFindRoute(targetStart, targetEnd);
+      return;
+    }
+
+    if (!navigator.geolocation) { alert("이 브라우저는 GPS를 지원하지 않아요."); return; }
+    setStartQuery("📍 내 위치 가져오는 중...");
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        try {
+          const addrRes = await axios.get("/api/kakao/geo/coord2address", { params: { x: lng, y: lat } });
+          const doc = addrRes.data.documents?.[0];
+          const name = doc?.road_address?.address_name || doc?.address?.address_name || "내 현재 위치";
+          setStartQuery("📍 " + name);
+        } catch { setStartQuery("📍 내 현재 위치"); }
+        const targetStart = { lat, lng };
+        setStartCoord(targetStart);
+        triggerAutoFindRoute(targetStart, targetEnd);
+      },
+      () => {
+        const fallback = { lat: 37.4762, lng: 126.9505 };
+        setStartQuery("📍 미림마이스터고등학교");
+        setStartCoord(fallback);
+        triggerAutoFindRoute(fallback, targetEnd);
+      },
+      { timeout: 10000, enableHighAccuracy: false, maximumAge: 60000 },
+    );
   }, [routeCoords, myLocation]);
 
   // 비동기 경로 데이터 결합 처리
@@ -768,17 +798,10 @@ export default function RoutePanel({
   }, [startQuery, endQuery, waypoints, activeField, centerLng, centerLat]);
 
   const handlePickMyLocation = (field) => {
+    if (!navigator.geolocation) { alert("이 브라우저는 GPS를 지원하지 않아요."); return; }
     const setQuery = field === "start" ? setStartQuery : setEndQuery;
     const setCoord = field === "start" ? setStartCoord : setEndCoord;
 
-    if (field === "start") {
-      setQuery("📍 내 현재 위치");
-      setCoord(MIRIM);
-      setHasRouteResult(false);
-      return;
-    }
-
-    if (!navigator.geolocation) { alert("이 브라우저는 GPS를 지원하지 않아요."); return; }
     setQuery("📍 위치 가져오는 중...");
     setHasRouteResult(false);
 
@@ -796,7 +819,7 @@ export default function RoutePanel({
       },
       () => {
         setQuery("📍 미림마이스터고등학교");
-        setCoord({ lat: 37.4794, lng: 126.9536 });
+        setCoord({ lat: 37.4665, lng: 126.9329 });
       },
       { timeout: 10000, enableHighAccuracy: false, maximumAge: 60000 },
     );
@@ -833,7 +856,7 @@ export default function RoutePanel({
         const lng = pos.coords.longitude;
         setWaypointCoord(id, "📍 내 현재 위치", { lat, lng });
       },
-      () => setWaypointCoord(id, "📍 미림마이스터고등학교", { lat: 37.4794, lng: 126.9536 }),
+      () => setWaypointCoord(id, "📍 미림마이스터고등학교", { lat: 37.4665, lng: 126.9329 }),
       { timeout: 10000, enableHighAccuracy: false, maximumAge: 60000 },
     );
   };
