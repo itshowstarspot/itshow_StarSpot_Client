@@ -452,7 +452,7 @@ export default function RoutePanel({
 }) {
   const MIRIM = { lat: 37.4786, lng: 126.9520 };
 
-  const [startQuery, setStartQuery] = useState("미림마이스터고등학교");
+  const [startQuery, setStartQuery] = useState("📍 내 현재 위치");
   const [endQuery, setEndQuery] = useState("");
   const [startCoord, setStartCoord] = useState(MIRIM);
   const [endCoord, setEndCoord] = useState(null);
@@ -608,18 +608,9 @@ export default function RoutePanel({
       }
     };
 
-    if (myLocation?.lat && myLocation?.lng) {
-      doRoute(myLocation.lat, myLocation.lng);
-      return;
-    }
-
-    if (!navigator.geolocation) { alert("이 브라우저는 GPS를 지원하지 않아요."); return; }
-    setStartQuery("📍 내 위치 가져오는 중...");
-    navigator.geolocation.getCurrentPosition(
-      (pos) => doRoute(pos.coords.latitude, pos.coords.longitude),
-      () => doRoute(37.4794, 126.9536),
-      { timeout: 10000, enableHighAccuracy: false, maximumAge: 60000 },
-    );
+    setStartQuery("📍 내 현재 위치");
+    setStartCoord(MIRIM);
+    doRoute(MIRIM.lat, MIRIM.lng);
   }, [courseRoute, myLocation]);
 
   useEffect(() => {
@@ -630,38 +621,9 @@ export default function RoutePanel({
     setEndQuery(routeCoords.name);
     setEndCoord(targetEnd);
 
-    if (myLocation?.lat && myLocation?.lng) {
-      const targetStart = { lat: myLocation.lat, lng: myLocation.lng };
-      setStartQuery("📍 내 현재 위치");
-      setStartCoord(targetStart);
-      triggerAutoFindRoute(targetStart, targetEnd);
-      return;
-    }
-
-    if (!navigator.geolocation) { alert("이 브라우저는 GPS를 지원하지 않아요."); return; }
-    setStartQuery("📍 내 위치 가져오는 중...");
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        const lat = pos.coords.latitude;
-        const lng = pos.coords.longitude;
-        try {
-          const addrRes = await axios.get("/api/kakao/geo/coord2address", { params: { x: lng, y: lat } });
-          const doc = addrRes.data.documents?.[0];
-          const name = doc?.road_address?.address_name || doc?.address?.address_name || "내 현재 위치";
-          setStartQuery("📍 " + name);
-        } catch { setStartQuery("📍 내 현재 위치"); }
-        const targetStart = { lat, lng };
-        setStartCoord(targetStart);
-        triggerAutoFindRoute(targetStart, targetEnd);
-      },
-      () => {
-        const fallback = { lat: 37.4794, lng: 126.9536 };
-        setStartQuery("📍 미림마이스터고등학교");
-        setStartCoord(fallback);
-        triggerAutoFindRoute(fallback, targetEnd);
-      },
-      { timeout: 10000, enableHighAccuracy: false, maximumAge: 60000 },
-    );
+    setStartQuery("📍 내 현재 위치");
+    setStartCoord(MIRIM);
+    triggerAutoFindRoute(MIRIM, targetEnd);
   }, [routeCoords, myLocation]);
 
   // 비동기 경로 데이터 결합 처리
@@ -806,10 +768,17 @@ export default function RoutePanel({
   }, [startQuery, endQuery, waypoints, activeField, centerLng, centerLat]);
 
   const handlePickMyLocation = (field) => {
-    if (!navigator.geolocation) { alert("이 브라우저는 GPS를 지원하지 않아요."); return; }
     const setQuery = field === "start" ? setStartQuery : setEndQuery;
     const setCoord = field === "start" ? setStartCoord : setEndCoord;
 
+    if (field === "start") {
+      setQuery("📍 내 현재 위치");
+      setCoord(MIRIM);
+      setHasRouteResult(false);
+      return;
+    }
+
+    if (!navigator.geolocation) { alert("이 브라우저는 GPS를 지원하지 않아요."); return; }
     setQuery("📍 위치 가져오는 중...");
     setHasRouteResult(false);
 
@@ -938,6 +907,7 @@ export default function RoutePanel({
             <InputBlock>
               <BlockHeader>
                 <NodeBadge>출발</NodeBadge>
+                <InlinePickButton onClick={() => handlePickMyLocation("start")}>내위치</InlinePickButton>
               </BlockHeader>
               <InputWrapper>
                 <StyledInput
