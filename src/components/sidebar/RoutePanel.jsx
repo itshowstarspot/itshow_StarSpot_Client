@@ -450,9 +450,11 @@ export default function RoutePanel({
   courseRoute,
   onCourseRouteClear,
 }) {
+  const MIRIM = { lat: 37.4786, lng: 126.9520 };
+
   const [startQuery, setStartQuery] = useState("미림마이스터고등학교");
   const [endQuery, setEndQuery] = useState("");
-  const [startCoord, setStartCoord] = useState({ lat: 37.4866, lng: 127.0171 });
+  const [startCoord, setStartCoord] = useState(MIRIM);
   const [endCoord, setEndCoord] = useState(null);
   const [waypoints, setWaypoints] = useState([]); // [{ id, query, coord }]
   const [suggestions, setSuggestions] = useState([]);
@@ -475,6 +477,12 @@ export default function RoutePanel({
     if (isIslandRoute && activeTab === "car") setActiveTab("transit");
     if (hideWalkTab && activeTab === "walk") setActiveTab("transit");
   }, [isIslandRoute, hideWalkTab, activeTab]);
+
+  // 마운트 시 미림마이스터고 마커 표시
+  useEffect(() => {
+    onRouteSearch({ start: MIRIM });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const lastProcessedTriggerId = useRef(null);
   const lastCourseRouteId = useRef(null);
@@ -930,7 +938,6 @@ export default function RoutePanel({
             <InputBlock>
               <BlockHeader>
                 <NodeBadge>출발</NodeBadge>
-                <InlinePickButton onClick={() => handlePickMyLocation("start")}>내위치</InlinePickButton>
               </BlockHeader>
               <InputWrapper>
                 <StyledInput

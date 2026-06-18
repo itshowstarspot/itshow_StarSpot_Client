@@ -327,7 +327,7 @@ export default function MapView({
       endMarker: null,
       polyline: null,
     };
-    if (!routeCoords || !routeCoords.start || !routeCoords.end) return;
+    if (!routeCoords || !routeCoords.start) return;
 
     const bounds = new kakao.LatLngBounds();
     const startPos = new kakao.LatLng(
@@ -340,6 +340,12 @@ export default function MapView({
       title: "출발지",
     });
     bounds.extend(startPos);
+    map.setCenter(startPos);
+
+    if (!routeCoords.end) {
+      routeElementsRef.current = { startMarker, endMarker: null, polyline: null };
+      return;
+    }
 
     const endPos = new kakao.LatLng(routeCoords.end.lat, routeCoords.end.lng);
     const endMarker = new kakao.Marker({
