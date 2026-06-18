@@ -142,8 +142,8 @@ export default function MapView({
         if (!containerRef.current || mapRef.current) return;
 
         const map = new window.kakao.maps.Map(containerRef.current, {
-          center: new window.kakao.maps.LatLng(37.5665, 126.978),
-          level: 5,
+          center: new window.kakao.maps.LatLng(37.4665, 126.9329),
+          level: 4,
         });
         mapRef.current = map;
         setIsReady(true);
@@ -193,10 +193,7 @@ export default function MapView({
               myLocationRef.current = overlay;
             }
 
-            if (!isCentered) {
-              mapRef.current.setCenter(pos);
-              isCentered = true;
-            }
+            isCentered = true;
           },
           (err) => {
             console.warn(
